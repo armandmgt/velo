@@ -15,20 +15,19 @@
   </div>
   <div class="flex-none">
 
-    <% plants_needing_watering = Current.user.plants.all.filter(&:needs_watering?) %>
     <div
       class="<%= class_names(
                    "dropdown static",
                    "sm:relative sm:dropdown-end"
                  ) %>"
       data-controller="bridge--notification-count"
-      data-bridge--notification-count-count-value="<%= plants_needing_watering.count %>"
+      data-bridge--notification-count-count-value="0"
     >
       <button class="btn btn-ghost btn-circle">
         <span class="indicator">
           <%= lucide_icon "bell", class: "size-5" %>
-          <span class="<%= class_names "badge badge-sm indicator-item", { "badge-accent": !plants_needing_watering.empty? } %>">
-            <%= plants_needing_watering.count %>
+          <span class="<%= class_names "badge badge-sm indicator-item", { "badge-accent": false } %>">
+            0
           </span>
         </span>
       </button>
@@ -41,26 +40,6 @@
         <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">
           Notifications
         </li>
-
-        <% if plants_needing_watering.empty? %>
-          <li class="list-row">
-            <p>
-              Aucune plante à arroser
-            </p>
-          </li>
-        <% else %>
-          <% plants_needing_watering.each do |plant| %>
-            <li>
-              <%= link_to edit_plant_path(plant), class: "list-row" do %>
-                <div><%= image_tag plant.photo, class: "size-10 rounded-box" %></div>
-
-                <div>
-                  C’est l’heure d’arroser <%= plant.display_name(with_prefix: true) %>
-                </div>
-              <% end %>
-            </li>
-          <% end %>
-        <% end %>
       </ul>
     </div>
 

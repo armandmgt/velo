@@ -11,7 +11,7 @@
         <div class="mt-2 flex flex-col gap-4">
           <%= form.label :email_address, class: "input" do %>
             <%= lucide_icon "user", class: "size-[1em] opacity-50" %>
-            <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "email@exemple.com", value: Rails.env.development? ? "armand.megrot@gmail.com" : params[:email_address] %>
+            <%= form.email_field :email_address, required: true, autofocus: true, autocomplete: "username", placeholder: "email@exemple.com", value: Rails.env.development? ? "test@example.com" : params[:email_address] %>
           <% end %>
 
           <%= form.label :password, class: "input" do %>

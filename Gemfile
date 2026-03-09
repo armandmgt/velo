@@ -21,6 +21,7 @@ gem "tailwind_merge", "~> 1.4"
 gem "thruster", require: false
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
+gem "fit", path: "lib/fit"
 
 group :development, :test do
   gem "brakeman", require: false
