@@ -23,6 +23,18 @@ ruby_fit_init(VALUE self, VALUE f) {
   return self;
 }
 
+static VALUE
+ruby_fit_alloc(VALUE klass) {
+  VALUE obj;
+  struct ruby_fit *ptr;
+
+  obj = Data_Make_Struct(klass, struct ruby_fit, NULL, NULL, ptr);
+
+  ptr->file  = NULL;
+
+  return obj;
+}
+
 static VALUE ruby_fit_print(VALUE self) {
    struct ruby_fit *ptr;
 
@@ -168,6 +180,7 @@ void Init_ruby_fit() {
   VALUE cRubyFit;
 
   cRubyFit = rb_const_get(rb_cObject, rb_intern("RubyFit"));
+  rb_define_alloc_func(cRubyFit, ruby_fit_alloc);
    rb_define_method(cRubyFit, "initialize", ruby_fit_init, 1);
    rb_define_method(cRubyFit, "print", ruby_fit_print, 0);
 }
