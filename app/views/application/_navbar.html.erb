@@ -1,0 +1,86 @@
+<div
+  class="navbar bg-base-100 sticky top-0 z-2 shadow-sm hotwire-native:hidden"
+  data-controller="bridge--navbar-buttons"
+>
+  <div class="flex-1">
+    <a href="/" class="btn btn-ghost text-xl">
+      <img
+        src="/icon.svg"
+        class="mr-1 size-6"
+        alt="BienVert Logo"
+        />
+
+      <span>BienVert</span>
+    </a>
+  </div>
+  <div class="flex-none">
+
+    <% plants_needing_watering = Current.user.plants.all.filter(&:needs_watering?) %>
+    <div
+      class="<%= class_names(
+                   "dropdown static",
+                   "sm:relative sm:dropdown-end"
+                 ) %>"
+      data-controller="bridge--notification-count"
+      data-bridge--notification-count-count-value="<%= plants_needing_watering.count %>"
+    >
+      <button class="btn btn-ghost btn-circle">
+        <span class="indicator">
+          <%= lucide_icon "bell", class: "size-5" %>
+          <span class="<%= class_names "badge badge-sm indicator-item", { "badge-accent": !plants_needing_watering.empty? } %>">
+            <%= plants_needing_watering.count %>
+          </span>
+        </span>
+      </button>
+      <ul
+        class="<%= class_names(
+                     "dropdown-content list bg-base-100 rounded-box z-1 mt-4 p-2 shadow-md",
+                     "max-sm:left-1 max-sm:right-1 sm:w-96",
+                   ) %>"
+      >
+        <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">
+          Notifications
+        </li>
+
+        <% if plants_needing_watering.empty? %>
+          <li class="list-row">
+            <p>
+              Aucune plante à arroser
+            </p>
+          </li>
+        <% else %>
+          <% plants_needing_watering.each do |plant| %>
+            <li>
+              <%= link_to edit_plant_path(plant), class: "list-row" do %>
+                <div><%= image_tag plant.photo, class: "size-10 rounded-box" %></div>
+
+                <div>
+                  C’est l’heure d’arroser <%= plant.display_name(with_prefix: true) %>
+                </div>
+              <% end %>
+            </li>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+
+    <div class="dropdown dropdown-end">
+      <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+        <div class="w-10 rounded-full">
+          <%= lucide_icon "user", class: "size-10" %>
+        </div>
+      </div>
+      <ul
+        tabindex="-1"
+        class="menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-4 w-52 p-2 shadow"
+      >
+        <li>
+          <%= link_to "Profil", edit_user_path, data: { "bridge--navbar-buttons-target": "item" } %>
+        </li>
+        <li>
+          <%= button_to "Se déconnecter", session_path, method: :delete, data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } %>
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

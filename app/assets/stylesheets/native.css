@@ -1,0 +1,7 @@
+[data-bridge-components~="navbar-buttons"] [data-controller~="bridge--navbar-buttons"] {
+    display: none;
+}
+
+[data-bridge-components~="navbar-buttons"] main {
+    padding-top: calc(var(--spacing) * 4);
+}

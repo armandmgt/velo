@@ -1,0 +1,11 @@
+<div class="w-full">
+  <% content_for :title, "User" %>
+
+  <div id="new_user" class="min-w-full my-2">
+    <h1 class="text-5xl font-extrabold dark:text-white">Nouveau user</h1>
+
+    <%= render "form", user: @user %>
+  </div>
+
+  <%= link_to "Retour aux users", users_path %>
+</div>

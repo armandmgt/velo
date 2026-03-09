@@ -1,0 +1,12 @@
+<div class="w-full">
+  <%% content_for :title, "<%= human_name %>" %>
+
+  <div id="<%%= dom_id(@<%= singular_table_name %>) %>" class="min-w-full my-2">
+    <h1 class="text-5xl font-extrabold dark:text-white">Modifier <%= human_name.downcase %></h1>
+
+  <%%= render "form", <%= singular_table_name %>: @<%= singular_table_name %> %>
+  </div>
+
+  <%%= link_to "Voir ce <%= human_name.downcase %>", <%= show_helper(type: :path) %> %>
+  <%%= link_to "Retour aux <%= human_name.pluralize.downcase %>", <%= index_helper(type: :path) %> %>
+</div>

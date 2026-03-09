@@ -1,0 +1,24 @@
+<main class="prose dark:prose-invert md:py-16 py-8">
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="mt-0 mb-0"><%= human_name.pluralize %></h1>
+
+    <%%= link_to new_<%= model_resource_name(singular_table_name) %>_path, class: "btn btn-primary btn-lg" do %>
+      <%%= lucide_icon "plus", class: "size-[1.4em]" %>
+      <span class="hidden sm:block">Nouveau <%= human_name.downcase %></span>
+    <%% end %>
+  </header>
+
+  <section id="<%= plural_table_name %>">
+    <%% if @<%= plural_table_name %>.empty? %>
+      <p class="text-center">
+        Vous n’avez aucun(e) <%= human_name.downcase %> pour le moment.
+      </p>
+    <%% else %>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 justify-items-center">
+        <%% @<%= plural_table_name %>.each do |<%= singular_table_name %>| %>
+          <%%= render <%= singular_table_name %> %>
+        <%% end %>
+      </div>
+    <%% end %>
+  </section>
+</main>

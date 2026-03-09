@@ -1,0 +1,37 @@
+<%%# locals: (<%= model_resource_name %>:) %>
+
+<%%= form_with model: <%= model_resource_name %>, class: "max-w-sm mx-auto" do |form| %>
+<% attributes.each do |attribute| -%>
+    <div class="mb-5">
+<% if attribute.password_digest? -%>
+      <%%= form.label :password, class: tw_merge("block mb-2 text-sm font-medium text-gray-900 dark:text-white", { "text-red-700 dark:text-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+      <%%= form.password_field :password, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+    </div>
+
+    <div class="mb-5">
+      <%%= form.label :password_confirmation, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+      <%%= form.password_field :password_confirmation, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+<% elsif attribute.attachments? -%>
+      <%%= form.label :<%= attribute.column_name %>, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+      <%%= form.<%= attribute.field_type %> :<%= attribute.column_name %>, multiple: true, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+<% else -%>
+      <%%= form.label :<%= attribute.column_name %>, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+<% if attribute.field_type == :text_area -%>
+      <%%= form.<%= attribute.field_type %> :<%= attribute.column_name %>, rows: 4, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+<% elsif attribute.field_type == :check_box -%>
+      <%%= form.<%= attribute.field_type %> :<%= attribute.column_name %>, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+<% else -%>
+      <%%= form.<%= attribute.field_type %> :<%= attribute.column_name %>, class: tw_merge("bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500", { "bg-red-50 border-red-500 text-red-900 placeholder-red-700 focus:ring-red-500 focus:border-red-500 dark:text-red-500 dark:placeholder-red-500 dark:border-red-500": <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) }) %>
+<% end -%>
+<% end -%>
+
+      <%% if <%= model_resource_name %>.errors.include?(:<%= attribute.column_name %>) %>
+        <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+          <span class="font-medium">Oups !</span> <%%= <%= model_resource_name %>.errors.full_messages_for(:<%= attribute.column_name %>).to_sentence %>
+        </p>
+      <%% end %>
+    </div>
+
+<% end -%>
+  <%%= form.submit %>
+<%% end %>
