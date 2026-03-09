@@ -1,0 +1,11 @@
+<div class="w-full">
+  <% content_for :title, "Activity" %>
+
+  <div id="new_activity" class="min-w-full my-2">
+    <h1 class="text-5xl font-extrabold dark:text-white">Nouveau activity</h1>
+
+    <%= render "form", activity: @activity %>
+  </div>
+
+  <%= link_to "Retour aux activities", activities_path %>
+</div>

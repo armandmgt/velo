@@ -15,5 +15,6 @@ Rails.application.routes.draw do
   resources :passwords, param: :token
 
   resource :activity_feeds
+  resources :activities
   root "activity_feeds#index"
 end

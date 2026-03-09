@@ -1,0 +1,38 @@
+<%# locals: (activity:) %>
+
+<%= form_with model: activity, class: "max-w-sm mx-auto" do |form| %>
+  <div class="mb-5">
+    <%= form.label :name, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= form.text_field :name, class: class_names("w-full input", { "input-error": activity.errors.include?(:name) }) %>
+
+    <% if activity.errors.include?(:name) %>
+      <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:name).to_sentence %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="mb-5">
+    <%= form.label :description, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= form.text_field :description, class: class_names("w-full input", { "input-error": activity.errors.include?(:description) }) %>
+
+    <% if activity.errors.include?(:description) %>
+      <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:description).to_sentence %>
+      </p>
+    <% end %>
+  </div>
+
+  <div class="mb-5">
+    <%= form.label :sport, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= form.select :sport, [%w[Vélo bike], %w[Course run]], {}, { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }) } %>
+
+    <% if activity.errors.include?(:sport) %>
+      <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:sport).to_sentence %>
+      </p>
+    <% end %>
+  </div>
+
+  <%= form.submit class: 'btn btn-block' %>
+<% end %>

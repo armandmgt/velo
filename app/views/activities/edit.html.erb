@@ -1,0 +1,12 @@
+<div class="w-full">
+  <% content_for :title, "Activity" %>
+
+  <div id="<%= dom_id(@activity) %>" class="min-w-full my-2">
+    <h1 class="text-5xl font-extrabold dark:text-white">Modifier activity</h1>
+
+  <%= render "form", activity: @activity %>
+  </div>
+
+  <%= link_to "Voir ce activity", activity_path(@activity) %>
+  <%= link_to "Retour aux activities", activities_path %>
+</div>
