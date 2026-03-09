@@ -10,6 +10,7 @@ gem "lucide-rails"
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.2"
+gem "ruby_fit", path: "lib/ruby_fit"
 gem "solid_cable"
 gem "solid_cache"
 gem "solid_errors", group: :production
@@ -21,7 +22,6 @@ gem "tailwind_merge", "~> 1.4"
 gem "thruster", require: false
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
-gem "fit", path: "lib/fit"
 
 group :development, :test do
   gem "brakeman", require: false
