@@ -1,6 +1,6 @@
 <%# locals: (activity:) %>
 
-<%= form_with model: activity, class: "max-w-sm mx-auto" do |form| %>
+<%= form_with model: activity, class: "max-w-sm" do |form| %>
   <div class="mb-5">
     <%= form.label :name, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
     <%= form.text_field :name, class: class_names("w-full input", { "input-error": activity.errors.include?(:name) }) %>
@@ -34,5 +34,5 @@
     <% end %>
   </div>
 
-  <%= form.submit class: 'btn btn-block' %>
+  <%= form.submit "Enregistrer", class: 'btn btn-accent' %>
 <% end %>

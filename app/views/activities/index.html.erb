@@ -1,17 +1,17 @@
 <main class="prose dark:prose-invert md:py-16 p-4">
   <header class="flex justify-between items-center mb-4">
-    <h1 class="mt-0 mb-0">Activities</h1>
+    <h1 class="mt-0 mb-0">Activités</h1>
 
     <%= link_to new_activity_path, class: "btn btn-primary btn-lg" do %>
       <%= lucide_icon "plus", class: "size-[1.4em]" %>
-      <span class="hidden sm:block">Nouveau activity</span>
+      <span class="hidden sm:block">Nouvelle activité</span>
     <% end %>
   </header>
 
-  <section id="activities">
+  <section id="activities" class="not-prose">
     <% if @activities.empty? %>
       <p class="text-center">
-        Vous n’avez aucun(e) activity pour le moment.
+        Vous n’avez aucune activité pour le moment.
       </p>
     <% else %>
       <ul class="list bg-base-100 rounded-box shadow-md">

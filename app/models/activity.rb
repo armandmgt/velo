@@ -5,4 +5,6 @@ class Activity < ApplicationRecord
     bike
     run
   ].index_by(&:itself)
+
+  validates :name, :sport, presence: true
 end

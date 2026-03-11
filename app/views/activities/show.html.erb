@@ -1,15 +1,23 @@
-<% content_for :title, "Showing activity" %>
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="mt-0 mb-0"></h1>
+  </header>
 
-<div class="md:w-2/3 w-full">
   <% if notice.present? %>
-    <p class="py-2 px-3 bg-green-50 mb-5 text-green-500 font-medium rounded-md inline-block" id="notice"><%= notice %></p>
+    <div role="alert" class="alert alert-success">
+      <%= lucide_icon "check-circle", class: "h-6 w-6 shrink-0 stroke-current" %>
+      <span><%= notice %></span>
+    </div>
   <% end %>
 
-  <h1 class="font-bold text-4xl">Showing activity</h1>
+  <section class="mb-4">
+    <%= render @activity %>
+  </section>
 
-  <%= render @activity %>
+  <section class="mb-4">
+    <%= link_to "Modifier", edit_activity_path(@activity), class: "btn" %>
+    <%= button_to "Supprimer", @activity, method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0 sm:ml-2", class: "btn btn-error", data: { turbo_confirm: "Voulez vous vraiment supprimer cette activité ?" } %>
+  </section>
 
-  <%= link_to "Edit this activity", edit_activity_path(@activity), class: "btn" %>
-  <%= link_to "Back to activities", activities_path, class: "btn" %>
-  <%= button_to "Destroy this activity", @activity, method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0 sm:ml-2", class: "btn btn-error", data: { turbo_confirm: "Are you sure?" } %>
-</div>
+  <%= link_to "Retour à la liste", activities_path, class: "" %>
+</main>

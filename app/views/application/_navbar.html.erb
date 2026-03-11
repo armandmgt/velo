@@ -14,6 +14,10 @@
     </a>
   </div>
   <div class="flex-none">
+    <%= link_to new_activity_path, class: "btn btn-primary btn-sm" do %>
+      <%= lucide_icon "plus", class: "size-[1.4em]" %>
+      <span class="hidden sm:block">Nouvelle activité</span>
+    <% end %>
 
     <div
       class="<%= class_names(
@@ -55,6 +59,9 @@
       >
         <li>
           <%= link_to "Profil", user_path, data: { "bridge--navbar-buttons-target": "item" } %>
+        </li>
+        <li>
+          <%= link_to "Activités", activities_path, data: { "bridge--navbar-buttons-target": "item" } %>
         </li>
         <li>
           <%= button_to "Se déconnecter", session_path, method: :delete, data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } %>
