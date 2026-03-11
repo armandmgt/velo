@@ -1,0 +1,44 @@
+<% content_for :title, "Users" %>
+
+<main class="prose dark:prose-invert py-8">
+  <div class="pt-4">
+    <article class="not-prose">
+      <div class="overflow-x-auto rounded-box border border-base-content/5 bg-base-100">
+        <table class="table">
+          <thead>
+          <tr>
+            <th>Nom d’utilisateur</th>
+            <th>Admin</th>
+            <th></th>
+          </tr>
+          </thead>
+          <tbody>
+          <% @users.each do |user| %>
+            <tr>
+              <td><%= user.username %></td>
+              <td>
+                <% if user.admin %>
+                  <%= lucide_icon "check" %>
+                <% else %>
+                  <%= lucide_icon "x" %>
+                <% end %>
+              </td>
+              <td>
+                <% if user.admin %>
+                  <%= button_to admin_user_path(user), method: :patch, params: { user: { admin: false } }, class: "btn btn-square btn-soft btn-error" do %>
+                    <%= lucide_icon "crown", class: "size-[1.2em]" %>
+                  <% end %>
+                <% else %>
+                  <%= button_to admin_user_path(user), method: :patch, params: { user: { admin: true } }, class: "btn btn-square btn-primary" do %>
+                    <%= lucide_icon "crown", class: "size-[1.2em]" %>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+</main>

@@ -1,6 +1,6 @@
-require 'mkmf'
+require "mkmf"
 
-extension_name = 'ruby_fit'
+extension_name = "ruby_fit"
 
 $defs << "-DFIT_USE_STDINT_H"
 $defs << "-DFIT_PRODUCT_RELEASE"

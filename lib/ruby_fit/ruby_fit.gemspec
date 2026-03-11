@@ -5,8 +5,8 @@ require_relative "lib/ruby_fit/version"
 Gem::Specification.new do |spec|
   spec.name = "ruby_fit"
   spec.version = RubyFit::VERSION
-  spec.authors = ["Armand Mégrot"]
-  spec.email = ["armand.megrot@gmail.com"]
+  spec.authors = [ "Armand Mégrot" ]
+  spec.email = [ "armand.megrot@gmail.com" ]
 
   spec.summary = "RubyFit"
   spec.description = "RubyFit"
@@ -26,7 +26,7 @@ Gem::Specification.new do |spec|
   end
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
-  spec.require_paths = ["lib"]
+  spec.require_paths = [ "lib" ]
 
   spec.extensions = %w[ext/ruby_fit/extconf.rb]
 end

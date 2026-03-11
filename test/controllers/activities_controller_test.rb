@@ -3,6 +3,7 @@ require "test_helper"
 class ActivitiesControllerTest < ActionDispatch::IntegrationTest
   setup do
     @activity = activities(:one)
+    login(users(:one))
   end
 
   test "should get index" do

@@ -4,5 +4,5 @@ class Activity < ApplicationRecord
   enum :sport, %i[
     bike
     run
-  ]
+  ].index_by(&:itself)
 end

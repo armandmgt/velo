@@ -47,6 +47,6 @@ class ActivitiesController < ApplicationController
   end
 
   def activity_params
-    params.require(:activity).permit(:name, :description, :sport)
+    params.expect(activity: [ :name, :description, :sport ])
   end
 end
