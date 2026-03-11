@@ -51,6 +51,9 @@ static VALUE ruby_fit_print(VALUE self) {
   GetOpenFile(ruby_fit_ptr->io, fptr);
   FILE *fp = rb_io_stdio_file(fptr);
 
+  VALUE result = rb_hash_new();
+  rb_hash_aset(result, rb_str_new2("records"), rb_ary_new());
+
   FIT_UINT8 buf[8];
   FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
   FIT_UINT32 buf_size;
@@ -76,12 +79,43 @@ static VALUE ruby_fit_print(VALUE self) {
             case FIT_MESG_NUM_FILE_ID: {
               const FIT_FILE_ID_MESG *id = (FIT_FILE_ID_MESG *) mesg;
               printf("File ID: type=%u, number=%u\n", id->type, id->number);
+              rb_hash_aset(result, rb_str_new2("type"), INT2NUM(id->type));
+              rb_hash_aset(result, rb_str_new2("number"), INT2NUM(id->number));
               break;
             }
 
             case FIT_MESG_NUM_USER_PROFILE: {
               const FIT_USER_PROFILE_MESG *user_profile = (FIT_USER_PROFILE_MESG *) mesg;
               printf("User Profile: weight=%0.1fkg\n", user_profile->weight / 10.0f);
+              rb_hash_aset(result, rb_str_new2("wake_time"), INT2NUM(user_profile->wake_time));
+              rb_hash_aset(result, rb_str_new2("sleep_time"), INT2NUM(user_profile->sleep_time));
+              rb_hash_aset(result, rb_str_new2("dive_count"), INT2NUM(user_profile->dive_count));
+              rb_hash_aset(result, rb_str_new2("message_index"), INT2NUM(user_profile->message_index));
+              rb_hash_aset(result, rb_str_new2("weight"), INT2NUM(user_profile->weight));
+              rb_hash_aset(result, rb_str_new2("local_id"), INT2NUM(user_profile->local_id));
+              rb_hash_aset(result, rb_str_new2("user_running_step_length"), INT2NUM(user_profile->user_running_step_length));
+              rb_hash_aset(result, rb_str_new2("user_walking_step_length"), INT2NUM(user_profile->user_walking_step_length));
+              rb_hash_aset(result, rb_str_new2("friendly_name"), rb_str_new2(user_profile->friendly_name));
+              rb_hash_aset(result, rb_str_new2("gender"), INT2NUM(user_profile->gender));
+              rb_hash_aset(result, rb_str_new2("age"), INT2NUM(user_profile->age));
+              rb_hash_aset(result, rb_str_new2("height"), INT2NUM(user_profile->height));
+              rb_hash_aset(result, rb_str_new2("language"), INT2NUM(user_profile->language));
+              rb_hash_aset(result, rb_str_new2("elev_setting"), INT2NUM(user_profile->elev_setting));
+              rb_hash_aset(result, rb_str_new2("weight_setting"), INT2NUM(user_profile->weight_setting));
+              rb_hash_aset(result, rb_str_new2("resting_heart_rate"), INT2NUM(user_profile->resting_heart_rate));
+              rb_hash_aset(result, rb_str_new2("default_max_running_heart_rate"), INT2NUM(user_profile->default_max_running_heart_rate));
+              rb_hash_aset(result, rb_str_new2("default_max_biking_heart_rate"), INT2NUM(user_profile->default_max_biking_heart_rate));
+              rb_hash_aset(result, rb_str_new2("default_max_heart_rate"), INT2NUM(user_profile->default_max_heart_rate));
+              rb_hash_aset(result, rb_str_new2("hr_setting"), INT2NUM(user_profile->hr_setting));
+              rb_hash_aset(result, rb_str_new2("speed_setting"), INT2NUM(user_profile->speed_setting));
+              rb_hash_aset(result, rb_str_new2("dist_setting"), INT2NUM(user_profile->dist_setting));
+              rb_hash_aset(result, rb_str_new2("power_setting"), INT2NUM(user_profile->power_setting));
+              rb_hash_aset(result, rb_str_new2("activity_class"), INT2NUM(user_profile->activity_class));
+              rb_hash_aset(result, rb_str_new2("position_setting"), INT2NUM(user_profile->position_setting));
+              rb_hash_aset(result, rb_str_new2("temperature_setting"), INT2NUM(user_profile->temperature_setting));
+              rb_hash_aset(result, rb_str_new2("global_id"), rb_str_new2(user_profile->global_id));
+              rb_hash_aset(result, rb_str_new2("height_setting"), INT2NUM(user_profile->height_setting));
+              rb_hash_aset(result, rb_str_new2("depth_setting"), INT2NUM(user_profile->depth_setting));
               break;
             }
 
@@ -91,7 +125,7 @@ static VALUE ruby_fit_print(VALUE self) {
               {
                 FIT_ACTIVITY_MESG old_mesg;
                 old_mesg.num_sessions = 1;
-                   FitConvert_RestoreFields(&old_mesg);
+                FitConvert_RestoreFields(&old_mesg);
                 printf("Restored num_sessions=1 - Activity: timestamp=%u, type=%u, event=%u, event_type=%u, num_sessions=%u\n", activity->timestamp, activity->type, activity->event, activity->event_type, activity->num_sessions);
               }
               break;
@@ -106,6 +140,12 @@ static VALUE ruby_fit_print(VALUE self) {
             case FIT_MESG_NUM_LAP: {
               const FIT_LAP_MESG *lap = (FIT_LAP_MESG *) mesg;
               printf("Lap: timestamp=%u\n", lap->timestamp);
+              // avg_speed
+              // max_speed
+              // avg_power
+              // max_power
+              // sport
+              // total_distance
               break;
             }
 
@@ -114,18 +154,29 @@ static VALUE ruby_fit_print(VALUE self) {
 
               printf("Record: timestamp=%u", record->timestamp);
 
+              VALUE array = rb_ary_new();
+              VALUE records = rb_hash_aref(result, rb_str_new2("records"));
+              VALUE record_h = rb_hash_new();
+              rb_hash_aset(record_h, rb_str_new2("timestamp"), INT2NUM(record->timestamp));
               if (record->distance != FIT_UINT32_INVALID) {
-                 printf(", distance = %0.3fm", record->distance / 100.0f);
+                // printf(", distance = %0.3fm", record->distance / 100.0f);
+                rb_hash_aset(record_h, rb_str_new2("distance"), DBL2NUM(record->distance));
               }
 
               if (record->enhanced_speed != FIT_UINT32_INVALID) {
-                 printf(", speed enhanced = %0.2fm/s", record->enhanced_speed / 1000.0f);
+                // printf(", speed enhanced = %0.2fm/s", record->enhanced_speed / 1000.0f);
+                rb_hash_aset(record_h, rb_str_new2("enhanced_speed"), DBL2NUM(record->enhanced_speed));
               }
               else if (record->speed != FIT_UINT16_INVALID) {
-                 printf(", speed = %0.2fm/s", record->speed / 1000.0f);
+                rb_hash_aset(record_h, rb_str_new2("speed"), DBL2NUM(record->speed));
+                // printf(", speed = %0.2fm/s", record->speed / 1000.0f);
               }
 
-              printf("\n");
+              rb_ary_push(array, record_h);
+              VALUE new_array = rb_ary_concat(records, array);
+              rb_hash_aset(result, rb_str_new2("records"), new_array);
+
+              // printf("\n");
               break;
             }
 
@@ -153,7 +204,7 @@ static VALUE ruby_fit_print(VALUE self) {
       }
     } while (convert_return == FIT_CONVERT_MESSAGE_AVAILABLE);
   }
-  return self;
+  return result;
 }
 
 
