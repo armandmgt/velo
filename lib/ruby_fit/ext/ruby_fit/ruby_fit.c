@@ -208,7 +208,8 @@ static VALUE ruby_fit_print(VALUE self) {
 }
 
 
-void Init_ruby_fit() {
+void
+Init_ruby_fit() {
   VALUE cRubyFit;
 
   cRubyFit = rb_const_get(rb_cObject, rb_intern("RubyFit"));
