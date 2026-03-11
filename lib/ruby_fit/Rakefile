@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
 require "bundler/gem_tasks"
-task default: %i[]
-
+require "rubygems/package_task"
 require "rake/extensiontask"
+
+ruby_fit_gemspec = Bundler.load_gemspec "ruby_fit.gemspec"
+Gem::PackageTask.new(ruby_fit_gemspec).define
 
 Rake::ExtensionTask.new "ruby_fit" do |ext|
   ext.lib_dir = "lib/ruby_fit"
 end
+
+task default: %i[clobber compile]
