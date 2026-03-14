@@ -38,3 +38,9 @@
 !/app/assets/builds/.keep
 
 .DS_Store
+
+# Ignore compiled C extensions for local gem
+/lib/ruby_fit/lib/ruby_fit/ruby_fit.bundle
+/lib/ruby_fit/lib/ruby_fit/ruby_fit.so
+/lib/ruby_fit/lib/ruby_fit/ruby_fit.dll
+/lib/ruby_fit/tmp/

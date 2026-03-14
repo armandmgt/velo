@@ -38,14 +38,17 @@ RUN apt-get update -qq && \
 # Install application gems
 COPY vendor/* ./vendor/
 COPY Gemfile Gemfile.lock ./
-
+COPY lib/ruby_fit/Gemfile lib/ruby_fit/ruby_fit.gemspec lib/ruby_fit/lib/ruby_fit/version.rb ./lib/ruby_fit/
 RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
-    # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
+    # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495 \
     bundle exec bootsnap precompile -j 1 --gemfile
 
 # Copy application code
 COPY . .
+
+# Compile ruby_fit C extension
+RUN bundle exec rake ruby_fit:compile
 
 # Precompile bootsnap code for faster boot times.
 # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495
