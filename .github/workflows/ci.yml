@@ -78,13 +78,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - run: ls -R
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
       - name: Compile ruby_fit extension
-        run: bundle exec rake ruby_fit:compile
+        run: bundle install && ./bin/rake compile
+        working-directory: lib/ruby_fit
 
       - name: Run tests
         env:
@@ -111,7 +111,8 @@ jobs:
         with:
           bundler-cache: true
       - name: Compile ruby_fit extension
-        run: bundle exec rake ruby_fit:compile
+        run: bundle install && ./bin/rake compile
+        working-directory: lib/ruby_fit
 
       - name: Run System Tests
         env:

@@ -48,7 +48,7 @@ RUN bundle install && \
 COPY . .
 
 # Compile ruby_fit C extension
-RUN bundle exec rake ruby_fit:compile
+RUN cd lib/ruby_fit && bundle install && ./bin/rake compile
 
 # Precompile bootsnap code for faster boot times.
 # -j 1 disable parallel compilation to avoid a QEMU bug: https://github.com/rails/bootsnap/issues/495

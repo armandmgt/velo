@@ -16,12 +16,7 @@ FileUtils.chdir APP_ROOT do
   system("bundle check") || system!("bundle install")
 
   puts "\n== Compiling ruby_fit extension =="
-  system! "bin/rails ruby_fit:compile"
-
-  # puts "\n== Copying sample files =="
-  # unless File.exist?("config/database.yml")
-  #   FileUtils.cp "config/database.yml.sample", "config/database.yml"
-  # end
+  system! "cd lib/ruby_fit && ./bin/rake compile"
 
   puts "\n== Preparing database =="
   system! "bin/rails db:prepare"
