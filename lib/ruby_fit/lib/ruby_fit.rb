@@ -2,8 +2,7 @@
 
 require_relative "ruby_fit/version"
 
-class RubyFit
-  class Error < StandardError; end
+module RubyFit
 end
 
 require "ruby_fit/ruby_fit"

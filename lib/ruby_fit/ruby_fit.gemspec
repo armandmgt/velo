@@ -5,8 +5,8 @@ require_relative "lib/ruby_fit/version"
 Gem::Specification.new do |spec|
   spec.name = "ruby_fit"
   spec.version = RubyFit::VERSION
-  spec.authors = [ "Armand Mégrot" ]
-  spec.email = [ "armand.megrot@gmail.com" ]
+  spec.authors = [ "Armand Mégrot", "Thomas Burgaud" ]
+  spec.email = [ "armand.megrot@gmail.com", "thomasburgaud98@gmail.com" ]
 
   spec.summary = "RubyFit"
   spec.description = "RubyFit"

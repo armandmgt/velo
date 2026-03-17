@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
-class RubyFit
+module RubyFit
   VERSION = "0.2.2"
 end
