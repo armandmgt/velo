@@ -14,9 +14,11 @@
     </a>
   </div>
   <div class="flex-none">
-    <%= link_to new_activity_path, class: "btn btn-primary btn-sm" do %>
-      <%= lucide_icon "plus", class: "size-[1.4em]" %>
-      <span class="hidden sm:block">Nouvelle activité</span>
+    <% unless current_page?(activities_path) %>
+      <%= link_to new_activity_path, class: "btn btn-primary btn-sm" do %>
+        <%= lucide_icon "plus", class: "size-[1.4em]" %>
+        <span class="hidden sm:block">Nouvelle activité</span>
+      <% end %>
     <% end %>
 
     <div
