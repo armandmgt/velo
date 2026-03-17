@@ -17,6 +17,7 @@ class ActivitiesController < ApplicationController
 
   def create
     @activity = Current.user.activities.new(activity_params)
+    @activity.parse_fit_file(activity_params[:fit_file])
 
     if @activity.save
       redirect_to @activity, notice: "Activity was successfully created."
@@ -47,6 +48,6 @@ class ActivitiesController < ApplicationController
   end
 
   def activity_params
-    params.expect(activity: [ :name, :description, :sport ])
+    params.expect(activity: [ :name, :description, :sport, :fit_file ])
   end
 end

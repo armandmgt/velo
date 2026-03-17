@@ -1,14 +1,30 @@
 <div id="<%= dom_id activity %>" class="w-full sm:w-auto my-5 space-y-5">
-  <div>
-    <strong class="block font-medium mb-1">Name:</strong>
-    <%= activity.name %>
-  </div>
-  <div>
-    <strong class="block font-medium mb-1">Description:</strong>
+  <h2 class="mb-0"><%= activity.name %> - <%= activity.sport %></h2>
+
+  <span class="text-xs uppercase font-semibold opacity-60">
+    <%= l activity.start_time.in_time_zone("Europe/Paris"), format: :long %>
+    -
+    <%= activity.location %>
+  </span>
+
+  <p>
     <%= activity.description %>
-  </div>
-  <div>
-    <strong class="block font-medium mb-1">Sport:</strong>
-    <%= activity.sport %>
+  </p>
+
+  <div class="stats shadow">
+    <div class="stat">
+      <div class="stat-title">Distance</div>
+      <div class="stat-value text-primary"><%= (activity.distance / 1000.0).round(2) %> km</div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-title">Durée de déplacement</div>
+      <div class="stat-value text-primary"><%= duration_display activity.active_time_duration %></div>
+    </div>
+
+    <div class="stat">
+      <div class="stat-title">Dénivelé positif</div>
+      <div class="stat-value text-primary"><%= activity.total_elevation_gain.to_i %> m</div>
+    </div>
   </div>
 </div>
