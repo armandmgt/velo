@@ -400,22 +400,24 @@ static void pass_weight_scale_info(VALUE handler, const FIT_WEIGHT_SCALE_MESG *m
   rb_funcall(handler, rb_intern("on_weight_scale_info"), 1, rh);
 }
 
-static VALUE ruby_fit_parse(VALUE self, VALUE io) {
-  rb_io_t *fptr;
-  GetOpenFile(io, fptr);
-  FILE *fp = rb_io_stdio_file(fptr);
+static VALUE ruby_fit_parse(VALUE self, VALUE original_str) {
+  VALUE str = StringValue(original_str);
+  char *p = RSTRING_PTR(str);
+
   VALUE handler = rb_ivar_get(self, rb_intern("@handler"));
   char err_msg[128];
 
   FIT_UINT8 buf[8];
   FIT_CONVERT_RETURN convert_return = FIT_CONVERT_CONTINUE;
   FIT_UINT32 buf_size;
-  FIT_UINT32 mesg_index = 0;
   FitConvert_Init(FIT_TRUE);
 
-  while (!feof(fp) && (convert_return == FIT_CONVERT_CONTINUE)) {
-    for (buf_size = 0; (buf_size < sizeof(buf)) && !feof(fp); buf_size++) {
-      buf[buf_size] = (FIT_UINT8)getc(fp);
+  int i = 0;
+  while (i < RSTRING_LEN(str) && (convert_return == FIT_CONVERT_CONTINUE)) {
+    for (buf_size = 0; (buf_size < sizeof(buf)) && (p != NULL); buf_size++) {
+      buf[buf_size] = *p;
+      p++;
+      i++;
     }
 
     do {
@@ -502,6 +504,7 @@ static VALUE ruby_fit_parse(VALUE self, VALUE io) {
       }
     } while (convert_return == FIT_CONVERT_MESSAGE_AVAILABLE);
   }
+
   if (convert_return == FIT_CONVERT_ERROR) {
     sprintf(err_msg, "Error decoding file.\n");
     pass_err_message(handler, err_msg);

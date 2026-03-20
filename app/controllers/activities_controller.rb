@@ -2,7 +2,7 @@ class ActivitiesController < ApplicationController
   before_action :set_activity, only: %i[ show edit update destroy ]
 
   def index
-    @activities = Current.user.activities
+    @activities = Current.user.activities.order(start_time: :desc)
   end
 
   def show

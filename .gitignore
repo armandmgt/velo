@@ -44,3 +44,6 @@
 /lib/ruby_fit/lib/ruby_fit/ruby_fit.so
 /lib/ruby_fit/lib/ruby_fit/ruby_fit.dll
 /lib/ruby_fit/tmp/
+
+# Ignore OSM extract data
+/lib/nominatim/

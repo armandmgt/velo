@@ -1,10 +1,15 @@
 class FitExtractor
   def initialize(activity)
     @activity = activity
+    @found_position_record = false
   end
 
   def print_msg(msg)
     Rails.logger.info msg
+  end
+
+  def print_error_msg(msg)
+    Rails.logger.error msg
   end
 
   def on_file_id(msg)
@@ -35,8 +40,14 @@ class FitExtractor
   def on_record(msg)
     Rails.logger.info "record: #{msg.inspect}"
 
-    if msg["position_lat"] && msg["position_long"]
-      @activity.location ||= "#{msg["position_lat"]}, #{msg["position_long"]}"
+    if msg["position_lat"] && msg["position_long"] && !@found_position_record
+      @found_position_record = true
+      @activity.location ||= begin
+        NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
+          parts = response.dig("reversegeocode", "addressparts")
+          parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+        end
+      end
     end
     if msg["speed"] && msg["speed"] > @activity.max_speed.to_f
       @activity.max_speed ||= msg["speed"]

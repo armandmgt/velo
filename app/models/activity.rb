@@ -11,7 +11,8 @@ class Activity < ApplicationRecord
   validates :name, :sport, :start_time, :end_time, :location, :active_time, presence: true
 
   def parse_fit_file(fit_file)
-    RubyFit::Parser.new(FitExtractor.new(self)).parse(fit_file.open)
+    str = fit_file.try(:read) || fit_file.download
+    RubyFit::Parser.new(FitExtractor.new(self)).parse(str)
   end
 
   def active_time_duration
