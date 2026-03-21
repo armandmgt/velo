@@ -10,6 +10,31 @@ class Activity < ApplicationRecord
 
   validates :name, :sport, :start_time, :end_time, :location, :active_time, presence: true
 
+  class Positions
+    attr_reader :latitude, :longitude
+
+    def self.load(payload)
+      return nil if payload.nil?
+
+      data = JSON.parse(payload)
+      new(data["latitude"], data["longitude"])
+    end
+
+    def self.dump(positions)
+      pp positions
+      JSON.generate(
+        "latitude" => positions.latitude,
+        "longitude" => positions.longitude,
+      )
+    end
+
+    def initialize(latitude, longitude)
+      @latitude, @longitude = latitude, longitude
+    end
+  end
+
+  serialize :positions, coder: Positions
+
   def parse_fit_file(fit_file)
     str = fit_file.try(:read) || fit_file.download
     RubyFit::Parser.new(FitExtractor.new(self)).parse(str)

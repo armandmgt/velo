@@ -42,6 +42,7 @@ class FitExtractor
 
     if msg["position_lat"] && msg["position_long"] && !@found_position_record
       @found_position_record = true
+      @activity.positions ||= Activity::Positions.new(msg["position_lat"], msg["position_long"])
       @activity.location ||= begin
         NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
           parts = response.dig("reversegeocode", "addressparts")

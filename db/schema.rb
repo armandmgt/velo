@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_17_204450) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_21_155322) do
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
@@ -47,8 +47,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_17_204450) do
     t.datetime "end_time", null: false
     t.string "location", null: false
     t.decimal "max_speed"
-    t.string "moving_time"
     t.string "name", null: false
+    t.string "positions"
     t.string "sport", null: false
     t.datetime "start_time", null: false
     t.decimal "total_elevation_gain"

@@ -99,3 +99,29 @@ html, body {
         @slot;
     }
 }
+
+.map {
+    width: 100%;
+    height: 50vh;
+    position: relative;
+    overflow: hidden;
+    background: #ddd;
+    cursor: grab;
+}
+
+.map img {
+    position: absolute;
+    width: 256px;
+    height: 256px;
+    user-select: none;
+    pointer-events: none;
+}
+
+.marker {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: red;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
