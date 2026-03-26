@@ -29,12 +29,13 @@ services:
       - PGDATABASE=${NOMINATIM_DB}
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
-      - PBF_URL=${OSM_PBF_URL}
+      - PBF_PATH=/tmp/data.osm.pbf
       - IMPORT_STYLE=admin
       - IMPORT_WIKIPEDIA=true
     ports:
       - "8080:8080"
     volumes:
+      - ./data.osm.pbf:/tmp/data.osm.pbf:z
       - nominatim-flat-data:/var/lib/nominatim:z
     depends_on:
       db:
@@ -53,12 +54,13 @@ services:
 
   osm2pgsql:
     image: postgis/postgis:16-3.4
-    entrypoint: /bin/sh -c "apt-get update && apt-get install -y osm2pgsql curl && curl -o /tmp/data.osm.pbf ${OSM_PBF_URL} && osm2pgsql --create --slim --hstore --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} /tmp/data.osm.pbf"
+    entrypoint: /bin/sh -c "apt-get update && apt-get install -y osm2pgsql curl && osm2pgsql --create --slim --hstore --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} /tmp/data.osm.pbf"
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - TILES_DB=${TILES_DB}
-      - OSM_PBF_URL=${OSM_PBF_URL}
+    volumes:
+      - ./data.osm.pbf:/tmp/data.osm.pbf:z
     depends_on:
       db:
         condition: service_healthy
