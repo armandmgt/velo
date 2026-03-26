@@ -25,7 +25,7 @@ services:
     environment:
       - NOMINATIM_TOKENIZER=icu
       - NOMINATIM_DATABASE_DSN=pgsql:host=db;port=5432;user=${POSTGRES_USER};password=${POSTGRES_PASSWORD};dbname=${NOMINATIM_DB}
-      - PGHOSTADDR=db
+      - PGHOST=db
       - PGDATABASE=${NOMINATIM_DB}
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
