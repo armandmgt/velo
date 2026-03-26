@@ -47,3 +47,4 @@
 
 # Ignore OSM extract data
 /lib/nominatim/
+/osm/.env

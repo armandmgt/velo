@@ -47,6 +47,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_155322) do
     t.datetime "end_time", null: false
     t.string "location", null: false
     t.decimal "max_speed"
+    t.string "moving_time"
     t.string "name", null: false
     t.string "positions"
     t.string "sport", null: false

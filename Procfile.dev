@@ -1,3 +1,2 @@
 web: bin/rails server
 css: bin/rails tailwindcss:watch
-nominatim: docker run --rm -it --shm-size=4gb -e PBF_PATH=/nominatim/data/data.osm.pbf -e REPLICATION_URL=https://download.geofabrik.de/europe/france-updates/ -v ./lib/nominatim:/nominatim/data -v nominatim-data:/var/lib/postgresql/16/main -p 8080:8080 --name nominatim mediagis/nominatim:5.2
