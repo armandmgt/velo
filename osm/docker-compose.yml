@@ -23,9 +23,15 @@ services:
     image: mediagis/nominatim:5.2
     restart: always
     environment:
+      - NOMINATIM_TOKENIZER=icu
       - NOMINATIM_DATABASE_DSN=pgsql:host=db;port=5432;user=${POSTGRES_USER};password=${POSTGRES_PASSWORD};dbname=${NOMINATIM_DB}
-      - NOMINATIM_PBF_URL=${OSM_PBF_URL}
-      - NOMINATIM_IMPORT_STYLE=address
+      - PGHOSTADDR=db
+      - PGDATABASE=${NOMINATIM_DB}
+      - PGUSER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - PBF_URL=${OSM_PBF_URL}
+      - IMPORT_STYLE=admin
+      - IMPORT_WIKIPEDIA=true
     ports:
       - "8080:8080"
     volumes:
@@ -49,10 +55,10 @@ services:
     image: postgis/postgis:16-3.4
     entrypoint: /bin/sh -c "apt-get update && apt-get install -y osm2pgsql curl && curl -o /tmp/data.osm.pbf ${OSM_PBF_URL} && osm2pgsql --create --slim --hstore --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} /tmp/data.osm.pbf"
     environment:
-      - PGPASSWORD=${POSTGRES_PASSWORD}
-      - OSM_PBF_URL=${OSM_PBF_URL}
-      - TILES_DB=${TILES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - TILES_DB=${TILES_DB}
+      - OSM_PBF_URL=${OSM_PBF_URL}
     depends_on:
       db:
         condition: service_healthy
