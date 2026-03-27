@@ -9,6 +9,8 @@ services:
       NOMINATIM_DB: ${NOMINATIM_DB}
       TILES_DB: ${TILES_DB}
       PGDATA: /var/lib/postgresql/16/main
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/16/main:z
       # init-db.sh is kept for extension setup if starting with an empty volume
