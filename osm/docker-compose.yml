@@ -58,14 +58,11 @@ services:
         condition: service_healthy
 
   osm2pgsql:
-    image: postgis/postgis:16-3.5
+    image: debian:trixie-slim
     entrypoint: /bin/sh -c "
       apt-get update && \
-      apt-get install -y curl git && \
+      apt-get install -y curl git ca-certificates osm2pgsql && \
       [ ! -f /data/data.osm.pbf ] && curl -L ${OSM_PBF_URL} -o /data/data.osm.pbf; \
-      echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list && \
-      apt-get update && \
-      apt-get install -t bookworm-backports -y osm2pgsql && \
       git clone --depth 1 https://github.com/openstreetmap/osm2pgsql-themepark.git /tmp/themepark && \
       osm2pgsql --create --slim --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} -O flex -S /tmp/themepark/themepark.lua -- --config openmaptiles /data/data.osm.pbf
       "
