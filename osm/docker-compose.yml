@@ -31,13 +31,13 @@ services:
       - PGDATABASE=${NOMINATIM_DB}
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
-      - PBF_PATH=/tmp/data.osm.pbf
+      - NOMINATIM_PBF_URL=${OSM_PBF_URL}
       - IMPORT_STYLE=admin
       - IMPORT_WIKIPEDIA=true
     ports:
       - "8080:8080"
     volumes:
-      - ./data.osm.pbf:/tmp/data.osm.pbf:z
+      - .:/data:z
       - nominatim-flat-data:/var/lib/nominatim:z
     depends_on:
       db:
@@ -50,19 +50,32 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${TILES_DB}
     ports:
       - "8081:3000"
+    volumes:
+      - ./martin-config.yaml:/config/config.yaml:ro
+    command: ["--config", "/config/config.yaml"]
     depends_on:
       db:
         condition: service_healthy
 
   osm2pgsql:
-    image: postgis/postgis:16-3.4
-    entrypoint: /bin/sh -c "apt-get update && apt-get install -y osm2pgsql curl && osm2pgsql --create --slim --hstore --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} /tmp/data.osm.pbf"
+    image: postgis/postgis:16-3.5
+    entrypoint: /bin/sh -c "
+      apt-get update && \
+      apt-get install -y curl git && \
+      [ ! -f /data/data.osm.pbf ] && curl -L ${OSM_PBF_URL} -o /data/data.osm.pbf; \
+      echo 'deb http://deb.debian.org/debian bookworm-backports main' > /etc/apt/sources.list.d/backports.list && \
+      apt-get update && \
+      apt-get install -t bookworm-backports -y osm2pgsql && \
+      git clone --depth 1 https://github.com/openstreetmap/osm2pgsql-themepark.git /tmp/themepark && \
+      osm2pgsql --create --slim --database ${TILES_DB} --host db --port 5432 --username ${POSTGRES_USER} -O flex -S /tmp/themepark/themepark.lua -- --config openmaptiles /data/data.osm.pbf
+      "
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - TILES_DB=${TILES_DB}
+      - OSM_PBF_URL=${OSM_PBF_URL}
     volumes:
-      - ./data.osm.pbf:/tmp/data.osm.pbf:z
+      - .:/data:z
     depends_on:
       db:
         condition: service_healthy

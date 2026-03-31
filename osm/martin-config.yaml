@@ -1,0 +1,37 @@
+# Martin configuration for OpenMapTiles
+# See https://martin.maplibre.org/config/
+
+# Tilesets group multiple sources into a single endpoint
+tilesets:
+  openmaptiles:
+    layers:
+      aeroway:
+        source: public.aeroway
+      boundary:
+        source: public.boundary
+      building:
+        source: public.building
+      housenumber:
+        source: public.housenumber
+      landcover:
+        source: public.landcover
+      landuse:
+        source: public.landuse
+      mountain_peak:
+        source: public.mountain_peak
+      park:
+        source: public.park
+      place:
+        source: public.place
+      poi:
+        source: public.poi
+      transportation:
+        source: public.transportation
+      transportation_name:
+        source: public.transportation_name
+      water:
+        source: public.water
+      water_name:
+        source: public.water_name
+      waterway:
+        source: public.waterway

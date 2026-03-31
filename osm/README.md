@@ -6,8 +6,8 @@ This directory contains a `docker-compose.yml` file to run a PostGIS database, a
 
 1.  **PostGIS (db)**: A PostgreSQL 16 database with PostGIS extensions. Both services use the same PostgreSQL instance but have separate databases (`nominatim` and `tiles`).
 2.  **Nominatim API**: Uses the official `mediagis/nominatim` image. It can automatically import OSM data on first run.
-3.  **Martin Tile Server**: Uses the official `maplibre/martin` image. It serves vector tiles directly from the `tiles` database.
-4.  **osm2pgsql (importer)**: A helper service to import OSM data into the `tiles` database.
+3.  **Martin Tile Server**: Uses the official `maplibre/martin` image. It serves vector tiles in the OpenMapTiles schema, aggregated into a single `openmaptiles` tileset to support styles like OSM Liberty.
+4.  **osm2pgsql (importer)**: A helper service to import OSM data into the `tiles` database using the `osm2pgsql-themepark` OpenMapTiles theme.
 
 ## Getting Started
 
@@ -40,4 +40,6 @@ docker compose --profile import run --rm osm2pgsql
 
 ## Notes on Martin
 
-Martin auto-discovers tables with geometry columns in the `tiles` database. Once `osm2pgsql` has finished importing, you can see the available tilesets at [http://localhost:8081/index.json](http://localhost:8081/index.json).
+Martin is configured to serve an aggregated `openmaptiles` tileset. Once `osm2pgsql` has finished importing, you can see the available tilesets at [http://localhost:8081/index.json](http://localhost:8081/index.json). The `openmaptiles` endpoint will be available at `http://localhost:8081/openmaptiles`.
+
+To use the **OSM Liberty** style, point your map client (e.g., MapLibre GL JS) to the `http://localhost:8081/openmaptiles` source.
