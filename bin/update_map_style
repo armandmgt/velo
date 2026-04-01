@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# Configuration
+BASE_URL="http://tiles.versatiles.org/tiles/osm/"
+GLYPHS_URL="https://tiles.versatiles.org/assets/fonts/{fontstack}/{range}.pbf"
+SPRITE_URL="https://tiles.versatiles.org/assets/sprites/basics/sprites"
+OUTPUT_FILE="app/views/map_styles/show.json"
+
+# Move to the project root
+PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+cd "$PROJECT_ROOT" || exit 1
+
+echo "Updating $OUTPUT_FILE using @versatiles/style..."
+
+# Use npx to run a Node.js script that generates the JSON
+# We use a temporary directory to avoid cluttering the project with node_modules
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+cd "$TMP_DIR" || exit 1
+
+npm init -y > /dev/null
+npm install @versatiles/style > /dev/null
+
+node -e "
+import('@versatiles/style').then(m => {
+  const style = new m.colorful({
+    // baseUrl: '$BASE_URL',
+    glyphs: '$GLYPHS_URL',
+    sprite: [{ id: 'basics', url: '$SPRITE_URL' }]
+  });
+  console.log(JSON.stringify(style, null, 2));
+})
+" > "$PROJECT_ROOT/$OUTPUT_FILE"
+
+echo "Done. Style JSON updated successfully."

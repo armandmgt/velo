@@ -21,7 +21,6 @@ class Activity < ApplicationRecord
     end
 
     def self.dump(positions)
-      pp positions
       JSON.generate(
         "latitude" => positions.latitude,
         "longitude" => positions.longitude,

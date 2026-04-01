@@ -13,6 +13,8 @@ Rails.application.routes.draw do
     resources :users
   end
 
+  resource :map_style, only: %i[ show ]
+
   resources :users, only: %i[ new create ]
   resource :user, only: %i[ show destroy ]
   resource :session, only: %i[ show new create destroy ]
