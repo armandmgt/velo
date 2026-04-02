@@ -57,14 +57,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_155322) do
     t.datetime "end_time", null: false
     t.string "location", null: false
     t.decimal "max_speed"
-    t.string "moving_time"
     t.string "name", null: false
     t.string "positions"
     t.string "sport", null: false
     t.datetime "start_time", null: false
     t.decimal "total_elevation_gain"
     t.datetime "updated_at", null: false
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_activities_on_user_id"
   end
 
@@ -73,7 +72,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_21_155322) do
     t.string "ip_address"
     t.datetime "updated_at", null: false
     t.string "user_agent"
-    t.integer "user_id", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_sessions_on_user_id"
   end
 

@@ -1,41 +1,5 @@
 # Martin configuration for Shortbread
 # See https://martin.maplibre.org/config/
 
-# Tilesets group multiple sources into a single endpoint
-tilesets:
-  shortbread:
-    layers:
-      addresses:
-        source: public.addresses
-      aerialways:
-        source: public.aerialways
-      boundaries:
-        source: public.boundaries
-      boundary_labels:
-        source: public.boundary_labels
-      bridges:
-        source: public.bridges
-      buildings:
-        source: public.buildings
-      dams:
-        source: public.dams
-      ferries:
-        source: public.ferries
-      land:
-        source: public.land
-      ocean:
-        source: public.ocean
-      piers:
-        source: public.piers
-      places:
-        source: public.places
-      pois:
-        source: public.pois
-      public_transport:
-        source: public.public_transport
-      sites:
-        source: public.sites
-      streets:
-        source: public.streets
-      water:
-        source: public.water
+# Sources are auto-discovered from the database.
+# You can define custom sources here if needed.

@@ -6,7 +6,7 @@ This directory contains a `docker-compose.yml` file to run a PostGIS database, a
 
 1.  **PostGIS (db)**: A PostgreSQL 16 database with PostGIS extensions. Both services use the same PostgreSQL instance but have separate databases (`nominatim` and `tiles`).
 2.  **Nominatim API**: Uses the official `mediagis/nominatim` image. It automatically imports OSM data on first run and persists its state using a dedicated volume (`nominatim-db-data`).
-3.  **Martin Tile Server**: Uses the official `maplibre/martin` image. It serves vector tiles in the Shortbread schema, aggregated into a single `shortbread` tileset.
+3.  **Martin Tile Server**: Uses the official `maplibre/martin` image. It serves vector tiles in the Shortbread schema.
 4.  **osm2pgsql (importer)**: A helper service to import OSM data into the `tiles` database using the `osm2pgsql-themepark` Shortbread theme.
 
 ## Getting Started
@@ -40,6 +40,6 @@ docker compose --profile import run --rm osm2pgsql
 
 ## Notes on Martin
 
-Martin is configured to serve an aggregated `shortbread` tileset. Once `osm2pgsql` has finished importing, you can see the available tilesets at [http://localhost:8081/index.json](http://localhost:8081/index.json). The `shortbread` endpoint will be available at `http://localhost:8081/shortbread`.
+Once `osm2pgsql` has finished importing, you can see the available tilesets at [http://localhost:8081/index.json](http://localhost:8081/index.json).
 
-To use the tiles, point your map client (e.g., MapLibre GL JS) to the `http://localhost:8081/shortbread` source. Note that since we've switched to the Shortbread schema, you'll need a style compatible with Shortbread.
+To use the tiles, point your map client (e.g., MapLibre GL JS) to the Martin server. Since we've switched to the Shortbread schema, you'll need a style compatible with Shortbread. You can generate one using the `bin/update_map_style` script, which configures a composite source with all necessary layers.

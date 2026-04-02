@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # Configuration
-BASE_URL="http://tiles.versatiles.org/tiles/osm/"
+# Martin URL for composite source (all Shortbread layers)
+BASE_URL="http://minipc.armandmgt.fr:8081/addresses,aerialways,boundaries,boundary_labels,bridges,buildings,dam_lines,dam_polygons,ferries,land,pier_lines,pier_polygons,place_labels,pois,public_transport,sites,street_labels,street_polygons,streets,streets_labels_points,streets_low,streets_med,streets_polygons_labels,water_lines,water_lines_labels,water_polygons,water_polygons_labels"
 GLYPHS_URL="https://tiles.versatiles.org/assets/fonts/{fontstack}/{range}.pbf"
 SPRITE_URL="https://tiles.versatiles.org/assets/sprites/basics/sprites"
-OUTPUT_FILE="app/views/map_styles/show.json"
+OUTPUT_FILE="app/views/map_styles/show.json.erb"
 
 # Move to the project root
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,14 +24,13 @@ npm init -y > /dev/null
 npm install @versatiles/style > /dev/null
 
 node -e "
-import('@versatiles/style').then(m => {
-  const style = new m.colorful({
-    // baseUrl: '$BASE_URL',
-    glyphs: '$GLYPHS_URL',
-    sprite: [{ id: 'basics', url: '$SPRITE_URL' }]
-  });
-  console.log(JSON.stringify(style, null, 2));
-})
+const m = require('@versatiles/style');
+const style = new m.colorful({
+  baseUrl: '$BASE_URL/',
+  glyphs: '$GLYPHS_URL',
+  sprite: [{ id: 'basics', url: '$SPRITE_URL' }]
+});
+console.log(JSON.stringify(style, null, 2));
 " > "$PROJECT_ROOT/$OUTPUT_FILE"
 
 echo "Done. Style JSON updated successfully."

@@ -1,6 +1,6 @@
 class NominatimClient
   include HTTParty
-  base_uri "http://localhost:8080"
+  base_uri "http://minipc.armandmgt.fr:8080"
   headers "User-Agent" => "Velo development"
 
   def search(query)
