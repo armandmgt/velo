@@ -8,6 +8,8 @@ class NominatimClient
   end
 
   def reverse_geocode(lat, lon)
-    self.class.get("/reverse", query: { lat: lat, lon: lon })
+    self.class.get("/reverse", query: { lat: lat, lon: lon }).tap do |response|
+      Rails.logger.info "reverse geocode response: #{response.inspect}"
+    end
   end
 end

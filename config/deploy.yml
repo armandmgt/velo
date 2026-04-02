@@ -26,7 +26,7 @@ env:
   secret:
     - RAILS_MASTER_KEY
   clear:
-    DATABASE_URL: "postgres://postgres:postgres@velo-db/velo_production"
+    DATABASE_URL: "postgres://postgres:postgres@velo-db"
 
 accessories:
   db:
@@ -36,8 +36,8 @@ accessories:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: velo_production
-    directories:
-      - data:/var/lib/postgresql/data
+    volumes:
+      - velo_data:/var/lib/postgresql/data:z
 
 aliases:
   console: app exec --interactive --reuse "bin/rails console"
@@ -49,4 +49,4 @@ volumes:
   - "velo_storage:/rails/storage:z"
 
 
-asset_path: /rails/public/assets
+asset_path: /rails/public/assets:z

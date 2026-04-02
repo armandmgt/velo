@@ -9,28 +9,40 @@ default: &default
 development:
   <<: *default
   database: velo_development
+  schema_format: :sql
 
 test:
   <<: *default
   database: velo_test
+  schema_format: :sql
 
 production:
   primary:
     <<: *default
     url: <%= ENV["DATABASE_URL"] %>
+    database: velo_production
+    schema_format: :sql
   cache:
+    <<: *default
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/cache_migrate
+    database: solid_cache
   queue:
+    <<: *default
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/queue_migrate
+    database: solid_queue
   cable:
+    <<: *default
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/cable_migrate
+    database: solid_cable
   errors:
+    <<: *default
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/errors_migrate
+    database: solid_errors

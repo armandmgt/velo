@@ -2,12 +2,20 @@
 
 one:
   user: one
-  name: MyString
-  description: MyString
+  name: Sortie VTT
+  description: Super sortie
   sport: bike
+  start_time: 2019-01-01 12:00:00
+  end_time: 2019-01-01 13:00:00
+  location: Paris
+  active_time: 120
 
 two:
   user: two
-  name: MyString
-  description: MyString
+  name: Course à pied
+  description: J'adore courrir
   sport: run
+  start_time: 2019-01-01 12:00:00
+  end_time: 2019-01-01 13:00:00
+  location: Paris
+  active_time: 120

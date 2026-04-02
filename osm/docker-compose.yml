@@ -7,6 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
       NOMINATIM_DB: ${NOMINATIM_DB}
+      TILES_DB: ${TILES_DB}
       PGDATA: /var/lib/postgresql/16/main
     ports:
       - "5432:5432"
@@ -47,26 +48,36 @@ services:
   tileserver:
     image: maplibre/martin:latest
     restart: always
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${TILES_DB}
     ports:
       - "8081:3000"
     volumes:
       - ./martin-config.yaml:/config/config.yaml:ro
-      - .:/data:ro
     command: ["--config", "/config/config.yaml"]
     depends_on:
       db:
         condition: service_healthy
 
-  planetiler:
-    image: onthegomap/planetiler:latest
-    container_name: planetiler
+  osm2pgsql:
+    image: debian:trixie-slim
+    entrypoint: /bin/sh -c "
+      apt-get update && \
+      apt-get install -y curl git ca-certificates osm2pgsql && \
+      [ ! -f /data/data.osm.pbf ] && curl -L ${OSM_PBF_URL} -o /data/data.osm.pbf; \
+      GIT_TERMINAL_PROMPT=0 git clone --depth 1 https://github.com/osm2pgsql-dev/osm2pgsql-themepark.git /tmp/themepark && \
+      LUA_PATH='/tmp/themepark/lua/?.lua;;' osm2pgsql --create --slim --database ${TILES_DB} --host db --port 5432 --user ${POSTGRES_USER} -O flex -S /tmp/themepark/config/shortbread.lua /data/data.osm.pbf
+      "
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - PGPASSWORD=${POSTGRES_PASSWORD}
+      - TILES_DB=${TILES_DB}
+      - OSM_PBF_URL=${OSM_PBF_URL}
     volumes:
-      - .:/data
-    command: >
-      --osm-path=${OSM_PBF_URL}
-      --output=/data/shortbread.pmtiles
-      --profile=shortbread
-      --force
+      - .:/data:z
+    depends_on:
+      db:
+        condition: service_healthy
     profiles:
       - import
 

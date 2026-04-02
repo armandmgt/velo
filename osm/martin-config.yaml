@@ -1,8 +1,11 @@
 # Martin configuration for Shortbread
 # See https://martin.maplibre.org/config/
 
+cors:
+  origin:
+    - "http://localhost:3000"
+    - "https://minipc.armandmgt.fr"
+    - "https://velo.armandmgt.fr"
+
 # Sources are auto-discovered from the database.
 # You can define custom sources here if needed.
-sources:
-  shortbread:
-    pmtiles: /data/shortbread.pmtiles
