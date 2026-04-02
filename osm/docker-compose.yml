@@ -25,13 +25,13 @@ services:
     image: mediagis/nominatim:5.2
     restart: always
     environment:
-      - NOMINATIM_TOKENIZER=icu
-      - NOMINATIM_DATABASE_DSN=pgsql:host=db;port=5432;user=${POSTGRES_USER};password=${POSTGRES_PASSWORD};dbname=${NOMINATIM_DB}
+      - TOKENIZER=icu
+      - DATABASE_DSN=pgsql:host=db;port=5432;user=${POSTGRES_USER};password=${POSTGRES_PASSWORD};dbname=${NOMINATIM_DB}
       - PGHOST=db
       - PGDATABASE=${NOMINATIM_DB}
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
-      - NOMINATIM_PBF_URL=${OSM_PBF_URL}
+      - PBF_URL=${OSM_PBF_URL}
       - IMPORT_STYLE=admin
       - IMPORT_WIKIPEDIA=true
     ports:
