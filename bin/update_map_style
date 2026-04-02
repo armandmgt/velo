@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Configuration
-# Martin URL for composite source (all Shortbread layers)
-BASE_URL="http://minipc.armandmgt.fr:8081/addresses,aerialways,boundaries,boundary_labels,bridges,buildings,dam_lines,dam_polygons,ferries,land,pier_lines,pier_polygons,place_labels,pois,public_transport,sites,street_labels,street_polygons,streets,streets_labels_points,streets_low,streets_med,streets_polygons_labels,water_lines,water_lines_labels,water_polygons,water_polygons_labels"
+# Martin URL for Shortbread source
+BASE_URL="http://minipc.armandmgt.fr:8081/shortbread"
 GLYPHS_URL="https://tiles.versatiles.org/assets/fonts/{fontstack}/{range}.pbf"
 SPRITE_URL="https://tiles.versatiles.org/assets/sprites/basics/sprites"
 OUTPUT_FILE="app/views/map_styles/show.json.erb"
