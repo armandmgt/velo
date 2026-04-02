@@ -32,6 +32,7 @@ services:
       - PGUSER=${POSTGRES_USER}
       - PGPASSWORD=${POSTGRES_PASSWORD}
       - PBF_URL=${OSM_PBF_URL}
+      - PROJECT_DIR=/data
       - IMPORT_STYLE=admin
       - IMPORT_WIKIPEDIA=true
     ports:
@@ -39,6 +40,7 @@ services:
     volumes:
       - .:/data:z
       - nominatim-flat-data:/var/lib/nominatim:z
+      - nominatim-db-data:/var/lib/postgresql/16/main:z
     depends_on:
       db:
         condition: service_healthy
@@ -82,3 +84,4 @@ services:
 volumes:
   postgres_data:
   nominatim-flat-data:
+  nominatim-db-data:

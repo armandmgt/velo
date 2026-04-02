@@ -5,7 +5,7 @@ This directory contains a `docker-compose.yml` file to run a PostGIS database, a
 ## Components
 
 1.  **PostGIS (db)**: A PostgreSQL 16 database with PostGIS extensions. Both services use the same PostgreSQL instance but have separate databases (`nominatim` and `tiles`).
-2.  **Nominatim API**: Uses the official `mediagis/nominatim` image. It can automatically import OSM data on first run.
+2.  **Nominatim API**: Uses the official `mediagis/nominatim` image. It automatically imports OSM data on first run and persists its state using a dedicated volume (`nominatim-db-data`).
 3.  **Martin Tile Server**: Uses the official `maplibre/martin` image. It serves vector tiles in the Shortbread schema, aggregated into a single `shortbread` tileset.
 4.  **osm2pgsql (importer)**: A helper service to import OSM data into the `tiles` database using the `osm2pgsql-themepark` Shortbread theme.
 
