@@ -23,6 +23,3 @@ EOSQL
 
 # Create Nominatim database
 create_db_and_extensions "$NOMINATIM_DB"
-
-# Create Tiles database
-create_db_and_extensions "$TILES_DB"
