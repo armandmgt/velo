@@ -48,3 +48,7 @@
 # Ignore OSM extract data
 /lib/nominatim/
 /osm/.env
+
+# Ignore key files for decrypting credentials and more.
+/config/credentials/*.key
+

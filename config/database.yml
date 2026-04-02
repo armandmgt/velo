@@ -22,11 +22,15 @@ production:
     adapter: postgresql
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/cache_migrate
-    queue:
-      adapter: postgresql
-      url: <%= ENV["DATABASE_URL"] %>
-      migrations_paths: db/queue_migrate
-    cable:
-      adapter: postgresql
-      url: <%= ENV["DATABASE_URL"] %>
-      migrations_paths: db/cable_migrate
+  queue:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    migrations_paths: db/queue_migrate
+  cable:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    migrations_paths: db/cable_migrate
+  errors:
+    adapter: postgresql
+    url: <%= ENV["DATABASE_URL"] %>
+    migrations_paths: db/errors_migrate

@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+gem "activerecord-postgis-adapter"
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "httparty"
@@ -8,18 +9,17 @@ gem "importmap-rails"
 gem "jbuilder"
 gem "kamal", require: false
 gem "lucide-rails"
+gem "pg", "~> 1.5"
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rails", "~> 8.1.2"
 gem "rake-compiler"
+gem "rgeo"
 gem "ruby_fit", path: "lib/ruby_fit"
 gem "solid_cable"
 gem "solid_cache"
 gem "solid_errors", group: :production
 gem "solid_queue"
-gem "pg", "~> 1.5"
-gem "activerecord-postgis-adapter"
-gem "rgeo"
 gem "stimulus-rails"
 gem "tailwindcss-rails"
 gem "tailwind_merge", "~> 1.4"
