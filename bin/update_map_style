@@ -3,8 +3,8 @@
 # Configuration
 # Martin URL for Shortbread source
 BASE_URL="https://velo.armandmgt.fr/tiles/addresses,aerialways,boundaries,boundary_labels,bridges,buildings,dam_lines,dam_polygons,ferries,land,pier_lines,pier_polygons,place_labels,pois,public_transport,sites,street_labels,street_polygons,streets,streets_labels_points,streets_low,streets_med,streets_polygons_labels,water_lines,water_lines_labels,water_polygons,water_polygons_labels"
-GLYPHS_URL="https://velo.armandmgt.fr/fonts/{fontstack}/{range}.pbf"
-SPRITE_URL="https://velo.armandmgt.fr/sprites/basics/sprites"
+GLYPHS_URL="<%= root_url %>/fonts/{fontstack}/{range}.pbf"
+SPRITE_URL="<%= root_url %>/sprites/basics/sprites"
 OUTPUT_FILE="app/views/map_styles/show.json.erb"
 
 # Move to the project root
@@ -30,6 +30,8 @@ const style = new m.colorful({
   glyphs: '$GLYPHS_URL',
   sprite: [{ id: 'basics', url: '$SPRITE_URL' }]
 });
+style.glyphs = '$GLYPHS_URL';
+style.sprite[0].url = '$SPRITE_URL';
 style.sources['versatiles-shortbread'].tiles[0] = '$BASE_URL/{z}/{x}/{y}';
 console.log(JSON.stringify(style, null, 2));
 " > "$PROJECT_ROOT/$OUTPUT_FILE"
