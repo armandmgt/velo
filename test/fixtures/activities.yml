@@ -8,7 +8,7 @@ one:
   start_time: 2019-01-01 12:00:00
   end_time: 2019-01-01 13:00:00
   location: Paris
-  active_time: 120
+  active_time: PT120S
 
 two:
   user: two
@@ -18,4 +18,4 @@ two:
   start_time: 2019-01-01 12:00:00
   end_time: 2019-01-01 13:00:00
   location: Paris
-  active_time: 120
+  active_time: PT120S
