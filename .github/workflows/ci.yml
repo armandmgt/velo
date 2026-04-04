@@ -74,7 +74,6 @@ jobs:
     services:
       postgres:
         image: postgis/postgis:17-3.5
-        platform: linux/amd64
         env:
           POSTGRES_USER: velo
           POSTGRES_PASSWORD: password
