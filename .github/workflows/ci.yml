@@ -71,6 +71,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        platform: linux/amd64
+        env:
+          POSTGRES_USER: velo
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: velo_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -86,6 +102,7 @@ jobs:
       - name: Run tests
         env:
           RAILS_ENV: test
+          DATABASE_URL: postgres://velo:password@localhost:5432/velo_test
         run: bin/rails db:test:prepare test
 
 #  system-test:
