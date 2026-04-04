@@ -9,6 +9,7 @@ one:
   end_time: 2019-01-01 13:00:00
   location: Paris
   active_time: PT120S
+  distance: 1000
 
 two:
   user: two
@@ -19,3 +20,4 @@ two:
   end_time: 2019-01-01 13:00:00
   location: Paris
   active_time: PT120S
+  distance: 1000

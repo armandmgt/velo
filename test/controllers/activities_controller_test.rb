@@ -18,7 +18,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "should create activity" do
     assert_difference("Activity.count") do
-      post activities_url, params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport } }
+      post activities_url, params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport, fit_file: file_fixture_upload("fit/bike.fit") } }
     end
 
     assert_redirected_to activity_url(Activity.last)
