@@ -28,7 +28,20 @@ class Activity < ApplicationRecord
     end
 
     def initialize(latitude, longitude)
-      @latitude, @longitude = latitude, longitude
+      # Always store arrays for consistency
+      @latitude = Array(latitude).dup
+      @longitude = Array(longitude).dup
+    end
+
+    def to_geojson
+      {
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          properties: {},
+          coordinates: @longitude.zip(@latitude).map { |lon, lat| [ lon, lat ] }
+        }
+      }.to_json
     end
   end
 

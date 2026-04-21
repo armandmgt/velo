@@ -1,5 +1,8 @@
 <%= content_for :head do %>
   <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  <% end %>
 <% end %>
 
 <div id="<%= dom_id activity %>" class="w-full sm:w-auto my-5 space-y-5">
@@ -19,9 +22,9 @@
   <% if activity.positions.present? %>
     <div
       data-controller="map"
-      data-map-lat-value="<%= activity.positions.latitude %>"
-      data-map-lng-value="<%= activity.positions.longitude %>"
-      data-map-zoom-value="13"
+      data-map-lat-value="<%= activity.positions.latitude.first %>"
+      data-map-lng-value="<%= activity.positions.longitude.first %>"
+      data-map-route-value="<%= activity.positions.to_geojson %>"
       class="map"
     ></div>
   <% end %>

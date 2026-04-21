@@ -1,7 +1,9 @@
 class FitExtractor
   def initialize(activity)
     @activity = activity
-    @found_position_record = false
+    # Initialize positions as mutable arrays
+    @activity.positions = Activity::Positions.new([], [])
+    @set_location = false
   end
 
   def print_msg(msg)
@@ -40,13 +42,21 @@ class FitExtractor
   def on_record(msg)
     Rails.logger.info "record: #{msg.inspect}"
 
-    if msg["position_lat"] && msg["position_long"] && !@found_position_record
-      @found_position_record = true
-      @activity.positions ||= Activity::Positions.new(msg["position_lat"], msg["position_long"])
-      @activity.location ||= begin
-        NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
-          parts = response.dig("reversegeocode", "addressparts")
-          parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+    if msg["position_lat"] && msg["position_long"]
+      # Skip invalid values
+      if msg["position_lat"].finite? && msg["position_long"].finite?
+        @activity.positions.latitude << msg["position_lat"]
+        @activity.positions.longitude << msg["position_long"]
+      end
+
+      # Set location once using first valid point
+      if !@set_location
+        @set_location = true
+        @activity.location ||= begin
+          NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
+            parts = response.dig("reversegeocode", "addressparts")
+            parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+          end
         end
       end
     end
