@@ -18,19 +18,19 @@
               <td><%= user.username %></td>
               <td>
                 <% if user.admin %>
-                  <%= lucide_icon "check" %>
+                  <%= icon "check" %>
                 <% else %>
-                  <%= lucide_icon "x" %>
+                  <%= icon "x" %>
                 <% end %>
               </td>
               <td>
                 <% if user.admin %>
                   <%= button_to admin_user_path(user), method: :patch, params: { user: { admin: false } }, class: "btn btn-square btn-soft btn-error" do %>
-                    <%= lucide_icon "crown", class: "size-[1.2em]" %>
+                    <%= icon "crown", class: "size-[1.2em]" %>
                   <% end %>
                 <% else %>
                   <%= button_to admin_user_path(user), method: :patch, params: { user: { admin: true } }, class: "btn btn-square btn-primary" do %>
-                    <%= lucide_icon "crown", class: "size-[1.2em]" %>
+                    <%= icon "crown", class: "size-[1.2em]" %>
                   <% end %>
                 <% end %>
               </td>

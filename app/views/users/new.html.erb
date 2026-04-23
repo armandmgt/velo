@@ -11,7 +11,7 @@
         <div class="mt-2 flex flex-col gap-4 text-left">
           <fieldset>
             <%= form.label :email_address, class: "input validator" do %>
-              <%= lucide_icon "user", class: "size-[1em] opacity-50" %>
+              <%= icon "user", class: "size-[1em] opacity-50" %>
               <%=
                 form.text_field :email_address, required: true, placeholder: "Nom d'utilisateur", pattern: URI::MailTo::EMAIL_REGEXP, minlength: "3", maxlength: "30", title: "Uniquement des lettres minuscules.",
                                 value: Rails.env.development? ? "test@example.com" : params[:email_address]
@@ -25,7 +25,7 @@
 
           <fieldset>
             <%= form.label :password, class: "input validator" do %>
-              <%= lucide_icon "key", class: "size-[1em] opacity-50" %>
+              <%= icon "key", class: "size-[1em] opacity-50" %>
               <%= form.password_field :password, required: true, placeholder: "Mot de passe", value: Rails.env.development? ? "dev" : params[:password]%>
             <% end %>
             <p class="validator-hint hidden">

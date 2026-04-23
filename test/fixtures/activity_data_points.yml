@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  timecode: 2026-04-23 22:36:32
+  location: POINT(2.8792948722839355 48.753929138183594)
+  speed: 9.99
+  heart_rate: 1
+  cadence: 9.99
+  power: 9.99
+
+two:
+  timecode: 2026-04-23 22:36:32
+  location: POINT(2.8792948722839355 48.753929138183594)
+  speed: 9.99
+  heart_rate: 1
+  cadence: 9.99
+  power: 9.99

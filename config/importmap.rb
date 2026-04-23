@@ -7,3 +7,7 @@ pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin "@hotwired/hotwire-native-bridge", to: "@hotwired--hotwire-native-bridge.js" # @1.2.2
 pin "maplibre-gl" # @5.21.1
+pin "chart.js" # https://cdn.jsdelivr.net/npm/chart.js@4.5.1/+esm
+pin "kurklecolor" # https://cdn.jsdelivr.net/npm/@kurkle/color@0.3.4/+esm
+pin "moment" # @2.30.1
+pin "chartjs-adapter-moment" # @1.0.1

@@ -1,8 +1,8 @@
 class FitExtractor
   def initialize(activity)
+    @rgeo_factory = RGeo::Geographic.simple_mercator_factory
     @activity = activity
-    # Initialize positions as mutable arrays
-    @activity.positions = Activity::Positions.new([], [])
+    @data_points = {}
     @set_location = false
   end
 
@@ -42,11 +42,15 @@ class FitExtractor
   def on_record(msg)
     Rails.logger.info "record: #{msg.inspect}"
 
+    @data_points[msg["timestamp"]] ||= @activity.activity_data_points.build(recorded_at: Time.at(msg["timestamp"]))
+    data_point = @data_points[msg["timestamp"]]
+
     if msg["position_lat"] && msg["position_long"]
       # Skip invalid values
       if msg["position_lat"].finite? && msg["position_long"].finite?
-        @activity.positions.latitude << msg["position_lat"]
-        @activity.positions.longitude << msg["position_long"]
+        data_point.location = @rgeo_factory.point(
+          msg["position_long"], msg["position_lat"]
+        )
       end
 
       # Set location once using first valid point
@@ -60,8 +64,26 @@ class FitExtractor
         end
       end
     end
-    if msg["speed"] && msg["speed"] > @activity.max_speed.to_f
-      @activity.max_speed ||= msg["speed"]
+
+    %w[speed enhanced_speed].each do |name|
+      if msg[name]
+        data_point.speed = msg[name]
+        if msg[name] > @activity.max_speed.to_f
+          @activity.max_speed ||= msg[name]
+        end
+      end
+    end
+
+    if msg["heart_rate"]
+      data_point.heart_rate = msg["heart_rate"]
+    end
+
+    if msg["cadence"]
+      data_point.cadence = msg["cadence"]
+    end
+
+    if msg["power"]
+      data_point.power = msg["power"]
     end
   end
 
@@ -79,5 +101,9 @@ class FitExtractor
 
   def on_weight_scale_info(msg)
     Rails.logger.info "weight scale info: #{msg.inspect}"
+  end
+
+  def finalize
+    @activity.path = @rgeo_factory.line_string(@data_points.values.pluck(:location).compact)
   end
 end

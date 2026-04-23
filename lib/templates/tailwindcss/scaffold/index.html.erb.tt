@@ -3,7 +3,7 @@
     <h1 class="mt-0 mb-0"><%= human_name.pluralize %></h1>
 
     <%%= link_to new_<%= model_resource_name(singular_table_name) %>_path, class: "btn btn-primary btn-lg" do %>
-      <%%= lucide_icon "plus", class: "size-[1.4em]" %>
+      <%%= icon "plus", class: "size-[1.4em]" %>
       <span class="hidden sm:block">Nouveau <%= human_name.downcase %></span>
     <%% end %>
   </header>

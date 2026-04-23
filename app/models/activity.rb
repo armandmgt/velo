@@ -1,5 +1,8 @@
 class Activity < ApplicationRecord
+  include ActivityCharts
+
   belongs_to :user
+  has_many :activity_data_points, dependent: :destroy
 
   has_one_attached :fit_file
 
@@ -10,46 +13,24 @@ class Activity < ApplicationRecord
 
   validates :name, :sport, :start_time, :end_time, :location, :active_time, presence: true
 
-  class Positions
-    attr_reader :latitude, :longitude
-
-    def self.load(payload)
-      return nil if payload.nil?
-
-      data = JSON.parse(payload)
-      new(data["latitude"], data["longitude"])
-    end
-
-    def self.dump(positions)
-      JSON.generate(
-        "latitude" => positions.latitude,
-        "longitude" => positions.longitude,
-      )
-    end
-
-    def initialize(latitude, longitude)
-      # Always store arrays for consistency
-      @latitude = Array(latitude).dup
-      @longitude = Array(longitude).dup
-    end
-
-    def to_geojson
-      {
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          properties: {},
-          coordinates: @longitude.zip(@latitude).map { |lon, lat| [ lon, lat ] }
-        }
-      }.to_json
-    end
+  def path_geojson
+    {
+      type: "Feature",
+      geometry: {
+        type: "LineString",
+        properties: {},
+        coordinates: path.points.map do |point|
+          [ point.x, point.y ]
+        end
+      }
+    }.to_json
   end
-
-  serialize :positions, coder: Positions
 
   def parse_fit_file(fit_file)
     str = fit_file.try(:read) || fit_file.download
-    RubyFit::Parser.new(FitExtractor.new(self)).parse(str)
+    extractor = FitExtractor.new(self)
+    RubyFit::Parser.new(extractor).parse(str)
+    extractor.finalize
   end
 
   def active_time_duration
@@ -58,5 +39,12 @@ class Activity < ApplicationRecord
 
   def duration
     ActiveSupport::Duration.build((end_time - start_time).to_i)
+  end
+
+  def sport_icon_name
+    {
+      "bike" => "bike",
+      "run" => "sport-shoe"
+    }.fetch(sport)
   end
 end

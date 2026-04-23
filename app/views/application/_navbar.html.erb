@@ -16,7 +16,7 @@
   <div class="flex-none">
     <% unless current_page?(activities_path) %>
       <%= link_to new_activity_path, class: "btn btn-primary btn-sm" do %>
-        <%= lucide_icon "plus", class: "size-[1.4em]" %>
+        <%= icon "plus", class: "size-[1.4em]" %>
         <span class="hidden sm:block">Nouvelle activité</span>
       <% end %>
     <% end %>
@@ -31,7 +31,7 @@
     >
       <button class="btn btn-ghost btn-circle">
         <span class="indicator">
-          <%= lucide_icon "bell", class: "size-5" %>
+          <%= icon "bell", class: "size-5" %>
           <span class="<%= class_names "badge badge-sm indicator-item", { "badge-accent": false } %>">
             0
           </span>
@@ -52,7 +52,7 @@
     <div class="dropdown dropdown-end">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
         <div class="w-10 rounded-full">
-          <%= lucide_icon "user", class: "size-10" %>
+          <%= icon "user", class: "size-10" %>
         </div>
       </div>
       <ul

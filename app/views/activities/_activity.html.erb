@@ -5,44 +5,56 @@
   <% end %>
 <% end %>
 
-<div id="<%= dom_id activity %>" class="w-full sm:w-auto my-5 space-y-5">
-  <h2 class="mb-0"><%= activity.name %> - <%= activity.sport %></h2>
+<article id="<%= dom_id activity %>" class="w-full sm:w-auto">
+  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-1">
+    <div>
+      <h2 class="flex items-center gap-2 mt-0">
+        <%= icon activity.sport_icon_name, class: "size-[1.2em]" %>
+        <%= activity.name %>
+      </h2>
 
+      <span class="text-xs uppercase font-semibold opacity-60">
+        <%= l activity.start_time.in_time_zone("Europe/Paris"), format: :long %>
+        -
+        <%= activity.location %>
+      </span>
+    </div>
 
-  <span class="text-xs uppercase font-semibold opacity-60">
-    <%= l activity.start_time.in_time_zone("Europe/Paris"), format: :long %>
-    -
-    <%= activity.location %>
-  </span>
+    <div>
+      <div class="stats bg-base-300 shadow">
+        <div class="stat">
+          <div class="stat-title">Distance</div>
+          <div class="stat-value text-primary"><%= (activity.distance / 1000.0).round(2) %> km</div>
+        </div>
 
-  <p>
-    <%= activity.description %>
-  </p>
+        <div class="stat">
+          <div class="stat-title">Durée de déplacement</div>
+          <div class="stat-value text-primary"><%= duration_display activity.active_time_duration %></div>
+        </div>
 
-  <% if activity.positions.present? %>
+        <div class="stat">
+          <div class="stat-title">Dénivelé positif</div>
+          <div class="stat-value text-primary"><%= activity.total_elevation_gain.to_i %> m</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if activity.description.present? %>
+    <p>
+      <%= activity.description %>
+    </p>
+  <% end %>
+
+  <% if activity.path.present? %>
     <div
       data-controller="map"
-      data-map-lat-value="<%= activity.positions.latitude.first %>"
-      data-map-lng-value="<%= activity.positions.longitude.first %>"
-      data-map-route-value="<%= activity.positions.to_geojson %>"
-      class="map"
+      data-map-lng-value="<%= activity.path.points.first.x %>"
+      data-map-lat-value="<%= activity.path.points.first.y %>"
+      data-map-route-value="<%= activity.path_geojson %>"
+      class="map my-3 max-h-[350px]"
     ></div>
   <% end %>
 
-  <div class="stats bg-base-300 shadow">
-    <div class="stat">
-      <div class="stat-title">Distance</div>
-      <div class="stat-value text-primary"><%= (activity.distance / 1000.0).round(2) %> km</div>
-    </div>
-
-    <div class="stat">
-      <div class="stat-title">Durée de déplacement</div>
-      <div class="stat-value text-primary"><%= duration_display activity.active_time_duration %></div>
-    </div>
-
-    <div class="stat">
-      <div class="stat-title">Dénivelé positif</div>
-      <div class="stat-value text-primary"><%= activity.total_elevation_gain.to_i %> m</div>
-    </div>
-  </div>
-</div>
+  <%= render "activities/activity_charts", activity: activity %>
+</article>

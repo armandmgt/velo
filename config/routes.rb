@@ -23,4 +23,6 @@ Rails.application.routes.draw do
   resource :activity_feeds
   resources :activities
   root "activity_feeds#index"
+
+  mount RailsIcons::Engine, at: '/rails_icons' if Rails.env.development?
 end

@@ -10,6 +10,20 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: postgis; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION postgis; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION postgis IS 'PostGIS geometry and geography spatial types and functions';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -132,7 +146,7 @@ CREATE TABLE public.activities (
     active_time character varying NOT NULL,
     total_elevation_gain numeric,
     max_speed numeric,
-    positions character varying
+    path public.geometry(LineString)
 );
 
 
@@ -153,6 +167,43 @@ CREATE SEQUENCE public.activities_id_seq
 --
 
 ALTER SEQUENCE public.activities_id_seq OWNED BY public.activities.id;
+
+
+--
+-- Name: activity_data_points; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.activity_data_points (
+    id bigint NOT NULL,
+    activity_id bigint NOT NULL,
+    recorded_at timestamp(6) without time zone NOT NULL,
+    location public.geography(Point,4326),
+    speed numeric,
+    heart_rate integer,
+    cadence numeric,
+    power numeric,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: activity_data_points_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.activity_data_points_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: activity_data_points_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.activity_data_points_id_seq OWNED BY public.activity_data_points.id;
 
 
 --
@@ -271,6 +322,13 @@ ALTER TABLE ONLY public.activities ALTER COLUMN id SET DEFAULT nextval('public.a
 
 
 --
+-- Name: activity_data_points id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.activity_data_points ALTER COLUMN id SET DEFAULT nextval('public.activity_data_points_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -314,6 +372,14 @@ ALTER TABLE ONLY public.active_storage_variant_records
 
 ALTER TABLE ONLY public.activities
     ADD CONSTRAINT activities_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: activity_data_points activity_data_points_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.activity_data_points
+    ADD CONSTRAINT activity_data_points_pkey PRIMARY KEY (id);
 
 
 --
@@ -384,6 +450,20 @@ CREATE INDEX index_activities_on_user_id ON public.activities USING btree (user_
 
 
 --
+-- Name: index_activity_data_points_on_activity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activity_data_points_on_activity_id ON public.activity_data_points USING btree (activity_id);
+
+
+--
+-- Name: index_activity_data_points_on_recorded_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_activity_data_points_on_recorded_at ON public.activity_data_points USING btree (recorded_at);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -395,6 +475,14 @@ CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
 --
 
 CREATE UNIQUE INDEX index_users_on_email_address ON public.users USING btree (email_address);
+
+
+--
+-- Name: activity_data_points fk_rails_4fe4a431f7; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.activity_data_points
+    ADD CONSTRAINT fk_rails_4fe4a431f7 FOREIGN KEY (activity_id) REFERENCES public.activities(id);
 
 
 --
@@ -436,6 +524,8 @@ ALTER TABLE ONLY public.active_storage_attachments
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260423203714'),
+('20260423203632'),
 ('20260321155322'),
 ('20260317204450'),
 ('20260317203100'),

@@ -3,7 +3,7 @@
     <h1 class="mt-0 mb-0">Activités</h1>
 
     <%= link_to new_activity_path, class: "btn btn-primary btn-lg" do %>
-      <%= lucide_icon "plus", class: "size-[1.4em]" %>
+      <%= icon "plus", class: "size-[1.4em]" %>
       <span class="hidden sm:block">Nouvelle activité</span>
     <% end %>
   </header>
@@ -19,11 +19,8 @@
         <% @activities.each do |activity| %>
           <li class="list-row">
             <div class="list-col-grow">
-              <%= render activity %>
+              <%= render "activities/activity_recap", activity: activity %>
             </div>
-            <%= link_to activity_path(activity), class: "btn btn-ghost btn-circle" do %>
-              <%= lucide_icon "arrow-right", class: "size-[1.2em]" %>
-            <% end %>
           </li>
         <% end %>
       </ul>

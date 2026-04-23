@@ -1,0 +1,8 @@
+<%# locals: (activity:)  %>
+
+<canvas
+  data-controller="chartjs"
+  data-chartjs-type-value="line"
+  data-chartjs-data-value="<%= activity.chart_data.to_json %>"
+  data-chartjs-options-value="<%= activity.chart_options.to_json %>"
+></canvas>
