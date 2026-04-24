@@ -10,8 +10,10 @@ module ActivityCharts
           {
             label: 'Speed',
             backgroundColor: '#3B82F6',
-            borderColor: '#3B82F6',
+            borderColor: 'transparent',
+            fill: true,
             pointStyle: false,
+            tension: 0,
             data: data_points.pluck(:speed).map { _1 * 3.6 }
           }
         ]
@@ -20,8 +22,17 @@ module ActivityCharts
 
     def chart_options
       {
+        responsive: true,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
         plugins: {
+          legend: {
+            display: false
+          },
           tooltip: {
+            position: 'atCursor',
             callbacks: {
               label: "chartSpeedFormatter"
             }

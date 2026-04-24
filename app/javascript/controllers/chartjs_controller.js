@@ -1,9 +1,32 @@
 import { Controller } from "@hotwired/stimulus"
-import { Chart, registerables } from "chart.js"
+import { Chart, Tooltip, registerables } from "chart.js"
 import "moment"
 import "chartjs-adapter-moment"
 
 Chart.register(...registerables)
+
+Tooltip.positioners.atCursor = function(elements, eventPosition) {
+  return eventPosition
+}
+
+const verticalHoverLine = {
+  id: "verticalHoverLine",
+  afterDatasetsDraw(chart, args, pluginOptions) {
+    const { ctx, chartArea: { top, bottom, height }} = chart
+
+    ctx.save()
+
+    chart.getDatasetMeta(0).data.forEach(point => {
+      if (point.active) {
+        ctx.beginPath()
+        ctx.strokeStyle = "black"
+        ctx.moveTo(point.x, top)
+        ctx.lineTo(point.x, bottom)
+        ctx.stroke()
+      }
+    })
+  }
+}
 
 function chartSpeedFormatter(context) {
   let label = context.dataset.label || ""
@@ -61,6 +84,9 @@ export default class extends Controller {
       type: this.typeValue,
       data: this.chartData,
       options: this.chartOptions,
+      plugins: [
+        verticalHoverLine,
+      ]
     })
   }
 
