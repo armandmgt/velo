@@ -1,8 +1,14 @@
 <%# locals: (activity:)  %>
 
-<canvas
-  data-controller="chartjs"
-  data-chartjs-type-value="line"
-  data-chartjs-data-value="<%= activity.chart_data.to_json %>"
-  data-chartjs-options-value="<%= activity.chart_options.to_json %>"
-></canvas>
+<div
+  data-controller="activity-charts"
+  data-activity-charts-data-value="<%= activity.chart_data.to_json %>"
+>
+  <select data-action="activity-charts#changeDataset" class="select" autocomplete="off">
+    <% activity.chart_data[:datasets].each_with_index do |dataset, index| %>
+      <option value="<%= index %>"><%= dataset[:label] %></option>
+    <% end %>
+  </select>
+
+  <canvas data-activity-charts-target="canvas"></canvas>
+</div>

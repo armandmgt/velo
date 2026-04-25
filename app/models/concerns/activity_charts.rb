@@ -10,40 +10,31 @@ module ActivityCharts
           {
             label: 'Speed',
             backgroundColor: '#3B82F6',
-            borderColor: 'transparent',
-            fill: true,
-            pointStyle: false,
-            tension: 0,
-            data: data_points.pluck(:speed).map { _1 * 3.6 }
+            data: data_points.pluck(:speed).map { _1 * 3.6 },
+            tooltipFormatter: { unit: "km/h" }
+          },
+          {
+            label: 'Cadence',
+            backgroundColor: '#10B981',
+            data: data_points.pluck(:cadence),
+            tooltipFormatter: { unit: "rpm" },
+            hidden: true
+          },
+          {
+            label: 'Power',
+            backgroundColor: '#F59E0B',
+            data: data_points.pluck(:power),
+            tooltipFormatter: { unit: "W" },
+            hidden: true
+          },
+          {
+            label: 'Heart rate',
+            backgroundColor: '#EF4444',
+            data: data_points.pluck(:heart_rate),
+            tooltipFormatter: { unit: "bpm" },
+            hidden: true
           }
         ]
-      }
-    end
-
-    def chart_options
-      {
-        responsive: true,
-        interaction: {
-          mode: 'index',
-          intersect: false
-        },
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            position: 'atCursor',
-            callbacks: {
-              label: "chartSpeedFormatter"
-            }
-          }
-        },
-        scales: {
-          x: {
-            type: 'time',
-          },
-          y: {}
-        }
       }
     end
   end
