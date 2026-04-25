@@ -10,7 +10,7 @@ module ActivityCharts
           {
             label: 'Speed',
             backgroundColor: '#3B82F6',
-            data: data_points.pluck(:speed).map { _1 * 3.6 },
+            data: data_points.pluck(:speed).map { _1 && _1 * 3.6 },
             tooltipFormatter: { unit: "km/h" }
           },
           {
