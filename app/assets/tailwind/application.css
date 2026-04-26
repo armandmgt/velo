@@ -89,13 +89,13 @@ html, body {
 }
 
 @custom-variant hotwire-native {
-    body[data-hotwire-native] & {
+    body[data-hotwire-native=true] & {
         @slot;
     }
 }
 
 @custom-variant not-hotwire-native {
-    body:not([data-hotwire-native]) & {
+    body:not([data-hotwire-native=true]) & {
         @slot;
     }
 }

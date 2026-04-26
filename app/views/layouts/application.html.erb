@@ -33,7 +33,7 @@
   <meta name="turbo-refresh-scroll" content="preserve">
 </head>
 
-<body <%= "data-hotwire-native" if hotwire_native_app? %>>
+<body data-hotwire-native="<%= hotwire_native_app? %>">
 
 <% if authenticated? %>
   <%= render "sessions/meta" %>

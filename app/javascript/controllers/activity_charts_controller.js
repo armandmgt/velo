@@ -93,7 +93,6 @@ export default class extends Controller {
 
   get chartOptions() {
     return {
-      responsive: true,
       interaction: {
         mode: "index",
         intersect: false,
