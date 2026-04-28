@@ -44,6 +44,7 @@ function valueFormatter(unit) {
     return label
   }
 }
+
 export default class extends Controller {
   static targets = ["canvas"]
   static values = {
@@ -86,7 +87,7 @@ export default class extends Controller {
           callbacks: {
             label: valueFormatter(dataset.tooltipFormatter.unit),
           },
-        }
+        },
       })),
     }
   }
@@ -117,7 +118,7 @@ export default class extends Controller {
               return new Intl.DurationFormat(undefined, {
                 style: "narrow",
               }).format({ hours, minutes, seconds })
-            }
+            },
           },
         },
         y: {},

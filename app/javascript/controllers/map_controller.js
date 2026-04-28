@@ -1,9 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
 
-class BackToCenterControl {
-  constructor(center) {
-    this._center = center
+class FitToRouteControl {
+  constructor(bounds) {
+    this._bounds = bounds
   }
 
   onAdd(map) {
@@ -16,7 +16,7 @@ class BackToCenterControl {
     button.className = "maplibregl-ctrl-geolocate"
     button.ariaLabel = "Back to center"
     button.addEventListener("click", () => {
-      this._map.flyTo({ center: this._center, zoom: 13 })
+      this._map.fitBounds(this._bounds, { padding: 40 })
     })
     button.appendChild(span)
 
@@ -82,7 +82,7 @@ export default class extends Controller {
       showZoom: true,
       showCompass: true,
     }))
-    this.map.addControl(new BackToCenterControl([this.lngValue, this.latValue]))
+    this.map.addControl(new FitToRouteControl(initialBounds))
 
     this.map.on("load", () => {
       if (!this.hasRouteValue) return
@@ -117,8 +117,6 @@ export default class extends Controller {
           "line-opacity": 0.9
         }
       }, "geojson-line")
-
-      // No start/end markers
     })
   }
 
