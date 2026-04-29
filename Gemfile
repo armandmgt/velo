@@ -40,6 +40,7 @@ end
 group :development do
   gem "hotwire-spark"
   gem "web-console"
+  gem "rails-mcp-server"
 end
 
 group :test do

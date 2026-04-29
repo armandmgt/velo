@@ -11,7 +11,7 @@ class Activity < ApplicationRecord
     run
   ].index_by(&:itself)
 
-  validates :name, :sport, :start_time, :end_time, :location, :active_time, presence: true
+  validates :name, :sport, :start_time, :end_time, presence: true
 
   def path_geojson
     {
@@ -26,9 +26,9 @@ class Activity < ApplicationRecord
     }.to_json
   end
 
-  def parse_fit_file(fit_file)
+  def parse_fit_file(fit_file, reverse_geocode: true)
     str = fit_file.try(:read) || fit_file.download
-    extractor = FitExtractor.new(self)
+    extractor = FitExtractor.new(self, reverse_geocode: reverse_geocode)
     RubyFit::Parser.new(extractor).parse(str)
     extractor.finalize
   end

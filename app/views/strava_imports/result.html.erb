@@ -1,0 +1,39 @@
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="mb-4">
+    <h1 class="mt-0 mb-0">Résultat de l'import</h1>
+  </header>
+
+  <section class="not-prose max-w-xl space-y-4">
+    <div class="stats shadow w-full">
+      <div class="stat">
+        <div class="stat-title">Importées</div>
+        <div class="stat-value text-success"><%= @result[:imported] %></div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-title">Ignorées</div>
+        <div class="stat-value"><%= @result[:skipped] %></div>
+      </div>
+
+      <div class="stat">
+        <div class="stat-title">Échecs</div>
+        <div class="stat-value text-error"><%= @result[:failed] %></div>
+      </div>
+    </div>
+
+    <% if @result[:errors].any? %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title">Erreurs</h2>
+          <ul class="text-sm">
+            <% @result[:errors].first(10).each do |err| %>
+              <li><strong><%= err[:file] %></strong>: <%= err[:error] %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    <% end %>
+  </section>
+
+  <%= link_to "Retour aux activités", activities_path %>
+</main>

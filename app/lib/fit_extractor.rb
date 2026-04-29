@@ -1,9 +1,10 @@
 class FitExtractor
-  def initialize(activity)
+  def initialize(activity, reverse_geocode: true)
     @rgeo_factory = RGeo::Geographic.simple_mercator_factory
     @activity = activity
     @data_points = {}
     @set_location = false
+    @reverse_geocode = reverse_geocode
   end
 
   def print_msg(msg)
@@ -56,11 +57,15 @@ class FitExtractor
       # Set location once using first valid point
       if !@set_location
         @set_location = true
-        @activity.location ||= begin
-          NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
-            parts = response.dig("reversegeocode", "addressparts")
-            parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+        if @reverse_geocode
+          @activity.location ||= begin
+            NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
+              parts = response.dig("reversegeocode", "addressparts")
+              parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+            end
           end
+        else
+          # Defer location enrichment; leave nil for now
         end
       end
     end

@@ -1,0 +1,25 @@
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="mt-0 mb-0">Importer un ZIP Strava</h1>
+  </header>
+
+  <section class="not-prose max-w-xl">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <p class="text-sm opacity-70">Téléversez votre export de compte Strava (ZIP). Seuls les fichiers .fit seront importés.</p>
+
+        <%= form_with url: strava_imports_path, multipart: true, class: "space-y-4" do |f| %>
+          <div class="form-control">
+            <%= f.file_field :file, accept: ".zip", class: "file-input file-input-bordered w-full" %>
+          </div>
+
+          <div class="card-actions justify-end">
+            <%= f.submit "Importer", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </section>
+
+  <%= link_to "Retour aux activités", activities_path %>
+</main>
