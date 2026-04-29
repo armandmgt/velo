@@ -1,12 +1,14 @@
-<div class="w-full">
-  <% content_for :title, "Activity" %>
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <% content_for :title, "Modifier activité" %>
 
-  <div id="<%= dom_id(@activity) %>" class="min-w-full my-2">
-    <h1 class="text-5xl font-extrabold dark:text-white">Modifier activity</h1>
+  <header class="flex justify-between items-center mb-4">
+    <h1 class="mt-0 mb-0">Modifier activité</h1>
+  </header>
 
-  <%= render "form", activity: @activity %>
-  </div>
+  <section id="<%= dom_id(@activity) %>" class="mb-4">
+    <%= render "form", activity: @activity %>
+  </section>
 
-  <%= link_to "Voir ce activity", activity_path(@activity) %>
-  <%= link_to "Retour aux activities", activities_path %>
-</div>
+  <%= link_to "Voir l'activité", activity_path(@activity) %>
+  <%= link_to "Retour aux activités", activities_path %>
+</main>
