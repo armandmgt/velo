@@ -146,7 +146,7 @@ CREATE TABLE public.activities (
     active_time character varying NOT NULL,
     total_elevation_gain numeric,
     max_speed numeric,
-    path public.geometry(LineString)
+    path public.geography(LineString,4326)
 );
 
 

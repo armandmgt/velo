@@ -1,6 +1,6 @@
 class FitExtractor
   def initialize(activity, reverse_geocode: true)
-    @rgeo_factory = RGeo::Geographic.simple_mercator_factory
+    @rgeo_factory = RGeo::Geographic.spherical_factory(srid: 4326)
     @activity = activity
     @data_points = {}
     @set_location = false
