@@ -1,6 +1,14 @@
 require "zip"
+require "csv"
 
 class StravaImportService
+  SPORT_MAP = {
+    "Run" => :run,
+    "VirtualRun" => :run,
+    "TrailRun" => :run,
+    "Walk" => :run
+  }.freeze
+
   def initialize(user, uploaded_file)
     @user = user
     @uploaded_file = uploaded_file
@@ -10,6 +18,8 @@ class StravaImportService
     result = { imported: 0, skipped: 0, failed: 0, errors: [] }
 
     Zip::File.open(uploaded_file.path) do |zip|
+      csv_index = build_csv_index(zip)
+
       zip.each do |entry|
         next if entry.directory?
 
@@ -17,7 +27,8 @@ class StravaImportService
         next unless name.end_with?(".fit") || name.end_with?(".fit.gz")
 
         begin
-          outcome = import_entry(entry, gzipped: name.end_with?(".fit.gz"))
+          metadata = csv_index[entry.name] || {}
+          outcome = import_entry(entry, gzipped: name.end_with?(".fit.gz"), metadata: metadata)
           result[outcome] += 1 if result.key?(outcome)
         rescue => e
           result[:failed] += 1
@@ -33,7 +44,23 @@ class StravaImportService
 
   attr_reader :user, :uploaded_file
 
-  def import_entry(entry, gzipped:)
+  def build_csv_index(zip)
+    csv_entry = zip.find_entry("activities.csv")
+    return {} unless csv_entry
+
+    content = csv_entry.get_input_stream.read.force_encoding("UTF-8")
+    CSV.parse(content, headers: true).each_with_object({}) do |row, index|
+      filename = row["Filename"]
+      next if filename.blank?
+
+      index[filename] = {
+        name: row["Activity Name"].presence || "Imported activity",
+        sport: SPORT_MAP[row["Activity Type"]] || :bike
+      }
+    end
+  end
+
+  def import_entry(entry, gzipped:, metadata:)
     Tempfile.create([ "activity", ".fit" ]) do |tmp|
       entry.get_input_stream do |io|
         if gzipped
@@ -45,22 +72,26 @@ class StravaImportService
       end
 
       tmp.rewind
-      import_fit(tmp.path)
+      import_fit(tmp.path, metadata: metadata)
     end
   end
 
-  def import_fit(file_path)
+  def import_fit(file_path, metadata:)
     activity = user.activities.new(
-      name: "Imported activity",
-      sport: :bike, # default
-      location: "Unknown" # ensure validation passes without geocoding
+      name: metadata[:name] || "Imported activity",
+      sport: metadata[:sport] || :bike,
+      location: "Unknown"
     )
 
     File.open(file_path, "rb") do |file|
       activity.parse_fit_file(file, reverse_geocode: false)
     end
 
-    return :skipped if duplicate?(activity)
+    existing = find_duplicate(activity)
+    if existing
+      existing.update(name: activity.name, sport: activity.sport)
+      return :skipped
+    end
 
     # Ensure DB-required fields are present
     activity.start_time ||= Time.current
@@ -73,8 +104,8 @@ class StravaImportService
     :imported
   end
 
-  def duplicate?(activity)
-    Activity.exists?(
+  def find_duplicate(activity)
+    Activity.find_by(
       user: user,
       start_time: activity.start_time,
       end_time: activity.end_time,
