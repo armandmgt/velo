@@ -60,8 +60,8 @@ class FitExtractor
         if @reverse_geocode
           @activity.location ||= begin
             NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"]).then do |response|
-              parts = response.dig("reversegeocode", "addressparts")
-              parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"]
+              parts = response&.dig("reversegeocode", "addressparts")
+              parts&.then { parts["village"] || parts["town"] || parts["city"] || parts["state"] || parts["country"] }
             end
           end
         else
