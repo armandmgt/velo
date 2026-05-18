@@ -13,6 +13,26 @@ fr:
             dépendant(e) existe
           has_many: Vous ne pouvez pas supprimer l'enregistrement parce que les %{record}
             dépendants existent
+  activity:
+    sport:
+      bike: "Vélo de route"
+      mountain_bike_ride: "VTT"
+      gravel_ride: "Gravel"
+      virtual_ride: "Vélo virtuel"
+      e_bike_ride: "Vélo électrique"
+      run: "Course à pied"
+      trail_run: "Trail"
+      virtual_run: "Course virtuelle"
+      walk: "Marche"
+      hike: "Randonnée"
+      alpine_ski: "Ski alpin"
+      nordic_ski: "Ski de fond"
+      swim: "Natation"
+      workout: "Entraînement"
+    sport_group:
+      cycling: "Cyclisme"
+      running: "Course"
+      other: "Autres"
   date:
     abbr_day_names:
       - dim

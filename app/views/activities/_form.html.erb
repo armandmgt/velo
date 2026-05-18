@@ -25,7 +25,10 @@
 
   <div class="mb-5">
     <%= form.label :sport, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
-    <%= form.select :sport, [ %w[Vélo bike], %w[Course run] ], { include_blank: true }, { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }) } %>
+    <%= form.select :sport,
+          sport_grouped_options(activity.sport),
+          { include_blank: true },
+          { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }) } %>
 
     <% if activity.errors.include?(:sport) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">

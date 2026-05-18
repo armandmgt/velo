@@ -3,10 +3,20 @@ require "csv"
 
 class StravaImportService
   SPORT_MAP = {
-    "Run" => :run,
-    "VirtualRun" => :run,
-    "TrailRun" => :run,
-    "Walk" => :run
+    "Ride"               => :bike,
+    "MountainBikeRide"   => :mountain_bike_ride, "Mountain Bike Ride" => :mountain_bike_ride,
+    "GravelRide"         => :gravel_ride,         "Gravel Ride"        => :gravel_ride,
+    "VirtualRide"        => :virtual_ride,        "Virtual Ride"       => :virtual_ride,
+    "EBikeRide"          => :e_bike_ride,         "E-Bike Ride"        => :e_bike_ride,
+    "Run"                => :run,
+    "TrailRun"           => :trail_run,           "Trail Run"          => :trail_run,
+    "VirtualRun"         => :virtual_run,         "Virtual Run"        => :virtual_run,
+    "Walk"               => :walk,
+    "Hike"               => :hike,
+    "AlpineSki"          => :alpine_ski,          "Alpine Ski"         => :alpine_ski,
+    "NordicSki"          => :nordic_ski,          "Nordic Ski"         => :nordic_ski,
+    "Swim"               => :swim,
+    "Workout"            => :workout
   }.freeze
 
   def initialize(user, uploaded_file)

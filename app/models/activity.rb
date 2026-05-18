@@ -7,9 +7,17 @@ class Activity < ApplicationRecord
   has_one_attached :fit_file
 
   enum :sport, %i[
-    bike
-    run
+    bike mountain_bike_ride gravel_ride virtual_ride e_bike_ride
+    run trail_run virtual_run walk
+    hike alpine_ski nordic_ski swim workout
   ].index_by(&:itself)
+
+  SPORT_CATEGORY = {
+    bike: :cycling, mountain_bike_ride: :cycling, gravel_ride: :cycling,
+    virtual_ride: :cycling, e_bike_ride: :cycling,
+    run: :running, trail_run: :running, virtual_run: :running, walk: :running,
+    hike: :other, alpine_ski: :other, nordic_ski: :other, swim: :other, workout: :other
+  }.freeze
 
   validates :name, :sport, :start_time, :end_time, presence: true
 
@@ -41,10 +49,11 @@ class Activity < ApplicationRecord
     ActiveSupport::Duration.build((end_time - start_time).to_i)
   end
 
+  def sport_category
+    SPORT_CATEGORY.fetch(sport.to_sym)
+  end
+
   def sport_icon_name
-    {
-      "bike" => "bike",
-      "run" => "sport-shoe"
-    }.fetch(sport)
+    { cycling: "bike", running: "sport-shoe", other: "zap" }.fetch(sport_category)
   end
 end
