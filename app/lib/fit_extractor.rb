@@ -110,8 +110,17 @@ class FitExtractor
 
   def finalize
     points = @data_points.values.map(&:location).compact
-    return if points.empty?
-    coords = points.map { |p| "#{p.longitude} #{p.latitude}" }.join(", ")
-    @activity.path = "SRID=4326;LINESTRING(#{coords})"
+
+    @data_points.each_value do |dp|
+      next unless dp.location
+      dp.location = "SRID=4326;POINT(#{dp.location.longitude} #{dp.location.latitude})"
+    end
+
+    unless points.empty?
+      coords = points.map { |p| "#{p.longitude} #{p.latitude}" }.join(", ")
+      @activity.path = "SRID=4326;LINESTRING(#{coords})"
+    end
+
+    @activity.location ||= "Unknown"
   end
 end
