@@ -22,6 +22,7 @@ class Activity < ApplicationRecord
   validates :name, :sport, :start_time, :end_time, presence: true
 
   def path_geojson
+    return unless path
     {
       type: "Feature",
       geometry: {

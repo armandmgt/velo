@@ -109,6 +109,9 @@ class FitExtractor
   end
 
   def finalize
-    @activity.path = @rgeo_factory.line_string(@data_points.values.pluck(:location).compact)
+    points = @data_points.values.map(&:location).compact
+    return if points.empty?
+    coords = points.map { |p| "#{p.longitude} #{p.latitude}" }.join(", ")
+    @activity.path = "SRID=4326;LINESTRING(#{coords})"
   end
 end
