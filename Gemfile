@@ -24,7 +24,7 @@ gem "solid_errors", group: :production
 gem "solid_queue"
 gem "stimulus-rails"
 gem "tailwindcss-rails"
-gem "tailwind_merge", "~> 1.4"
+gem "tailwind_merge", "~> 1.5"
 gem "thruster", require: false
 gem "turbo-rails"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
