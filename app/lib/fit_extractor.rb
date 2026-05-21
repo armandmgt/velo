@@ -90,6 +90,10 @@ class FitExtractor
     if msg["power"]
       data_point.power = msg["power"]
     end
+
+    %w[altitude enhanced_altitude].each do |name|
+      data_point.altitude = msg[name] if msg[name]
+    end
   end
 
   def on_event(msg)

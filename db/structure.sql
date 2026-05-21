@@ -146,7 +146,7 @@ CREATE TABLE public.activities (
     active_time character varying NOT NULL,
     total_elevation_gain numeric,
     max_speed numeric,
-    path public.geography(LineString,4326)
+    path public.geometry(LineString)
 );
 
 
@@ -183,7 +183,8 @@ CREATE TABLE public.activity_data_points (
     cadence numeric,
     power numeric,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    altitude numeric
 );
 
 
@@ -524,6 +525,7 @@ ALTER TABLE ONLY public.active_storage_attachments
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260519202356'),
 ('20260423203714'),
 ('20260423203632'),
 ('20260321155322'),

@@ -1,0 +1,10 @@
+<%# locals: (elevation_data:) %>
+
+<div class="my-3">
+  <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Profil altimétrique</h3>
+  <canvas
+    data-controller="elevation-profile"
+    data-elevation-profile-data-value="<%= elevation_data.to_json %>"
+    class="max-h-[200px]"
+  ></canvas>
+</div>

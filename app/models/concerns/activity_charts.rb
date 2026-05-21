@@ -2,6 +2,17 @@ module ActivityCharts
   extend ActiveSupport::Concern
 
   included do
+    def elevation_chart_data
+      data_points = activity_data_points.order(:recorded_at).to_a
+      altitudes = data_points.pluck(:altitude)
+      return nil if altitudes.all?(&:nil?)
+
+      {
+        labels: data_points.pluck(:recorded_at),
+        data: altitudes
+      }
+    end
+
     def chart_data
       data_points = activity_data_points.order(:recorded_at).to_a
       {
