@@ -21,4 +21,12 @@ module ApplicationHelper
       value.to_s.rjust(2, "0")
     end.join(":")
   end
+
+  def format_duration_hms(total_seconds)
+    total = total_seconds.to_i
+    h = total / 3600
+    m = (total % 3600) / 60
+    s = total % 60
+    "#{h}:#{m.to_s.rjust(2, '0')}:#{s.to_s.rjust(2, '0')}"
+  end
 end

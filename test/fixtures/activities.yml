@@ -21,3 +21,39 @@ two:
   location: Paris
   active_time: PT120S
   distance: 1000
+
+this_week_ride:
+  user: one
+  name: Sortie de la semaine
+  sport: bike
+  start_time: "<%= 1.day.ago.strftime('%Y-%m-%d %H:%M:%S') %>"
+  end_time: "<%= (1.day.ago + 1.hour).strftime('%Y-%m-%d %H:%M:%S') %>"
+  location: Paris
+  active_time: PT3600S
+  distance: 30000
+  total_elevation_gain: 300
+  max_speed: 12.0
+
+this_month_run:
+  user: one
+  name: Footing du mois
+  sport: run
+  start_time: "<%= (Time.current.beginning_of_month + 2.days).strftime('%Y-%m-%d %H:%M:%S') %>"
+  end_time: "<%= (Time.current.beginning_of_month + 2.days + 45.minutes).strftime('%Y-%m-%d %H:%M:%S') %>"
+  location: Paris
+  active_time: PT2700S
+  distance: 10000
+  total_elevation_gain: 80
+  max_speed: 4.5
+
+older_ride:
+  user: one
+  name: Grande sortie annuelle
+  sport: bike
+  start_time: "<%= (Time.current.beginning_of_year + 5.days).strftime('%Y-%m-%d %H:%M:%S') %>"
+  end_time: "<%= (Time.current.beginning_of_year + 5.days + 4.hours).strftime('%Y-%m-%d %H:%M:%S') %>"
+  location: Lyon
+  active_time: PT14400S
+  distance: 120000
+  total_elevation_gain: 1500
+  max_speed: 20.0
