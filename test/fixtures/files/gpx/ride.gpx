@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx creator="StravaGPX" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+ <metadata>
+  <time>2026-03-29T07:49:28Z</time>
+ </metadata>
+ <trk>
+  <name>Petite sortie GPX</name>
+  <type>mountain_biking</type>
+  <trkseg>
+   <trkpt lat="48.8510000" lon="2.3538590">
+    <ele>44.5</ele>
+    <time>2026-03-29T07:49:28Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>110</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="48.8519000" lon="2.3548590">
+    <ele>46.0</ele>
+    <time>2026-03-29T07:49:38Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="48.8528000" lon="2.3558590">
+    <ele>52.0</ele>
+    <time>2026-03-29T07:49:48Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>130</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="48.8537000" lon="2.3568590">
+    <ele>49.0</ele>
+    <time>2026-03-29T07:49:58Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>135</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+   <trkpt lat="48.8546000" lon="2.3578590">
+    <ele>58.0</ele>
+    <time>2026-03-29T07:50:08Z</time>
+    <extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>140</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions>
+   </trkpt>
+  </trkseg>
+ </trk>
+</gpx>

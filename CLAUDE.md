@@ -14,6 +14,10 @@ bin/brakeman --no-pager        # Security scan
 bin/rails db:prepare           # Create and migrate database
 ```
 
+## Deployment
+
+Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
+
 ## Architecture
 
 **Velo** is a Rails 8.1 cycling/running activity tracker — a self-hosted Strava alternative. French is the default locale (`i18n.default_locale = :fr`).

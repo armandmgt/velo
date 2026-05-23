@@ -24,6 +24,15 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to activity_url(Activity.last)
   end
 
+  test "should create activity from a GPX upload" do
+    assert_difference("Activity.count") do
+      post activities_url, params: { activity: { name: "GPX upload", sport: "bike", fit_file: file_fixture_upload("gpx/ride.gpx") } }
+    end
+
+    assert_redirected_to activity_url(Activity.last)
+    assert_operator Activity.last.distance.to_f, :>, 0
+  end
+
   test "should show activity" do
     get activity_url(@activity)
     assert_response :success

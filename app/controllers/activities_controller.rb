@@ -17,7 +17,13 @@ class ActivitiesController < ApplicationController
 
   def create
     @activity = Current.user.activities.new(activity_params)
-    @activity.parse_fit_file(activity_params[:fit_file])
+    upload = activity_params[:fit_file]
+
+    if upload.respond_to?(:original_filename) && upload.original_filename.to_s.downcase.end_with?(".gpx")
+      @activity.parse_gpx_file(upload)
+    else
+      @activity.parse_fit_file(upload)
+    end
 
     if @activity.save
       redirect_to @activity, notice: "Activity was successfully created."

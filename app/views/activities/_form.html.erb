@@ -39,7 +39,7 @@
 
   <div class="mb-5">
     <%= form.label :fit_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
-    <%= form.file_field :fit_file, class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }) %>
+    <%= form.file_field :fit_file, accept: ".fit,.gpx", class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }) %>
 
     <% if activity.errors.include?(:fit_file) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">

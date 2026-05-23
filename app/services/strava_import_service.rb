@@ -34,11 +34,12 @@ class StravaImportService
         next if entry.directory?
 
         name = entry.name.downcase
-        next unless name.end_with?(".fit") || name.end_with?(".fit.gz")
+        format = activity_format(name)
+        next unless format
 
         begin
           metadata = csv_index[entry.name] || {}
-          outcome = import_entry(entry, gzipped: name.end_with?(".fit.gz"), metadata: metadata)
+          outcome = import_entry(entry, format: format, gzipped: name.end_with?(".gz"), metadata: metadata)
           result[outcome] += 1 if result.key?(outcome)
         rescue => e
           result[:failed] += 1
@@ -70,8 +71,15 @@ class StravaImportService
     end
   end
 
-  def import_entry(entry, gzipped:, metadata:)
-    Tempfile.create([ "activity", ".fit" ]) do |tmp|
+  def activity_format(name)
+    return :fit if name.end_with?(".fit") || name.end_with?(".fit.gz")
+    return :gpx if name.end_with?(".gpx") || name.end_with?(".gpx.gz")
+
+    nil
+  end
+
+  def import_entry(entry, format:, gzipped:, metadata:)
+    Tempfile.create([ "activity", ".#{format}" ]) do |tmp|
       entry.get_input_stream do |io|
         if gzipped
           require "zlib"
@@ -82,11 +90,11 @@ class StravaImportService
       end
 
       tmp.rewind
-      import_fit(tmp.path, metadata: metadata)
+      import_file(tmp.path, format: format, metadata: metadata)
     end
   end
 
-  def import_fit(file_path, metadata:)
+  def import_file(file_path, format:, metadata:)
     activity = user.activities.new(
       name: metadata[:name] || "Imported activity",
       sport: metadata[:sport] || :bike,
@@ -94,7 +102,11 @@ class StravaImportService
     )
 
     File.open(file_path, "rb") do |file|
-      activity.parse_fit_file(file, reverse_geocode: false)
+      if format == :gpx
+        activity.parse_gpx_file(file, reverse_geocode: false)
+      else
+        activity.parse_fit_file(file, reverse_geocode: false)
+      end
     end
 
     existing = find_duplicate(activity)
