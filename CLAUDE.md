@@ -28,20 +28,24 @@ Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
 
 ### Core Models
 
-- **User** — `has_secure_password`, `has_many :sessions, :activities`
-- **Activity** — belongs to User, `has_one_attached :fit_file`, `has_many :activity_data_points`. Includes `ActivityCharts` concern (provides `chart_data` for speed/cadence/power/heart_rate). Supports `bike` and `run` sport types.
+- **User** — `has_secure_password`, `has_many :sessions, :activities`, `has_one :igpsport_connection`
+- **Activity** — belongs to User, `has_one_attached :fit_file`, `has_many :activity_data_points`. Includes `ActivityCharts` concern (provides `chart_data` for speed/cadence/power/heart_rate). The `sport` enum spans 14 types (`bike`, `mountain_bike_ride`, `gravel_ride`, `run`, `trail_run`, `hike`, `swim`, …); `SPORT_CATEGORY` groups them into `:cycling` / `:running` / `:other` (`Activity#sport_category`).
 - **ActivityDataPoint** — per-second metrics (speed, cadence, power, heart_rate) with PostGIS Point geometry for location
 - **Session** — custom session model (not Rails default); stores `user_agent` and `ip_address`
+- **IgpsportConnection** — belongs to User; stores `encrypts`-ed iGPSport `email` / `password` / `access_token` for automatic sync
 - **Current** — thread-local `Current.session` / `Current.user` via `Authentication` concern on ApplicationController
 
-### FIT File Processing Pipeline
+The root page (`/`) is the stats dashboard — `activity_feeds#index`.
 
-1. User uploads `.fit` (or `.zip` from Strava export)
-2. `ActivitiesController#create` or `StravaImportService` invokes `Activity#parse_fit_file()`
-3. `FitExtractor` (callback handler in `app/lib/`) uses vendored `RubyFit::Parser` (`lib/ruby_fit/`)
-4. Extracts metrics → creates `ActivityDataPoint` records
-5. Reverse geocodes first valid GPS point via `NominatimClient` → sets `activity.location`
-6. Builds PostGIS LineString path from all valid GPS points
+### Activity Import Pipeline
+
+Activities come from three sources, all converging on the extractors in `app/lib/`:
+
+1. **Direct upload** — `ActivitiesController#create` dispatches by extension: `.gpx` → `Activity#parse_gpx_file` (`GpxExtractor`, Nokogiri-based), otherwise `Activity#parse_fit_file` (`FitExtractor`, vendored `RubyFit::Parser` in `lib/ruby_fit/`).
+2. **Strava export** — `StravaImportService` walks the ZIP, handling `.fit` / `.fit.gz` / `.gpx` / `.gpx.gz` (gzip-decompressed first), with deduplication.
+3. **iGPSport sync** — `IgpsportSyncJob` (recurring hourly, see below) runs `IgpsportSyncService`, which uses `IgpsportClient` to authenticate and download rides.
+
+All extractors: extract metrics → create `ActivityDataPoint` records → reverse geocode the first valid GPS point via `NominatimClient` (resolved to town/commune level, skipped on bulk imports via `reverse_geocode: false`) → build a PostGIS LineString path from all valid GPS points.
 
 ### Key Patterns
 
@@ -50,4 +54,5 @@ Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
 - **Multiple databases:** `primary`, `solid_cache`, `solid_queue`, `solid_cable`, `solid_errors` — configured in `config/database.yml`.
 - **Admin namespace:** `Admin::UsersController` under `/admin` with `admin: true` route constraint.
 - **Schema format:** SQL (`db/schema.sql`), not Ruby — required by PostGIS.
-- **Strava import:** `StravaImportsController` + `StravaImportService` handle ZIP extraction, `.fit` / `.fit.gz` processing, and deduplication.
+- **Strava import:** `StravaImportsController` + `StravaImportService` handle ZIP extraction, `.fit` / `.fit.gz` / `.gpx` / `.gpx.gz` processing, and deduplication.
+- **iGPSport sync:** `IgpsportConnection` (per-user, encrypted credentials) managed via `igpsport_connection` controller. `IgpsportSyncService` + `IgpsportClient` pull rides; `IgpsportSyncJob` runs hourly (`config/recurring.yml`, Solid Queue).
