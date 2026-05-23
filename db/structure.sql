@@ -220,6 +220,45 @@ CREATE TABLE public.ar_internal_metadata (
 
 
 --
+-- Name: igpsport_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.igpsport_connections (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    email text NOT NULL,
+    password text NOT NULL,
+    access_token text,
+    token_expires_at timestamp(6) without time zone,
+    enabled boolean DEFAULT true NOT NULL,
+    last_synced_at timestamp(6) without time zone,
+    last_sync_status character varying,
+    last_sync_error text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: igpsport_connections_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.igpsport_connections_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: igpsport_connections_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.igpsport_connections_id_seq OWNED BY public.igpsport_connections.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -330,6 +369,13 @@ ALTER TABLE ONLY public.activity_data_points ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: igpsport_connections id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.igpsport_connections ALTER COLUMN id SET DEFAULT nextval('public.igpsport_connections_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -389,6 +435,14 @@ ALTER TABLE ONLY public.activity_data_points
 
 ALTER TABLE ONLY public.ar_internal_metadata
     ADD CONSTRAINT ar_internal_metadata_pkey PRIMARY KEY (key);
+
+
+--
+-- Name: igpsport_connections igpsport_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.igpsport_connections
+    ADD CONSTRAINT igpsport_connections_pkey PRIMARY KEY (id);
 
 
 --
@@ -465,6 +519,13 @@ CREATE UNIQUE INDEX index_activity_data_points_on_recorded_at ON public.activity
 
 
 --
+-- Name: index_igpsport_connections_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_igpsport_connections_on_user_id ON public.igpsport_connections USING btree (user_id);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -476,6 +537,14 @@ CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
 --
 
 CREATE UNIQUE INDEX index_users_on_email_address ON public.users USING btree (email_address);
+
+
+--
+-- Name: igpsport_connections fk_rails_1311b1fd21; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.igpsport_connections
+    ADD CONSTRAINT fk_rails_1311b1fd21 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -525,6 +594,7 @@ ALTER TABLE ONLY public.active_storage_attachments
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260522120000'),
 ('20260519202356'),
 ('20260423203714'),
 ('20260423203632'),

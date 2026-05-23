@@ -10,7 +10,7 @@ class ActivitiesTest < ApplicationSystemTestCase
 
     fill_in "Name", with: "Sortie vélo"
     fill_in "Description", with: "Sortie vélo de 10km"
-    select "Vélo", from: "Sport"
+    select "Vélo de route", from: "Sport"
 
     click_on "Enregistrer"
 

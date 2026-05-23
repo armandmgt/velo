@@ -1,0 +1,82 @@
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="mb-4">
+    <h1 class="mt-0 mb-0">Synchronisation iGPSport</h1>
+  </header>
+
+  <section class="not-prose max-w-xl space-y-4">
+    <% if notice = flash[:notice] %>
+      <p class="alert alert-success"><%= notice %></p>
+    <% end %>
+    <% if alert = flash[:alert] %>
+      <p class="alert alert-error"><%= alert %></p>
+    <% end %>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <p class="text-sm opacity-70">
+          Connectez votre compte iGPSport pour importer automatiquement vos sorties.
+          Vos identifiants sont chiffrés avant d'être stockés.
+        </p>
+
+        <%= form_with model: @connection, url: igpsport_connection_path, method: :patch, class: "space-y-4" do |form| %>
+          <fieldset>
+            <%= form.label :email, "Email iGPSport", class: "block mb-2 text-sm font-medium" %>
+            <%= form.email_field :email, autocomplete: "off",
+                  class: class_names("w-full input", { "input-error": @connection.errors.include?(:email) }) %>
+          </fieldset>
+
+          <fieldset>
+            <%= form.label :password, "Mot de passe iGPSport", class: "block mb-2 text-sm font-medium" %>
+            <%= form.password_field :password, autocomplete: "off",
+                  placeholder: @connection.persisted? ? "•••••••• (inchangé)" : nil,
+                  class: class_names("w-full input", { "input-error": @connection.errors.include?(:password) }) %>
+            <% if @connection.persisted? %>
+              <p class="mt-1 text-xs opacity-60">Laissez vide pour conserver le mot de passe actuel.</p>
+            <% end %>
+          </fieldset>
+
+          <label class="flex items-center gap-2 cursor-pointer">
+            <%= form.check_box :enabled, class: "toggle toggle-primary" %>
+            <span class="text-sm">Synchronisation automatique activée</span>
+          </label>
+
+          <div class="card-actions justify-end">
+            <%= form.submit "Enregistrer", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @connection.persisted? %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h2 class="card-title text-base">Statut</h2>
+          <dl class="text-sm space-y-1">
+            <div class="flex justify-between gap-4">
+              <dt class="opacity-60">Dernière synchronisation</dt>
+              <dd><%= @connection.last_synced_at ? l(@connection.last_synced_at, format: :short) : "Jamais" %></dd>
+            </div>
+            <div class="flex justify-between gap-4">
+              <dt class="opacity-60">Dernier état</dt>
+              <dd><%= @connection.last_sync_status || "—" %></dd>
+            </div>
+            <% if @connection.last_sync_error.present? %>
+              <div class="flex justify-between gap-4">
+                <dt class="opacity-60">Dernière erreur</dt>
+                <dd class="text-error text-right"><%= @connection.last_sync_error %></dd>
+              </div>
+            <% end %>
+          </dl>
+
+          <div class="card-actions justify-between mt-2">
+            <%= button_to "Supprimer la connexion", igpsport_connection_path, method: :delete,
+                  data: { turbo_confirm: "Supprimer la connexion iGPSport ?" }, class: "btn btn-ghost btn-sm text-error" %>
+            <%= button_to "Synchroniser maintenant", sync_igpsport_connection_path, class: "btn btn-accent" %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </section>
+
+  <%= link_to "Retour aux activités", activities_path %>
+</main>

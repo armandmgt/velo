@@ -66,6 +66,9 @@
           <%= link_to "Activités", activities_path, data: { "bridge--navbar-buttons-target": "item" } %>
         </li>
         <li>
+          <%= link_to "Intégrations", edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item" } %>
+        </li>
+        <li>
           <%= button_to "Se déconnecter", session_path, method: :delete, data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } %>
         </li>
       </ul>
