@@ -51,6 +51,21 @@ fr:
       cadence: "Cadence"
       power: "Puissance"
       heart_rate: "Fréquence cardiaque"
+    heart_rate_zone:
+      title: "Zones de fréquence cardiaque"
+      zone: "Zone"
+      range: "Plage (bpm)"
+      time: "Temps"
+      percent: "%"
+      z1: "Z1 · Récupération"
+      z2: "Z2 · Endurance"
+      z3: "Z3 · Aérobie"
+      z4: "Z4 · Seuil"
+      z5: "Z5 · Anaérobie"
+      set_max_hr_link: "votre profil"
+      set_max_hr_hint_html: "Définissez votre FC max dans %{link} pour voir vos zones d'entraînement."
+      max_hr_label: "Fréquence cardiaque maximale"
+      max_hr_help: "Utilisée pour calculer vos zones d'entraînement (entre 100 et 240 bpm)."
   date:
     abbr_day_names:
       - dim

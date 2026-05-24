@@ -2,6 +2,17 @@ class UsersController < ApplicationController
   allow_unauthenticated_access only: %i[ new create ]
 
   def show
+    @user = Current.user
+  end
+
+  def update
+    @user = Current.user
+    if @user.update(profile_params)
+      redirect_to user_path, notice: "Profil mis à jour."
+    else
+      flash.now[:alert] = "Enregistrement impossible : #{@user.errors.full_messages.to_sentence}."
+      render :show, status: :unprocessable_content
+    end
   end
 
   def new
@@ -28,5 +39,9 @@ class UsersController < ApplicationController
 
   def user_params
     params.expect(user: [ :email_address, :password ])
+  end
+
+  def profile_params
+    params.expect(user: [ :max_heart_rate ])
   end
 end

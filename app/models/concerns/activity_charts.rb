@@ -13,7 +13,7 @@ module ActivityCharts
       }
     end
 
-    def chart_data
+    def chart_data(max_heart_rate: nil)
       data_points = activity_data_points.order(:recorded_at).to_a
       {
         labels: data_points.pluck(:recorded_at),
@@ -47,9 +47,21 @@ module ActivityCharts
             backgroundColor: "#EF4444",
             data: data_points.pluck(:heart_rate),
             tooltipFormatter: { unit: "bpm" },
-            hidden: true
+            hidden: true,
+            **heart_rate_zone_dataset_options(max_heart_rate)
           }
         ]
+      }
+    end
+
+    # When a max HR is known, hand the HR dataset the per-zone bpm boundaries and
+    # colors so the chart can tint the line by zone (see activity_charts_controller).
+    def heart_rate_zone_dataset_options(max_heart_rate)
+      return {} unless max_heart_rate
+
+      {
+        zoneBoundaries: [ 0.6, 0.7, 0.8, 0.9 ].map { (_1 * max_heart_rate).round },
+        zoneColors: ActivityHeartRateZones::HR_ZONES.map { _1[:color] }
       }
     end
   end

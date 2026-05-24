@@ -21,7 +21,7 @@ Rails.application.routes.draw do
   resource :map_style, only: %i[ show ]
 
   resources :users, only: %i[ new create ]
-  resource :user, only: %i[ show destroy ]
+  resource :user, only: %i[ show update destroy ]
   resource :session, only: %i[ show new create destroy ]
   resources :passwords, param: :token
 

@@ -29,6 +29,14 @@ const verticalHoverLine = {
   },
 }
 
+// Maps a heart-rate value to its zone color given the per-zone upper bpm
+// boundaries. Values at/above the last boundary fall into the final zone.
+function zoneColorFor(value, boundaries, colors) {
+  if (value === null || value === undefined) return undefined
+  const index = boundaries.findIndex(boundary => value < boundary)
+  return colors[index === -1 ? colors.length - 1 : index]
+}
+
 function valueFormatter(unit) {
   return function (context) {
     let label = context.dataset.label || ""
@@ -91,6 +99,12 @@ export default class extends Controller {
         // fill: true,
         pointStyle: false,
         tension: 0.1,
+        ...(dataset.zoneBoundaries && {
+          segment: {
+            borderColor: (ctx) =>
+              zoneColorFor(ctx.p1.parsed.y, dataset.zoneBoundaries, dataset.zoneColors) || dataset.backgroundColor,
+          },
+        }),
         tooltip: {
           callbacks: {
             label: valueFormatter(dataset.tooltipFormatter.unit),

@@ -5,7 +5,9 @@
   <% end %>
 <% end %>
 
-<% chart_data = activity.chart_data %>
+<% max_hr = activity.user.max_heart_rate %>
+<% chart_data = activity.chart_data(max_heart_rate: max_hr) %>
+<% hr_zones = activity.heart_rate_zone_distribution(max_hr) %>
 <% map_id = dom_id(activity, :map) %>
 
 <article id="<%= dom_id activity %>" class="w-full">
@@ -54,4 +56,12 @@
   <% end %>
 
   <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>
+
+  <% if hr_zones %>
+    <%= render "activities/heart_rate_zones", zones: hr_zones %>
+  <% elsif max_hr.nil? && activity.avg_heart_rate %>
+    <p class="mt-4 text-sm opacity-60">
+      <%= t("activity.heart_rate_zone.set_max_hr_hint_html", link: link_to(t("activity.heart_rate_zone.set_max_hr_link"), user_path)) %>
+    </p>
+  <% end %>
 </article>

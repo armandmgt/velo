@@ -310,7 +310,8 @@ CREATE TABLE public.users (
     password_digest character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    admin boolean DEFAULT false NOT NULL
+    admin boolean DEFAULT false NOT NULL,
+    max_heart_rate integer
 );
 
 
@@ -594,6 +595,7 @@ ALTER TABLE ONLY public.active_storage_attachments
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260524203939'),
 ('20260522120000'),
 ('20260519202356'),
 ('20260423203714'),

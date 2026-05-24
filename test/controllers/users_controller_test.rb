@@ -24,6 +24,22 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "should update max_heart_rate" do
+    login(@user)
+    patch user_url, params: { user: { max_heart_rate: 188 } }
+
+    assert_redirected_to user_path
+    assert_equal 188, @user.reload.max_heart_rate
+  end
+
+  test "should reject an out-of-range max_heart_rate" do
+    login(@user)
+    patch user_url, params: { user: { max_heart_rate: 50 } }
+
+    assert_response :unprocessable_content
+    assert_nil @user.reload.max_heart_rate
+  end
+
   test "should destroy user" do
     login(@user)
     assert_difference("User.count", -1) do

@@ -1,6 +1,7 @@
 class Activity < ApplicationRecord
   include ActivityCharts
   include ActivityMetrics
+  include ActivityHeartRateZones
 
   belongs_to :user
   has_many :activity_data_points, dependent: :destroy

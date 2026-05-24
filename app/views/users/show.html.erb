@@ -2,9 +2,22 @@
   <h1>Profil de <%= Current.user.email_address %></h1>
 
   <section>
-    <h2>Stats</h2>
-    <ul>
-    </ul>
+    <h2>Réglages</h2>
+
+    <% if alert = flash[:alert] %>
+      <p class="alert alert-error not-prose"><%= alert %></p>
+    <% end %>
+
+    <%= form_with model: @user, url: user_path, method: :patch, class: "not-prose max-w-xs space-y-2" do |form| %>
+      <fieldset>
+        <%= form.label :max_heart_rate, t("activity.heart_rate_zone.max_hr_label"), class: "block mb-2 text-sm font-medium" %>
+        <%= form.number_field :max_heart_rate, in: 100..240, placeholder: "bpm",
+              class: class_names("w-full input", { "input-error": @user.errors.include?(:max_heart_rate) }) %>
+        <p class="mt-1 text-xs opacity-60"><%= t("activity.heart_rate_zone.max_hr_help") %></p>
+      </fieldset>
+
+      <%= form.submit "Enregistrer", class: "btn btn-primary" %>
+    <% end %>
   </section>
 
   <section>

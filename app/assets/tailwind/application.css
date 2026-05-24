@@ -125,3 +125,11 @@ html, body {
     border-radius: 50%;
     transform: translate(-50%, -50%);
 }
+
+/* HR training-zone colors. Keep in sync with HR_ZONES in
+   app/models/concerns/activity_heart_rate_zones.rb (the hex there tints the chart). */
+.hr-zone-1 { background-color: #9CA3AF; }
+.hr-zone-2 { background-color: #3B82F6; }
+.hr-zone-3 { background-color: #10B981; }
+.hr-zone-4 { background-color: #F59E0B; }
+.hr-zone-5 { background-color: #EF4444; }
