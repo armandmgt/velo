@@ -24,7 +24,7 @@
     <%= activity.description %>
   </p>
 
-  <div class="stats bg-base-300 shadow">
+  <div class="stats stats-vertical sm:stats-horizontal bg-base-300 shadow w-full sm:w-auto">
     <div class="stat">
       <div class="stat-title">Distance</div>
       <div class="stat-value text-primary"><%= (activity.distance / 1000.0).round(2) %> km</div>

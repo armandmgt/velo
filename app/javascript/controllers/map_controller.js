@@ -47,6 +47,7 @@ export default class extends Controller {
       .trim()
 
     const cssColor = this._resolveColor(rawColor) || "#ff0000"
+    this._accentColor = cssColor
     // Compute initial bounds from route to avoid post-load zoom animation
     let initialBounds = null
     let initialGeojson = null
@@ -118,6 +119,36 @@ export default class extends Controller {
         }
       }, "geojson-line")
     })
+  }
+
+  disconnect() {
+    this._marker?.remove()
+    this._marker = undefined
+    this.map?.remove()
+    this.map = undefined
+  }
+
+  // Outlet API: move a marker to the given [lng, lat] (used by the charts to
+  // highlight the route position under the hovered data point).
+  showPoint(coordinate) {
+    if (!this.map || !coordinate) return
+
+    if (!this._marker) {
+      const el = document.createElement("div")
+      el.style.width = "14px"
+      el.style.height = "14px"
+      el.style.borderRadius = "9999px"
+      el.style.background = this._accentColor
+      el.style.border = "2px solid #ffffff"
+      el.style.boxShadow = "0 0 0 1px rgba(0, 0, 0, 0.25)"
+      this._marker = new maplibregl.Marker({ element: el })
+    }
+
+    this._marker.setLngLat(coordinate).addTo(this.map)
+  }
+
+  hidePoint() {
+    this._marker?.remove()
   }
 
   _resolveColor(color) {

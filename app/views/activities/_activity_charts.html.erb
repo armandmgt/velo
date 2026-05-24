@@ -1,14 +1,20 @@
-<%# locals: (activity:)  %>
+<%# locals: (activity:, chart_data:, map_target:) %>
 
 <div
   data-controller="activity-charts"
-  data-activity-charts-data-value="<%= activity.chart_data.to_json %>"
+  data-activity-charts-data-value="<%= chart_data.to_json %>"
+  data-activity-charts-coordinates-value="<%= chart_data[:coordinates].to_json %>"
+  data-activity-charts-map-outlet="<%= map_target %>"
 >
-  <select data-action="activity-charts#changeDataset" class="select" autocomplete="off">
-    <% activity.chart_data[:datasets].each_with_index do |dataset, index| %>
-      <option value="<%= index %>"><%= dataset[:label] %></option>
-    <% end %>
-  </select>
+  <label>
+    <select data-action="activity-charts#changeDataset" class="select" autocomplete="off">
+      <% chart_data[:datasets].each_with_index do |dataset, index| %>
+        <option value="<%= index %>"><%= dataset[:label] %></option>
+      <% end %>
+    </select>
+  </label>
 
-  <canvas data-activity-charts-target="canvas"></canvas>
+  <div class="relative h-64">
+    <canvas data-activity-charts-target="canvas"></canvas>
+  </div>
 </div>

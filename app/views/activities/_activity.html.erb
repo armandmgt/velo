@@ -5,54 +5,47 @@
   <% end %>
 <% end %>
 
-<article id="<%= dom_id activity %>" class="w-full sm:w-auto">
-  <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-1">
-    <div>
-      <h2 class="flex items-center gap-2 mt-0">
-        <%= icon activity.sport_icon_name, class: "size-[1.2em]" %>
-        <%= activity.name %>
-      </h2>
+<% chart_data = activity.chart_data %>
+<% map_id = dom_id(activity, :map) %>
 
+<article id="<%= dom_id activity %>" class="w-full">
+  <header class="flex items-center gap-3">
+    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <%= icon activity.sport_icon_name, class: "size-6" %>
+    </span>
+    <div>
+      <h2 class="mt-0 mb-0 text-xl font-bold leading-tight"><%= activity.name %></h2>
       <span class="text-xs uppercase font-semibold opacity-60">
         <%= l activity.start_time.in_time_zone("Europe/Paris"), format: :long %>
-        -
-        <%= activity.location %>
+        · <%= activity.location %>
       </span>
     </div>
-
-    <div>
-      <div class="stats bg-base-300 shadow">
-        <div class="stat">
-          <div class="stat-title">Distance</div>
-          <div class="stat-value text-primary"><%= (activity.distance / 1000.0).round(2) %> km</div>
-        </div>
-
-        <div class="stat">
-          <div class="stat-title">Durée de déplacement</div>
-          <div class="stat-value text-primary"><%= duration_display activity.active_time_duration %></div>
-        </div>
-
-        <div class="stat">
-          <div class="stat-title">Dénivelé positif</div>
-          <div class="stat-value text-primary"><%= activity.total_elevation_gain.to_i %> m</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  </header>
 
   <% if activity.description.present? %>
-    <p>
-      <%= activity.description %>
-    </p>
+    <p class="mt-3 opacity-80"><%= activity.description %></p>
   <% end %>
+
+  <div class="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-box bg-base-300 sm:grid-cols-3 lg:grid-cols-4">
+    <% activity_summary_metrics(activity).each do |metric| %>
+      <div class="flex flex-col gap-1 bg-base-100 p-4">
+        <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
+          <%= icon metric[:icon], class: "size-3.5" %>
+          <%= metric[:label] %>
+        </span>
+        <span class="text-2xl font-bold text-primary"><%= metric[:value] %></span>
+      </div>
+    <% end %>
+  </div>
 
   <% if activity.path.present? %>
     <div
+      id="<%= map_id %>"
       data-controller="map"
       data-map-lng-value="<%= activity.path.points.first.x %>"
       data-map-lat-value="<%= activity.path.points.first.y %>"
       data-map-route-value="<%= activity.path_geojson %>"
-      class="map my-3 max-h-[350px]"
+      class="map my-4 h-[400px] overflow-hidden rounded-box"
     ></div>
   <% end %>
 
@@ -60,5 +53,5 @@
     <%= render "activities/elevation_profile", elevation_data: elevation_data %>
   <% end %>
 
-  <%= render "activities/activity_charts", activity: activity %>
+  <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>
 </article>

@@ -24,6 +24,8 @@ const verticalHoverLine = {
         ctx.stroke()
       }
     })
+
+    ctx.restore()
   },
 }
 
@@ -47,14 +49,16 @@ function valueFormatter(unit) {
 
 export default class extends Controller {
   static targets = ["canvas"]
+  static outlets = ["map"]
   static values = {
     data: Object,
+    coordinates: { type: Array, default: [] },
   }
 
   connect() {
-    const element = this.hasCanvasTarget ? this.canvasTarget : this.element
+    this.element_ = this.hasCanvasTarget ? this.canvasTarget : this.element
 
-    this.chart = new Chart(element.getContext("2d"), {
+    this.chart = new Chart(this.element_.getContext("2d"), {
       type: "line",
       data: this.chartData,
       options: this.chartOptions,
@@ -62,9 +66,13 @@ export default class extends Controller {
         verticalHoverLine,
       ],
     })
+
+    this.hideMarker = () => this.hasMapOutlet && this.mapOutlet.hidePoint()
+    this.element_.addEventListener("mouseleave", this.hideMarker)
   }
 
   disconnect() {
+    this.element_?.removeEventListener("mouseleave", this.hideMarker)
     this.chart.destroy()
     this.chart = undefined
   }
@@ -94,9 +102,23 @@ export default class extends Controller {
 
   get chartOptions() {
     return {
+      responsive: true,
+      maintainAspectRatio: false,
       interaction: {
         mode: "index",
         intersect: false,
+      },
+      onHover: (_event, active) => {
+        if (!this.hasMapOutlet) return
+
+        if (active.length > 0) {
+          const coordinate = this.coordinatesValue[active[0].index]
+          if (coordinate) {
+            this.mapOutlet.showPoint(coordinate)
+            return
+          }
+        }
+        this.mapOutlet.hidePoint()
       },
       plugins: {
         legend: {

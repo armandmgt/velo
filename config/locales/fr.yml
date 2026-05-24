@@ -33,6 +33,24 @@ fr:
       cycling: "Cyclisme"
       running: "Course"
       other: "Autres"
+    metric:
+      distance: "Distance"
+      moving_time: "Durée de déplacement"
+      elapsed_time: "Durée totale"
+      elevation_gain: "Dénivelé positif"
+      avg_speed: "Vitesse moyenne"
+      max_speed: "Vitesse max"
+      avg_pace: "Allure moyenne"
+      avg_heart_rate: "FC moyenne"
+      max_heart_rate: "FC max"
+      avg_power: "Puissance moyenne"
+      max_power: "Puissance max"
+      avg_cadence: "Cadence moyenne"
+    chart:
+      speed: "Vitesse"
+      cadence: "Cadence"
+      power: "Puissance"
+      heart_rate: "Fréquence cardiaque"
   date:
     abbr_day_names:
       - dim
