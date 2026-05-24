@@ -14,6 +14,10 @@ bin/brakeman --no-pager        # Security scan
 bin/rails db:prepare           # Create and migrate database
 ```
 
+## Workflow
+
+- Commit directly to the current branch (usually `main`); do not create new branches unless explicitly asked.
+
 ## Deployment
 
 Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
