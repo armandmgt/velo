@@ -101,7 +101,7 @@ jobs:
       - name: Run tests
         env:
           RAILS_ENV: test
-          DATABASE_URL: postgres://velo:password@localhost:5432/velo_test
+          DATABASE_URL: postgis://velo:password@localhost:5432/velo_test
         run: bin/rails db:test:prepare test
 
 #  system-test:

@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Setup
+
+After a fresh clone (or worktree creation), compile the vendored `ruby_fit` native
+extension before running anything — the app won't boot without it:
+
+```bash
+cd lib/ruby_fit && rake compile
+```
+
 ## Commands
 
 ```bash
