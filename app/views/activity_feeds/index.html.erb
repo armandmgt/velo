@@ -10,7 +10,7 @@
       <% [
         ["7 derniers jours", @period_week],
         ["Ce mois",       @period_month],
-        ["Cette année",   @period_year]
+        [Date.current.year.to_s, @period_year]
       ].each do |label, period| %>
         <div class="card bg-base-300 shadow">
           <div class="card-body p-4">
