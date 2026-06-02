@@ -81,6 +81,11 @@ class IgpsportSyncService
 
       return :failed unless activity.save(validate: false)
 
+      # Retain the source so the activity can be re-imported later.
+      File.open(tmp.path, "rb") do |file|
+        activity.fit_file.attach(io: file, filename: "igpsport-#{detail.ride_id}.fit")
+      end
+
       :imported
     end
   end

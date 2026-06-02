@@ -1,2 +1,5 @@
 [tools]
 ruby = "4.0.5"
+# psql client, needed by Rails to load db/structure.sql (SQL schema format) —
+# especially into the per-worker databases parallel testing creates.
+postgres = "12.22"

@@ -4,16 +4,12 @@ require "nokogiri"
 # output contract of FitExtractor. GPX has no summary block, so distance,
 # elevation gain, moving time and speed are computed from the track points.
 class GpxExtractor
-  EARTH_RADIUS_M = 6_371_000.0
-
   # Ignore elevation changes below this (meters) to filter GPS jitter.
   ELEVATION_NOISE_THRESHOLD = 3.0
   # Segments slower than this (m/s) don't count toward moving time.
   MOVING_SPEED_THRESHOLD = 0.5
   # Segments spanning a longer gap (seconds) are treated as paused recording.
   PAUSE_GAP_SECONDS = 30
-  # Drop per-segment speeds above this (m/s ~= 180 km/h) as GPS spikes.
-  MAX_PLAUSIBLE_SPEED = 50.0
 
   # Strava <trk><type> values -> Activity sport. Only used as a fallback when
   # the activity has no sport yet (e.g. standalone upload); the Strava importer
@@ -80,7 +76,7 @@ class GpxExtractor
     moving_seconds = 0.0
     elevation_gain = 0.0
     elevation_ref = nil
-    max_speed = 0.0
+    data_points = []
     coords = []
 
     pts.each do |pt|
@@ -90,6 +86,7 @@ class GpxExtractor
       dp.cadence = pt[:cad] if pt[:cad]
       dp.power = pt[:power] if pt[:power]
       dp.location = "SRID=4326;POINT(#{pt[:lon]} #{pt[:lat]})"
+      data_points << dp
       coords << "#{pt[:lon]} #{pt[:lat]}"
 
       if pt[:ele]
@@ -104,22 +101,23 @@ class GpxExtractor
       end
 
       if prev
-        seg = haversine(prev[:lat], prev[:lon], pt[:lat], pt[:lon])
+        seg = Haversine.distance(prev[:lat], prev[:lon], pt[:lat], pt[:lon])
         dt = pt[:time] - prev[:time]
         distance += seg
 
         if dt.positive?
           speed = seg / dt
-          if speed <= MAX_PLAUSIBLE_SPEED
-            dp.speed = speed
-            max_speed = speed if speed > max_speed
-            moving_seconds += dt if speed >= MOVING_SPEED_THRESHOLD && dt <= PAUSE_GAP_SECONDS
-          end
+          dp.speed = speed
+          moving_seconds += dt if speed >= MOVING_SPEED_THRESHOLD && dt <= PAUSE_GAP_SECONDS
         end
       end
 
       prev = pt
     end
+
+    # GPX speed is derived from GPS positions and prone to spikes, so run it
+    # through the Hampel filter and derive max_speed from what survives.
+    max_speed = SpeedFilter.new.filter!(data_points)
 
     @activity.start_time = pts.first[:time]
     @activity.end_time = pts.last[:time]
@@ -129,7 +127,7 @@ class GpxExtractor
   def finalize(coords, distance, elevation_gain, moving_seconds, max_speed, first_point)
     @activity.distance = distance.round(1)
     @activity.total_elevation_gain = elevation_gain.round(1)
-    @activity.max_speed = max_speed if max_speed.positive?
+    @activity.max_speed = max_speed if max_speed&.positive?
     @activity.active_time = ActiveSupport::Duration.build(moving_seconds.round).iso8601
     @activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" unless coords.empty?
 
@@ -137,17 +135,6 @@ class GpxExtractor
       @activity.location ||= NominatimClient.new.reverse_geocode(first_point[:lat], first_point[:lon])
     end
     @activity.location ||= "Unknown"
-  end
-
-  def haversine(lat1, lon1, lat2, lon2)
-    rlat1 = lat1 * Math::PI / 180
-    rlat2 = lat2 * Math::PI / 180
-    dlat = (lat2 - lat1) * Math::PI / 180
-    dlon = (lon2 - lon1) * Math::PI / 180
-
-    a = Math.sin(dlat / 2)**2 +
-        Math.cos(rlat1) * Math.cos(rlat2) * Math.sin(dlon / 2)**2
-    EARTH_RADIUS_M * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   end
 
   def float(str)

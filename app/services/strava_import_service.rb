@@ -90,11 +90,17 @@ class StravaImportService
       end
 
       tmp.rewind
-      import_file(tmp.path, format: format, metadata: metadata)
+      import_file(tmp.path, format: format, metadata: metadata, filename: source_filename(entry, format))
     end
   end
 
-  def import_file(file_path, format:, metadata:)
+  # Decompressed, format-appropriate name for the retained source attachment.
+  def source_filename(entry, format)
+    base = File.basename(entry.name).sub(/\.gz\z/i, "")
+    base.downcase.end_with?(".#{format}") ? base : "#{base}.#{format}"
+  end
+
+  def import_file(file_path, format:, metadata:, filename:)
     activity = user.activities.new(
       name: metadata[:name] || "Imported activity",
       sport: metadata[:sport] || :bike,
@@ -122,6 +128,11 @@ class StravaImportService
 
     # Persist even if some optional fields are missing
     return :failed unless activity.save(validate: false)
+
+    # Retain the source so the activity can be re-imported later.
+    File.open(file_path, "rb") do |file|
+      activity.fit_file.attach(io: file, filename: filename)
+    end
 
     :imported
   end

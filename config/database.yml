@@ -15,6 +15,10 @@ test:
   <<: *default
   database: velo_test
   schema_format: :sql
+  # libpq's GSSAPI negotiation calls into the macOS Kerberos framework, which is
+  # not fork-safe and segfaults in Rails' forked parallel test workers. We don't
+  # use Kerberos auth, so skip that path entirely.
+  gssencmode: disable
 
 production:
   primary:

@@ -14,6 +14,7 @@ cd lib/ruby_fit && rake compile
 ## Commands
 
 ```bash
+docker compose up -d db        # Start PostgreSQL + PostGIS (dev/test DB lives here, NOT brew postgres)
 bin/dev                        # Start dev server (web + Tailwind watch via Foreman)
 bin/rails test                 # Run all tests
 bin/rails test test/path/file  # Run a single test file
@@ -21,7 +22,12 @@ bin/rails test:system          # Run system tests (Capybara/Selenium)
 bin/rubocop -f github          # Lint Ruby code
 bin/brakeman --no-pager        # Security scan
 bin/rails db:prepare           # Create and migrate database
+bin/rails db:migrate:with_data # Run schema + data migrations (data_migrate gem)
 ```
+
+The database runs in Docker (`docker-compose.yml`: `postgis/postgis:17-3.5`, role `velo`,
+db `velo_development`, port 5432). Always use `docker compose up -d db` — do not start a
+locally installed (e.g. Homebrew) Postgres, which won't have this data.
 
 ## Workflow
 

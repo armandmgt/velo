@@ -63,13 +63,9 @@ class FitExtractor
       end
     end
 
+    # max_speed is computed in finalize, once spikes have been filtered out.
     %w[speed enhanced_speed].each do |name|
-      if msg[name]
-        data_point.speed = msg[name]
-        if msg[name] > @activity.max_speed.to_f
-          @activity.max_speed ||= msg[name]
-        end
-      end
+      data_point.speed = msg[name] if msg[name]
     end
 
     if msg["heart_rate"]
@@ -106,6 +102,10 @@ class FitExtractor
   end
 
   def finalize
+    # FIT speed comes from the device (Doppler / wheel sensor) and is already
+    # clean, so it's trusted as-is — just take the maximum.
+    @activity.max_speed = @data_points.values.filter_map(&:speed).max
+
     points = @data_points.values.map(&:location).compact
 
     @data_points.each_value do |dp|

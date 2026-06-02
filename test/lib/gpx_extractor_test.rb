@@ -67,4 +67,25 @@ class GpxExtractorTest < ActiveSupport::TestCase
     assert activity.save, activity.errors.full_messages.to_sentence
     assert_equal 5, activity.reload.activity_data_points.count
   end
+
+  test "filters an isolated GPS spike so max_speed stays plausible" do
+    # 21 points 1s apart progressing steadily north (~2 m/s), except point #10
+    # is displaced ~55m east — a GPS spike reading as ~55 m/s on the way out and
+    # back. The surrounding steady points let the Hampel filter flag it.
+    rows = (0..20).map do |i|
+      lat = 45.0 + (i * 0.00002)
+      lon = i == 10 ? 5.0007 : 5.0
+      time = (Time.utc(2026, 1, 1, 10) + i).iso8601
+      %(<trkpt lat="#{lat}" lon="#{lon}"><time>#{time}</time></trkpt>)
+    end
+    gpx = %(<?xml version="1.0"?><gpx><trk><type>cycling</type><trkseg>#{rows.join}</trkseg></trk></gpx>)
+
+    activity = @user.activities.build(sport: :bike)
+    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+
+    assert_operator activity.max_speed.to_f, :<, 10, "the ~55 m/s spike should be filtered out"
+    assert_nil activity.activity_data_points[10].speed, "spike-out speed should be nulled"
+    assert_nil activity.activity_data_points[11].speed, "spike-return speed should be nulled"
+    assert_equal 21, activity.activity_data_points.size, "all points kept; only spike speeds dropped"
+  end
 end

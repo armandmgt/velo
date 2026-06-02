@@ -3,6 +3,7 @@ source "https://rubygems.org"
 gem "activerecord-postgis-adapter"
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
+gem "data_migrate"
 gem "httparty"
 gem "image_processing", "~> 2.0"
 gem "importmap-rails"
