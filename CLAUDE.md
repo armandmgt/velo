@@ -33,6 +33,14 @@ locally installed (e.g. Homebrew) Postgres, which won't have this data.
 
 - Commit directly to the current branch (usually `main`); do not create new branches unless explicitly asked.
 
+### Pull Requests
+
+- Open PRs with `gh pr create --base main`.
+- **Capturing UI screenshots:** reuse the Capybara/Selenium system-test harness — write a throwaway test under `test/system/` that logs in (`login(users(:one))`, password `password`), opens the UI, and calls `page.save_screenshot(Rails.root.join("tmp/<name>.png").to_s)`, then delete the test after the run. For a mobile view, resize first: `page.driver.browser.manage.window.resize_to(390, 844)`.
+  - Before running, build CSS with `bin/rails tailwindcss:build` (`bin/rails server` alone does **not** compile Tailwind, so screenshots come out unstyled).
+  - The test DB load shells out to `psql`, but the default `psql` is a mise shim with no version set. Put a real client on `PATH` and pass connection env vars: `export PATH="/opt/homebrew/Cellar/libpq/18.3/bin:$PATH" PGHOST=localhost PGUSER=velo PGPASSWORD=password`. If the test DB is stale, drop/recreate `velo_test` and load `db/structure.sql` with that same `psql`.
+- **Attaching screenshots to a PR:** the GitHub repo is **private**, so GitHub will not render images from `raw.githubusercontent.com` or repo blob URLs — only its `user-attachments` CDN works. There is no CLI way to upload there, so leave the PNG in `tmp/` and have the user drag-drop it into the PR description on github.com. Add a placeholder "## Screenshot" section to the body for them to drop under.
+
 ## Deployment
 
 Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
