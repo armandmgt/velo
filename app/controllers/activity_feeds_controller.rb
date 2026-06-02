@@ -2,7 +2,7 @@ class ActivityFeedsController < ApplicationController
   def index
     base = Current.user.activities
 
-    @period_week  = period_stats(base, Time.current.beginning_of_week..)
+    @period_week  = period_stats(base, 7.days.ago.beginning_of_day..)
     @period_month = period_stats(base, Time.current.beginning_of_month..)
     @period_year  = period_stats(base, Time.current.beginning_of_year..)
 

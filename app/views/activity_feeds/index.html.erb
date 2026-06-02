@@ -8,9 +8,9 @@
     <h2 class="text-lg font-semibold mb-4 prose dark:prose-invert">Résumé par période</h2>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <% [
-        ["Cette semaine", @period_week],
+        ["7 derniers jours", @period_week],
         ["Ce mois",       @period_month],
-        ["Cette année",   @period_year]
+        [Date.current.year.to_s, @period_year]
       ].each do |label, period| %>
         <div class="card bg-base-300 shadow">
           <div class="card-body p-4">
