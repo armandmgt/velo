@@ -81,10 +81,10 @@
             Intégrations
           <% end %>
         </li>
-        <li><hr class="my-1 border-base-200" /></li>
+        <li><hr class="my-1 border-base-content/10" /></li>
         <li>
-          <%= button_to session_path, method: :delete, class: "text-error", data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } do %>
-            <%= icon "log-out", class: "size-[1.2em]" %>
+          <%= button_to session_path, method: :delete, class: "flex w-full items-center gap-2 text-error", form_class: "w-full", data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } do %>
+            <%= icon "log-out", class: "size-[1.2em] shrink-0" %>
             Se déconnecter
           <% end %>
         </li>
