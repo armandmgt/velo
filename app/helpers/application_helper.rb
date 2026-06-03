@@ -1,4 +1,24 @@
 module ApplicationHelper
+  # DaisyUI alert modifier for a flash type. `notice` is treated as success,
+  # `alert` as error; other keys fall back to their own modifier or info.
+  def flash_alert_class(type)
+    case type.to_s
+    when "notice", "success" then "alert-success"
+    when "alert", "error"    then "alert-error"
+    when "warning"           then "alert-warning"
+    else                          "alert-info"
+    end
+  end
+
+  def flash_alert_icon(type)
+    case type.to_s
+    when "notice", "success" then "circle-check"
+    when "alert", "error"    then "circle-x"
+    when "warning"           then "triangle-alert"
+    else                          "info"
+    end
+  end
+
   def sport_grouped_options(selected = nil)
     group_labels = {
       cycling: I18n.t("activity.sport_group.cycling"),

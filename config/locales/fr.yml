@@ -5,6 +5,11 @@ fr:
     attributes:
       user:
         email_address: Adresse email
+      activity:
+        name: Nom
+        description: Description
+        sport: Sport
+        fit_file: Fichier (FIT ou GPX)
     errors:
       messages:
         record_invalid: 'La validation a échoué : %{errors}'

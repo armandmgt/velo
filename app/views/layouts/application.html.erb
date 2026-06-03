@@ -35,6 +35,8 @@
 
 <body data-hotwire-native="<%= hotwire_native_app? %>">
 
+<%= render "application/flash" %>
+
 <% if authenticated? %>
   <%= render "sessions/meta" %>
   <%= render "navbar" if authenticated? %>

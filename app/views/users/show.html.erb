@@ -4,10 +4,6 @@
   <section>
     <h2>Réglages</h2>
 
-    <% if alert = flash[:alert] %>
-      <p class="alert alert-error not-prose"><%= alert %></p>
-    <% end %>
-
     <%= form_with model: @user, url: user_path, method: :patch, class: "not-prose max-w-xs space-y-2" do |form| %>
       <fieldset>
         <%= form.label :max_heart_rate, t("activity.heart_rate_zone.max_hr_label"), class: "block mb-2 text-sm font-medium" %>

@@ -23,10 +23,6 @@
             <% end %>
           </fieldset>
 
-          <% if alert = flash[:alert] %>
-            <p class="alert alert-error w-80"><%= alert %></p>
-          <% end %>
-
           <div class="flex items-center gap-2">
             <%= form.submit "Se connecter", class: "btn btn-primary" %>
 
