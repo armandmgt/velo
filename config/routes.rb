@@ -14,6 +14,10 @@ Rails.application.routes.draw do
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
 
+  # Hotwire Native path configuration (fetched by the native apps on launch, pre-login).
+  get "configurations/ios_v1"     => "configurations#ios_v1",     as: :ios_configuration
+  get "configurations/android_v1" => "configurations#android_v1", as: :android_configuration
+
   namespace :admin, admin: true do
     resources :users
   end
