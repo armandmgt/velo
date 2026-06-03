@@ -15,7 +15,7 @@ class StravaImportsControllerTest < ActionDispatch::IntegrationTest
     post strava_imports_path
 
     assert_redirected_to new_strava_import_path
-    assert_equal "Please upload a ZIP file", flash[:alert]
+    assert_equal "Veuillez téléverser un fichier ZIP.", flash[:alert]
   end
 
   test "imports activities from zip and renders result" do

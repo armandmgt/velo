@@ -26,9 +26,9 @@ class ActivitiesController < ApplicationController
     end
 
     if @activity.save
-      redirect_to @activity, notice: "Activity was successfully created."
+      redirect_to @activity, notice: "Activité créée avec succès."
     else
-      flash.now[:alert] = "Activity was not created due to the following errors: #{@activity.errors.full_messages.to_sentence}."
+      flash.now[:alert] = "L'activité n'a pas pu être créée : #{@activity.errors.full_messages.to_sentence}."
       render :new, status: :unprocessable_content
     end
   end
@@ -38,17 +38,17 @@ class ActivitiesController < ApplicationController
       @pending_activities = Current.user.activities.awaiting_name.order(start_time: :desc)
       respond_to do |format|
         format.turbo_stream
-        format.html { redirect_to @activity, notice: "Activity was successfully updated.", status: :see_other }
+        format.html { redirect_to @activity, notice: "Activité mise à jour.", status: :see_other }
       end
     else
-      flash.now[:alert] = "Activity was not updated due to the following errors: #{@activity.errors.full_messages.to_sentence}."
+      flash.now[:alert] = "L'activité n'a pas pu être mise à jour : #{@activity.errors.full_messages.to_sentence}."
       render :edit, status: :unprocessable_content
     end
   end
 
   def destroy
     @activity.destroy!
-    redirect_to activities_path, notice: "Activity was successfully destroyed.", status: :see_other
+    redirect_to activities_path, notice: "Activité supprimée.", status: :see_other
   end
 
   private

@@ -30,7 +30,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_password_path
 
     follow_redirect!
-    assert_notice "reset link is invalid"
+    assert_notice "lien de réinitialisation est invalide"
   end
 
   test "update" do
@@ -48,7 +48,7 @@ class PasswordsControllerTest < ActionDispatch::IntegrationTest
     end
 
     follow_redirect!
-    assert_notice "Passwords did not match"
+    assert_notice "mots de passe ne correspondent pas"
   end
 
   private

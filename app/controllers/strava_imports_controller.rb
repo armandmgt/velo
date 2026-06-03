@@ -4,7 +4,7 @@ class StravaImportsController < ApplicationController
 
   def create
     if params[:file].blank?
-      redirect_to new_strava_import_path, alert: "Please upload a ZIP file"
+      redirect_to new_strava_import_path, alert: "Veuillez téléverser un fichier ZIP."
       return
     end
 
