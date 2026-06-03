@@ -17,6 +17,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // keys on to hide the web navbar and load native.css.
         Hotwire.config.applicationUserAgentPrefix = "Velo iOS;"
 
+        // Native counterparts to the web's bridge Stimulus controllers.
+        Hotwire.registerBridgeComponents([
+            NavbarButtonsComponent.self,
+            NotificationCountComponent.self,
+        ])
+
         // Load the path configuration from the server, falling back to the copy
         // bundled in the app for the very first launch / offline starts.
         var sources: [PathConfiguration.Source] = [.server(AppConfig.pathConfigurationURL)]
