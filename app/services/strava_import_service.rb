@@ -65,7 +65,8 @@ class StravaImportService
       next if filename.blank?
 
       index[filename] = {
-        name: row["Activity Name"].presence || "Imported activity",
+        name: row["Activity Name"].presence || "Sortie importée",
+        name_pending: row["Activity Name"].blank?,
         sport: SPORT_MAP[row["Activity Type"]] || :bike
       }
     end
@@ -102,7 +103,8 @@ class StravaImportService
 
   def import_file(file_path, format:, metadata:, filename:)
     activity = user.activities.new(
-      name: metadata[:name] || "Imported activity",
+      name: metadata[:name] || "Sortie importée",
+      name_pending: metadata.fetch(:name_pending, true),
       sport: metadata[:sport] || :bike,
       location: "Unknown"
     )

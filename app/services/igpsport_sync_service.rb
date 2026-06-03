@@ -65,9 +65,10 @@ class IgpsportSyncService
       tmp.rewind
 
       activity = user.activities.new(
-        name:     detail.title,
-        sport:    IgpsportClient.sport_for(detail.exercise_type),
-        location: "Unknown"
+        name:         detail.title,
+        name_pending: true,
+        sport:        IgpsportClient.sport_for(detail.exercise_type),
+        location:     "Unknown"
       )
 
       File.open(tmp.path, "rb") { |file| activity.parse_fit_file(file, reverse_geocode: false) }

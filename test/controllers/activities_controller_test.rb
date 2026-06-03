@@ -48,6 +48,27 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to activity_url(@activity)
   end
 
+  test "updating the name clears the name_pending flag" do
+    activity = activities(:awaiting_name)
+    patch activity_url(activity), params: { activity: { name: "Sortie nommée" } }
+    assert_redirected_to activity_url(activity)
+    refute activity.reload.name_pending
+    assert_equal "Sortie nommée", activity.name
+  end
+
+  test "inline rename responds with turbo_stream replacing the prompt containers" do
+    activity = activities(:awaiting_name)
+    patch activity_url(activity),
+          params: { activity: { name: "Sortie nommée" } },
+          as: :turbo_stream
+
+    assert_response :success
+    assert_match "turbo-stream", @response.body
+    assert_match "navbar_name_prompts", @response.body
+    assert_match "dashboard_name_prompts", @response.body
+    refute activity.reload.name_pending
+  end
+
   test "should destroy activity" do
     assert_difference("Activity.count", -1) do
       delete activity_url(@activity)

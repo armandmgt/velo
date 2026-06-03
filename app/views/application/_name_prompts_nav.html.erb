@@ -1,0 +1,43 @@
+<%# locals: (activities:) %>
+
+<div
+  id="navbar_name_prompts"
+  class="<%= class_names(
+               "dropdown static",
+               "sm:relative sm:dropdown-end"
+             ) %>"
+  data-controller="bridge--notification-count"
+  data-bridge--notification-count-count-value="<%= activities.size %>"
+>
+  <button class="btn btn-ghost btn-circle">
+    <span class="indicator">
+      <%= icon "bell", class: "size-5" %>
+      <% if activities.any? %>
+        <span class="badge badge-sm badge-accent indicator-item">
+          <%= activities.size %>
+        </span>
+      <% end %>
+    </span>
+  </button>
+  <ul
+    class="<%= class_names(
+                 "dropdown-content list bg-base-100 rounded-box z-1 mt-4 p-2 shadow-md",
+                 "max-sm:left-1 max-sm:right-1 sm:w-96",
+               ) %>"
+  >
+    <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">
+      Sorties à nommer
+    </li>
+    <% if activities.any? %>
+      <% activities.each do |activity| %>
+        <li class="px-4">
+          <%= render "activities/name_prompt", activity: activity, context: "nav" %>
+        </li>
+      <% end %>
+    <% else %>
+      <li class="px-4 pb-3 text-sm opacity-40 italic">
+        Tout est à jour, rien à nommer.
+      </li>
+    <% end %>
+  </ul>
+</div>

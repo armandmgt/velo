@@ -21,33 +21,8 @@
       <% end %>
     <% end %>
 
-    <div
-      class="<%= class_names(
-                   "dropdown static",
-                   "sm:relative sm:dropdown-end"
-                 ) %>"
-      data-controller="bridge--notification-count"
-      data-bridge--notification-count-count-value="0"
-    >
-      <button class="btn btn-ghost btn-circle">
-        <span class="indicator">
-          <%= icon "bell", class: "size-5" %>
-          <span class="<%= class_names "badge badge-sm indicator-item", { "badge-accent": false } %>">
-            0
-          </span>
-        </span>
-      </button>
-      <ul
-        class="<%= class_names(
-                     "dropdown-content list bg-base-100 rounded-box z-1 mt-4 p-2 shadow-md",
-                     "max-sm:left-1 max-sm:right-1 sm:w-96",
-                   ) %>"
-      >
-        <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">
-          Notifications
-        </li>
-      </ul>
-    </div>
+    <%= render "application/name_prompts_nav",
+               activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>
 
     <div class="dropdown dropdown-end">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">

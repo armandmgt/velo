@@ -16,6 +16,20 @@ class StravaImportServiceTest < ActiveSupport::TestCase
     assert @user.activities.exists?(name: "Récup", sport: "bike")
   end
 
+  test "does not flag activity as name_pending when the CSV provides a name" do
+    call_service
+    refute @user.activities.find_by!(name: "Récup").name_pending
+  end
+
+  test "flags activity as name_pending when the CSV name is blank" do
+    result = call_service(blank_name_zip_path)
+    assert_equal 1, result[:imported]
+    activity = @user.activities.find_by!(name: "Sortie importée")
+    assert activity.name_pending, "expected the auto-named activity to await a real name"
+  ensure
+    File.delete(blank_name_zip_path) if File.exist?(blank_name_zip_path)
+  end
+
   test "returns imported count" do
     result = call_service
     assert_equal 1, result[:imported]
@@ -74,6 +88,23 @@ class StravaImportServiceTest < ActiveSupport::TestCase
 
   def gpx_zip_path
     Rails.root.join("test/fixtures/files/exports/strava_gpx_activity.zip")
+  end
+
+  # Builds a Strava-style export whose activities.csv has a blank "Activity Name",
+  # so the import falls back to "Sortie importée" and should be flagged pending.
+  def blank_name_zip_path
+    @blank_name_zip_path ||= begin
+      path = Rails.root.join("tmp/strava_blank_name_#{SecureRandom.hex(4)}.zip")
+      fit_bytes = File.binread(Rails.root.join("test/fixtures/files/fit/bike.fit"))
+      Zip::File.open(path.to_s, create: true) do |zip|
+        zip.get_output_stream("activities/blank.fit") { |io| io.write(fit_bytes) }
+        zip.get_output_stream("activities.csv") do |io|
+          io.write("Activity ID,Activity Name,Activity Type,Filename\n")
+          io.write("1,,Ride,activities/blank.fit\n")
+        end
+      end
+      path.to_s
+    end
   end
 
   def call_service(path = @zip_path)

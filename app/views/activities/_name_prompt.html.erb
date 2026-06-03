@@ -1,0 +1,21 @@
+<%# locals: (activity:, context:) %>
+
+<div class="flex flex-col gap-1 py-2">
+  <span class="text-xs uppercase font-semibold opacity-60 flex items-center gap-1">
+    <%= icon activity.sport_icon_name, class: "size-[1.1em]" %>
+    <%= l activity.start_time.in_time_zone("Europe/Paris"), format: :long %>
+    <% if activity.distance %>
+      · <%= (activity.distance / 1000.0).round(1) %> km
+    <% end %>
+  </span>
+
+  <%= form_with model: activity, html: { id: "name_prompt_#{context}_#{activity.id}", class: "join w-full" } do |form| %>
+    <%= form.text_field :name,
+          id: "name_prompt_#{context}_#{activity.id}_name",
+          value: activity.name,
+          placeholder: "Ex : Sortie du matin",
+          autocomplete: "off",
+          class: "input input-sm input-bordered join-item w-full" %>
+    <%= form.submit "Enregistrer", class: "btn btn-sm btn-primary join-item" %>
+  <% end %>
+</div>

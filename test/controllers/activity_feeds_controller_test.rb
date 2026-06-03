@@ -16,15 +16,15 @@ class ActivityFeedsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "this year section shows all three user activities" do
+  test "this year section shows all the user activities" do
     get root_url
-    assert_select "div.stat-value", text: "3"
+    assert_select "div.stat-value", text: "4"
   end
 
-  test "this year total distance includes all three activities" do
+  test "this year total distance includes all activities" do
     get root_url
-    # 30km + 10km + 120km = 160.0 km
-    assert_select "div.stat-value", text: "160.0 km"
+    # 30km + 10km + 120km + 25km = 185.0 km
+    assert_select "div.stat-value", text: "185.0 km"
   end
 
   test "cycling personal record shows the longest bike ride name" do
