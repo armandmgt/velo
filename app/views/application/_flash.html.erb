@@ -1,0 +1,23 @@
+<%# Centralized flash toasts. Rendered once in the layout, so every redirect
+    flash surfaces consistently on any page (authenticated or not). %>
+<div class="toast toast-bottom toast-end z-100 max-w-full" data-controller="flash">
+  <% flash.each do |type, message| %>
+    <% next if message.blank? %>
+    <div
+      role="alert"
+      class="alert <%= flash_alert_class(type) %> shadow-lg max-sm:w-[calc(100vw-1rem)] sm:max-w-sm"
+      data-flash-target="item"
+    >
+      <%= icon flash_alert_icon(type), class: "size-5 shrink-0" %>
+      <span class="flex-1"><%= message %></span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-xs btn-circle shrink-0"
+        aria-label="Fermer"
+        data-action="flash#dismiss"
+      >
+        <%= icon "x", class: "size-4" %>
+      </button>
+    </div>
+  <% end %>
+</div>
