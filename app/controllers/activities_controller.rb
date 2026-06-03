@@ -34,8 +34,12 @@ class ActivitiesController < ApplicationController
   end
 
   def update
-    if @activity.update(activity_params)
-      redirect_to @activity, notice: "Activity was successfully updated.", status: :see_other
+    if @activity.update(activity_params.merge(name_pending: false))
+      @pending_activities = Current.user.activities.awaiting_name.order(start_time: :desc)
+      respond_to do |format|
+        format.turbo_stream
+        format.html { redirect_to @activity, notice: "Activity was successfully updated.", status: :see_other }
+      end
     else
       flash.now[:alert] = "Activity was not updated due to the following errors: #{@activity.errors.full_messages.to_sentence}."
       render :edit, status: :unprocessable_content

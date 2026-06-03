@@ -23,6 +23,8 @@ class Activity < ApplicationRecord
 
   validates :name, :sport, :start_time, :end_time, presence: true
 
+  scope :awaiting_name, -> { where(name_pending: true) }
+
   def path_geojson
     return unless path
     {

@@ -1,0 +1,22 @@
+<%# locals: (activities:) %>
+
+<section id="dashboard_name_prompts">
+  <% if activities.any? %>
+    <div class="card bg-base-300 shadow mb-10 not-prose">
+      <div class="card-body p-4">
+        <h2 class="card-title text-base font-semibold flex items-center gap-2">
+          <%= icon "pencil", class: "size-5 text-primary" %>
+          Activités à nommer
+        </h2>
+        <p class="text-sm opacity-60">
+          Ces activités ont été importées automatiquement. Donnez-leur un nom.
+        </p>
+        <div class="divide-y divide-base-content/10">
+          <% activities.each do |activity| %>
+            <%= render "activities/name_prompt", activity: activity, context: "dashboard" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</section>

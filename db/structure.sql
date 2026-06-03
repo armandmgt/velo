@@ -146,7 +146,8 @@ CREATE TABLE public.activities (
     active_time character varying NOT NULL,
     total_elevation_gain numeric,
     max_speed numeric,
-    path public.geometry(LineString)
+    path public.geometry(LineString),
+    name_pending boolean DEFAULT false NOT NULL
 );
 
 
@@ -612,6 +613,7 @@ ALTER TABLE ONLY public.active_storage_attachments
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260602120000'),
 ('20260524203939'),
 ('20260522120000'),
 ('20260519202356'),

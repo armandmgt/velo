@@ -1,0 +1,7 @@
+<%= turbo_stream.replace "dashboard_name_prompts" do %>
+  <%= render "activities/name_prompts_banner", activities: @pending_activities %>
+<% end %>
+
+<%= turbo_stream.replace "navbar_name_prompts" do %>
+  <%= render "application/name_prompts_nav", activities: @pending_activities %>
+<% end %>
