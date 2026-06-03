@@ -3,31 +3,44 @@ class ConfigurationsController < ApplicationController
   allow_unauthenticated_access
   skip_forgery_protection
 
+  # Forms present modally; everything else pushes onto the native nav stack.
+  MODAL_PATTERNS = [ "/new$", "/edit$", "/users/new$", "/session/new$" ].freeze
+
   def ios_v1
-    render json: configuration
+    render json: ios_configuration
   end
 
   def android_v1
-    render json: configuration
+    render json: android_configuration
   end
 
   private
-    # Tells Hotwire Native how to present each URL. A single shared shape for now;
-    # the two actions exist so iOS/Android can diverge later without a route change.
-    def configuration
+    def ios_configuration
       {
         settings: {},
         rules: [
-          # Default: every screen pushes onto the native navigation stack.
+          { patterns: [ "/.*" ], properties: { context: "default", pull_to_refresh_enabled: true } },
+          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } }
+        ]
+      }
+    end
+
+    # Android rules must route each URL to a registered fragment destination via
+    # a `uri`. The catch-all sends everything to the web fragment; matching
+    # properties accumulate top-down, so the modal rule only overrides context.
+    def android_configuration
+      {
+        settings: {},
+        rules: [
           {
-            patterns: [ "/.*" ],
-            properties: { context: "default", pull_to_refresh_enabled: true }
+            patterns: [ ".*" ],
+            properties: {
+              context: "default",
+              uri: "hotwire://fragment/web",
+              pull_to_refresh_enabled: true
+            }
           },
-          # Create/edit forms present modally.
-          {
-            patterns: [ "/new$", "/edit$", "/users/new$", "/session/new$" ],
-            properties: { context: "modal", pull_to_refresh_enabled: false }
-          }
+          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } }
         ]
       }
     end

@@ -18,6 +18,11 @@ class ConfigurationsControllerTest < ActionDispatch::IntegrationTest
     get android_configuration_path
 
     assert_response :success
-    assert_kind_of Array, response.parsed_body["rules"]
+    assert_equal "application/json", response.media_type
+    rules = response.parsed_body["rules"]
+    assert_kind_of Array, rules
+    # Android rules must route to a registered fragment destination via `uri`.
+    catch_all = rules.find { |rule| rule["patterns"].include?(".*") }
+    assert_equal "hotwire://fragment/web", catch_all.dig("properties", "uri")
   end
 end

@@ -1,0 +1,17 @@
+{
+  "settings": {},
+  "rules": [
+    {
+      "patterns": [".*"],
+      "properties": {
+        "context": "default",
+        "uri": "hotwire://fragment/web",
+        "pull_to_refresh_enabled": true
+      }
+    },
+    {
+      "patterns": ["/new$", "/edit$", "/users/new$", "/session/new$"],
+      "properties": { "context": "modal", "pull_to_refresh_enabled": false }
+    }
+  ]
+}
