@@ -24,7 +24,7 @@ class StravaImportServiceTest < ActiveSupport::TestCase
   test "flags activity as name_pending when the CSV name is blank" do
     result = call_service(blank_name_zip_path)
     assert_equal 1, result[:imported]
-    activity = @user.activities.find_by!(name: "Imported activity")
+    activity = @user.activities.find_by!(name: "Sortie importée")
     assert activity.name_pending, "expected the auto-named activity to await a real name"
   ensure
     File.delete(blank_name_zip_path) if File.exist?(blank_name_zip_path)
@@ -91,7 +91,7 @@ class StravaImportServiceTest < ActiveSupport::TestCase
   end
 
   # Builds a Strava-style export whose activities.csv has a blank "Activity Name",
-  # so the import falls back to "Imported activity" and should be flagged pending.
+  # so the import falls back to "Sortie importée" and should be flagged pending.
   def blank_name_zip_path
     @blank_name_zip_path ||= begin
       path = Rails.root.join("tmp/strava_blank_name_#{SecureRandom.hex(4)}.zip")

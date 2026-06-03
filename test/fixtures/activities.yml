@@ -60,7 +60,7 @@ older_ride:
 
 awaiting_name:
   user: one
-  name: Imported activity
+  name: Sortie importée
   name_pending: true
   sport: bike
   start_time: "<%= 2.hours.ago.strftime('%Y-%m-%d %H:%M:%S') %>"

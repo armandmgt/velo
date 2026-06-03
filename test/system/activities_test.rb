@@ -22,7 +22,7 @@ class ActivitiesTest < ApplicationSystemTestCase
     activity = activities(:awaiting_name)
 
     # `login` already lands on the dashboard (root_path).
-    assert_text "Activités à nommer"
+    assert_text "Vos dernières sorties"
 
     field_id = "name_prompt_dashboard_#{activity.id}_name"
     fill_in field_id, with: "Sortie du matin"
@@ -33,7 +33,7 @@ class ActivitiesTest < ApplicationSystemTestCase
     end
 
     # The renamed activity drops out of the prompt without a full navigation.
-    assert_no_selector "#dashboard_name_prompts", text: "Activités à nommer"
+    assert_no_selector "#dashboard_name_prompts", text: "Vos dernières sorties"
     assert_equal "Sortie du matin", activity.reload.name
   end
 end
