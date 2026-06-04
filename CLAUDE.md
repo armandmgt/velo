@@ -11,6 +11,10 @@ extension before running anything — the app won't boot without it:
 cd lib/ruby_fit && rake compile
 ```
 
+Running the native iOS/Android apps additionally requires Xcode / the Android
+SDK, plus the per-platform `mise` tasks under `native/<platform>/` — see
+[Native apps (Hotwire Native)](#native-apps-hotwire-native) below.
+
 ## Commands
 
 ```bash
@@ -58,6 +62,39 @@ locally installed (e.g. Homebrew) Postgres, which won't have this data.
 ## Deployment
 
 Deploy is manual via Kamal: commit your changes, then run `kamal deploy`.
+
+## Native apps (Hotwire Native)
+
+The Rails app is wrapped by native iOS and Android apps under `native/`, using
+Hotwire Native (Strada bridge). The web side and the native shells share
+identifier `fr.armandmgt.velo`.
+
+- **Layout:** `native/ios/` is an Xcode project — generated from `project.yml`
+  via `xcodegen`. `native/android/` is a Gradle project.
+- **Run them:** each folder has a `mise.toml` exposing platform tasks.
+  - `cd native/ios && mise run debug` — boots an iOS simulator (auto-picks an
+    available iPhone), regenerates `Velo.xcodeproj` via `xcodegen` if missing,
+    builds the Debug scheme, installs to the simulator, and launches the app.
+    The `simulator` task can be run alone to just boot a device.
+  - `cd native/android && mise run debug` — boots an emulator (first available
+    AVD) if none is attached, then `./gradlew :app:installDebug` and starts
+    `fr.armandmgt.velo/.main.MainActivity`. The `emulator` task boots alone.
+- **Path configuration:** native apps fetch routing rules pre-login from
+  `ConfigurationsController` (`/configurations/ios_v1`, `/configurations/android_v1`,
+  both `allow_unauthenticated_access`). `MODAL_PATTERNS` (routes ending in
+  `/new` or `/edit`) present modally; `AUTH_PATTERNS` (`/session/new`,
+  `/users/new`) disable pull-to-refresh; everything else pushes onto the
+  native nav stack. Android rules additionally route every URL to
+  `hotwire://fragment/web`.
+- **Bridge components:** Stimulus controllers under
+  `app/javascript/controllers/bridge/` (`navbar_buttons`, `notification_count`,
+  `push_subscription`) implement the web side via `@hotwired/hotwire-native-bridge`
+  (pinned in `config/importmap.rb`). Elements opt in with
+  `data-controller="bridge--<name>"` and `data-bridge-*` attributes — e.g.
+  `data-bridge-ios-image` / `data-bridge-android-image` carry SF Symbol /
+  Material icon names that the native shell renders into its nav bar.
+- **Native-only styling:** `app/assets/stylesheets/native.css` ships overrides
+  scoped to the native webviews (hide the web navbar, etc.).
 
 ## Architecture
 
