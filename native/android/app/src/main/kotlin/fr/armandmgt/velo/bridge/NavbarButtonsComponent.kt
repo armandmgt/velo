@@ -1,19 +1,24 @@
 package fr.armandmgt.velo.bridge
 
+import android.os.Build
 import android.util.Log
+import android.view.Gravity
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.res.ResourcesCompat
 import dev.hotwire.core.bridge.BridgeComponent
 import dev.hotwire.core.bridge.BridgeDelegate
 import dev.hotwire.core.bridge.Message
 import dev.hotwire.navigation.destinations.HotwireDestination
+import fr.armandmgt.velo.R
 import kotlinx.serialization.Serializable
 
 /**
- * Renders the web navbar's menu items (hidden in native by native.css) as a
- * native 3-dot overflow menu in the toolbar. Tapping an item replies the item's
- * index so the web controller clicks the matching link/form.
+ * Renders the web navbar's hidden menu items as a native icon button in the
+ * toolbar. Tapping the button opens a PopupMenu with per-item icons. Tapping
+ * an item replies its index so the web controller clicks the matching link/form.
  */
 class NavbarButtonsComponent(
     name: String,
@@ -36,15 +41,41 @@ class NavbarButtonsComponent(
         val toolbar = toolbar ?: return
 
         removeItems()
-        data.items.forEachIndexed { index, item ->
-            toolbar.menu.add(GROUP_ID, Menu.NONE, index, item.title).apply {
-                setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)
-                setOnMenuItemClickListener {
-                    replyTo("connect", SelectionData(index))
-                    true
+        toolbar.menu.add(GROUP_ID, ITEM_ID, 0, toolbar.context.getString(R.string.menu_open)).apply {
+            setIcon(R.drawable.ic_person)
+            setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+            setOnMenuItemClickListener {
+                showPopupMenu(data.items, toolbar)
+                true
+            }
+        }
+    }
+
+    private fun showPopupMenu(items: List<Item>, anchor: Toolbar) {
+        val context = anchor.context
+        val popup = PopupMenu(context, anchor, Gravity.END)
+
+        items.forEachIndexed { index, item ->
+            popup.menu.add(Menu.NONE, index, index, item.title).also { menuItem ->
+                item.androidImage?.let { name ->
+                    val resId = context.resources.getIdentifier("ic_$name", "drawable", context.packageName)
+                    if (resId != 0) {
+                        menuItem.icon = ResourcesCompat.getDrawable(context.resources, resId, context.theme)
+                    }
                 }
             }
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            popup.setForceShowIcon(true)
+        }
+
+        popup.setOnMenuItemClickListener { menuItem ->
+            replyTo("connect", SelectionData(menuItem.itemId))
+            true
+        }
+
+        popup.show()
     }
 
     private fun removeItems() {
@@ -54,6 +85,7 @@ class NavbarButtonsComponent(
     companion object {
         // Distinct from NotificationCountComponent so the two coexist in the menu.
         private const val GROUP_ID = 1001
+        private const val ITEM_ID = 1003
     }
 
     @Serializable

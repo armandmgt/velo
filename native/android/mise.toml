@@ -1,0 +1,30 @@
+[tasks.emulator]
+description = "Start the Android emulator if not already running"
+run = """
+EMULATOR_PATH="$ANDROID_HOME/emulator/emulator"
+if ! adb get-state 1>/dev/null 2>&1; then
+  echo "No connected device found. Checking for available emulators..."
+  AVD=$($EMULATOR_PATH -list-avds | head -n 1)
+  if [ -n "$AVD" ]; then
+    echo "Starting emulator: $AVD"
+    python3 -c "import subprocess; subprocess.Popen(['$EMULATOR_PATH', '-avd', '$AVD', '-no-snapshot-load', '-no-boot-anim', '-no-audio'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)"
+    echo "Waiting for device to be ready..."
+    adb wait-for-device
+    echo "Waiting for boot to complete..."
+    while [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; do
+      sleep 1
+    done
+  else
+    echo "Error: No connected Android devices or emulators found, and no AVDs available."
+    exit 1
+  fi
+fi
+"""
+
+[tasks.debug]
+description = "Build and run the app in debug variant"
+depends = ["emulator"]
+run = """
+./gradlew :app:installDebug
+adb shell am start -n fr.armandmgt.velo/.main.MainActivity
+"""

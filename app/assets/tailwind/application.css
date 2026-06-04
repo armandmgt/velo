@@ -13,6 +13,15 @@ html, body {
     @apply bg-base-200;
 }
 
+body:has(main.no-overscroll) {
+    overscroll-behavior-y: none;
+}
+
+@utility min-h-dvh-safe {
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
+}
+
 @utility prose {
     @apply !max-w-5xl mx-auto px-3;
 }

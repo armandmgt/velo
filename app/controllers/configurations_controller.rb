@@ -4,7 +4,8 @@ class ConfigurationsController < ApplicationController
   skip_forgery_protection
 
   # Forms present modally; everything else pushes onto the native nav stack.
-  MODAL_PATTERNS = [ "/new$", "/edit$", "/users/new$", "/session/new$" ].freeze
+  MODAL_PATTERNS = [ "/new$", "/edit$" ].freeze
+  AUTH_PATTERNS = [ "/session/new$", "/users/new$" ].freeze
 
   def ios_v1
     render json: ios_configuration
@@ -20,7 +21,8 @@ class ConfigurationsController < ApplicationController
         settings: {},
         rules: [
           { patterns: [ "/.*" ], properties: { context: "default", pull_to_refresh_enabled: true } },
-          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } }
+          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
+          { patterns: AUTH_PATTERNS, properties: { context: "default", pull_to_refresh_enabled: false } }
         ]
       }
     end
@@ -40,7 +42,8 @@ class ConfigurationsController < ApplicationController
               pull_to_refresh_enabled: true
             }
           },
-          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } }
+          { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
+          { patterns: AUTH_PATTERNS, properties: { context: "default", pull_to_refresh_enabled: false } }
         ]
       }
     end

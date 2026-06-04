@@ -10,8 +10,12 @@
       }
     },
     {
-      "patterns": ["/new$", "/edit$", "/users/new$", "/session/new$"],
+      "patterns": ["/new$", "/edit$"],
       "properties": { "context": "modal", "pull_to_refresh_enabled": false }
+    },
+    {
+      "patterns": ["/session/new$", "/users/new$"],
+      "properties": { "context": "default", "pull_to_refresh_enabled": false }
     }
   ]
 }

@@ -39,26 +39,26 @@
           <span class="truncate font-medium text-base-content"><%= Current.user.email_address %></span>
         </li>
         <li>
-          <%= link_to user_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to user_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "person" } do %>
             <%= icon "user", class: "size-[1.2em]" %>
             Profil
           <% end %>
         </li>
         <li>
-          <%= link_to activities_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to activities_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "bike" } do %>
             <%= icon "bike", class: "size-[1.2em]" %>
             Activités
           <% end %>
         </li>
         <li>
-          <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "cable" } do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations
           <% end %>
         </li>
         <li><hr class="my-1 border-base-content/10" /></li>
         <li>
-          <%= button_to session_path, method: :delete, class: "flex w-full items-center gap-2 text-error", form_class: "w-full", data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power" } do %>
+          <%= button_to session_path, method: :delete, class: "flex w-full items-center gap-2 text-error", form_class: "w-full", data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power", "bridge-android-image": "logout" } do %>
             <%= icon "log-out", class: "size-[1.2em] shrink-0" %>
             Se déconnecter
           <% end %>
