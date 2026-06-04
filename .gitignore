@@ -68,3 +68,4 @@
 /native/android/captures/
 /native/android/**/*.iml
 
+/native/ios/build/

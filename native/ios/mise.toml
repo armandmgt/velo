@@ -1,0 +1,35 @@
+[tasks.simulator]
+description = "Boot an iOS simulator if none is running"
+run = """
+if ! xcrun simctl list devices booted | grep -q Booted; then
+  echo "No booted simulator found. Looking for available iPhone simulators..."
+  UDID=$(xcrun simctl list devices available | grep -E 'iPhone' | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1)
+  if [ -n "$UDID" ]; then
+    echo "Booting simulator: $UDID"
+    xcrun simctl boot "$UDID"
+    open -a Simulator
+    echo "Waiting for boot to complete..."
+    xcrun simctl bootstatus "$UDID" -b
+  else
+    echo "Error: No available iOS Simulator devices found."
+    exit 1
+  fi
+fi
+"""
+
+[tasks.debug]
+description = "Build and run the app in debug variant"
+depends = ["simulator"]
+run = """
+if [ ! -d Velo.xcodeproj ]; then
+  xcodegen generate
+fi
+UDID=$(xcrun simctl list devices booted | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1)
+xcodebuild -project Velo.xcodeproj -scheme Velo -configuration Debug \\
+  -destination "platform=iOS Simulator,id=$UDID" \\
+  -derivedDataPath build \\
+  build
+APP_PATH="build/Build/Products/Debug-iphonesimulator/Velo.app"
+xcrun simctl install "$UDID" "$APP_PATH"
+xcrun simctl launch "$UDID" fr.armandmgt.velo
+"""
