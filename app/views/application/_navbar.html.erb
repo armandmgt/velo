@@ -39,19 +39,19 @@
           <span class="truncate font-medium text-base-content"><%= Current.user.email_address %></span>
         </li>
         <li>
-          <%= link_to user_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "person" } do %>
+          <%= link_to user_path, data: { "bridge--navbar-buttons-target": "item" } do %>
             <%= icon "user", class: "size-[1.2em]" %>
             Profil
           <% end %>
         </li>
         <li>
-          <%= link_to activities_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "bike" } do %>
+          <%= link_to activities_path, data: { "bridge--navbar-buttons-target": "item" } do %>
             <%= icon "bike", class: "size-[1.2em]" %>
             Activités
           <% end %>
         </li>
         <li>
-          <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item", "bridge-android-image": "cable" } do %>
+          <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item" } do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations
           <% end %>
