@@ -1,11 +1,15 @@
 package fr.armandmgt.velo
 
 import android.app.Application
+import dev.hotwire.core.bridge.BridgeComponentFactory
 import dev.hotwire.core.bridge.KotlinXJsonConverter
 import dev.hotwire.core.config.Hotwire
 import dev.hotwire.core.turbo.config.PathConfiguration
 import dev.hotwire.navigation.config.defaultFragmentDestination
+import dev.hotwire.navigation.config.registerBridgeComponents
 import dev.hotwire.navigation.config.registerFragmentDestinations
+import fr.armandmgt.velo.bridge.NavbarButtonsComponent
+import fr.armandmgt.velo.bridge.NotificationCountComponent
 import fr.armandmgt.velo.features.web.WebFragment
 
 class VeloApplication : Application() {
@@ -28,6 +32,12 @@ class VeloApplication : Application() {
         // Every URL routes to the web fragment unless a rule says otherwise.
         Hotwire.defaultFragmentDestination = WebFragment::class
         Hotwire.registerFragmentDestinations(WebFragment::class)
+
+        // Native counterparts to the web's bridge Stimulus controllers.
+        Hotwire.registerBridgeComponents(
+            BridgeComponentFactory("navbar-buttons", ::NavbarButtonsComponent),
+            BridgeComponentFactory("notification-count", ::NotificationCountComponent),
+        )
 
         // The "Hotwire Native" marker the prefix produces is what turbo-rails'
         // `hotwire_native_app?` keys on to hide the web navbar and load native.css.
