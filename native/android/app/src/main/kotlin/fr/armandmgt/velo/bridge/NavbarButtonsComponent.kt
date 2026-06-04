@@ -41,7 +41,7 @@ class NavbarButtonsComponent(
         val toolbar = toolbar ?: return
 
         removeItems()
-        toolbar.menu.add(GROUP_ID, ITEM_ID, 0, toolbar.context.getString(R.string.menu_open)).apply {
+        toolbar.menu.add(GROUP_ID, ITEM_ID, 1, toolbar.context.getString(R.string.menu_open)).apply {
             setIcon(R.drawable.ic_person)
             setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
             setOnMenuItemClickListener {
