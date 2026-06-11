@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+// Load signing credentials from keystore.properties (gitignored — copy from keystore.properties.example)
+val keystoreProps = Properties().also { props ->
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) props.load(f.inputStream())
 }
 
 android {
@@ -16,6 +24,15 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProps.getProperty("keyAlias") ?: ""
+            keyPassword = keystoreProps.getProperty("keyPassword") ?: ""
+            storeFile = keystoreProps.getProperty("storeFile")?.let { file(it) }
+            storePassword = keystoreProps.getProperty("storePassword") ?: ""
+        }
+    }
+
     buildTypes {
         debug {
             isDebuggable = true
@@ -24,6 +41,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("String", "BASE_URL", "\"https://velo.armandmgt.fr\"")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

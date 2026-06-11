@@ -67,5 +67,9 @@
 /native/android/.idea/
 /native/android/captures/
 /native/android/**/*.iml
+# Signing credentials — never commit these
+/native/android/keystore.properties
+/native/android/**/*.jks
+/native/android/**/*.keystore
 
 /native/ios/build/
