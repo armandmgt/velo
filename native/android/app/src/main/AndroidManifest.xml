@@ -15,7 +15,7 @@
         android:theme="@style/Theme.Velo">
 
         <activity
-            android:name=".main.MainActivity"
+            android:name=".main.LoginActivity"
             android:exported="true"
             android:launchMode="singleInstance"
             android:windowSoftInputMode="adjustResize">
@@ -24,6 +24,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".main.MainActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:windowSoftInputMode="adjustResize" />
 
     </application>
 

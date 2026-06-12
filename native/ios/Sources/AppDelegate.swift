@@ -19,6 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
         // Native counterparts to the web's bridge Stimulus controllers.
         Hotwire.registerBridgeComponents([
+            AuthenticationComponent.self,
             NavbarButtonsComponent.self,
             NotificationCountComponent.self,
         ])

@@ -1,14 +1,25 @@
 import HotwireNative
 import UIKit
 
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+/// Two-root scene. The window starts on the unauthenticated `navigator` whose
+/// start location is `/session/new`. When the layout's `sessions/meta`
+/// partial loads it fires the `bridge--authentication` connect message →
+/// `AuthenticationComponent` posts `.didSignIn` → we swap the root to the
+/// tab-bar controller. On the way back (logout), the path-config marks the
+/// `/session/new` rule with `is_after_sign_out_path: true`; intercepting that
+/// proposal swaps the root back.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
     var window: UIWindow?
 
-    // A single navigation stack for the MVP. A HotwireTabBarController with
-    // multiple tabs is a planned enhancement.
-    private let navigator = Navigator(
-        configuration: .init(name: "main", startLocation: AppConfig.baseURL)
+    private lazy var unauthenticatedNavigator = Navigator(
+        configuration: .init(
+            name: "unauthenticated",
+            startLocation: AppConfig.baseURL.appendingPathComponent("session/new")
+        ),
+        delegate: self
     )
+
+    private lazy var tabBarController = HotwireTabBarController(navigatorDelegate: self)
 
     func scene(
         _ scene: UIScene,
@@ -18,9 +29,47 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = navigator.rootViewController
+        window?.rootViewController = unauthenticatedNavigator.rootViewController
         window?.makeKeyAndVisible()
+        unauthenticatedNavigator.start()
 
-        navigator.start()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(didSignIn),
+            name: .didSignIn,
+            object: nil
+        )
+    }
+
+    // MARK: NavigatorDelegate
+
+    func handle(proposal: VisitProposal, from navigator: Navigator) -> ProposalResult {
+        // The sign-out path-property only signals an *authenticated* webview
+        // bouncing back to the login screen. The unauthenticated navigator's
+        // own initial route to /session/new also carries this property —
+        // accepting it there is required, otherwise nothing renders.
+        let isSignOut = proposal.properties["is_after_sign_out_path"] as? Bool == true
+        let fromTabBar = navigator !== unauthenticatedNavigator
+        if isSignOut && fromTabBar {
+            didSignOut()
+            return .reject
+        }
+        return .accept
+    }
+
+    // MARK: Auth transitions
+
+    @objc private func didSignIn() {
+        guard window?.rootViewController !== tabBarController else { return }
+        window?.rootViewController = tabBarController
+        tabBarController.load(HotwireTab.all)
+        tabBarController.selectedIndex = 0
+    }
+
+    private func didSignOut() {
+        guard window?.rootViewController !== unauthenticatedNavigator.rootViewController else { return }
+        window?.rootViewController = unauthenticatedNavigator.rootViewController
+        unauthenticatedNavigator.rootViewController.popToRootViewController(animated: false)
+        unauthenticatedNavigator.reload()
     }
 }

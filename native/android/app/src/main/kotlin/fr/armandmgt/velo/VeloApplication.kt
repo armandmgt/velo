@@ -8,9 +8,15 @@ import dev.hotwire.core.turbo.config.PathConfiguration
 import dev.hotwire.navigation.config.defaultFragmentDestination
 import dev.hotwire.navigation.config.registerBridgeComponents
 import dev.hotwire.navigation.config.registerFragmentDestinations
+import dev.hotwire.navigation.config.registerRouteDecisionHandlers
+import dev.hotwire.navigation.routing.AppNavigationRouteDecisionHandler
+import dev.hotwire.navigation.routing.BrowserTabRouteDecisionHandler
+import dev.hotwire.navigation.routing.SystemNavigationRouteDecisionHandler
+import fr.armandmgt.velo.bridge.AuthenticationComponent
 import fr.armandmgt.velo.bridge.NavbarButtonsComponent
 import fr.armandmgt.velo.bridge.NotificationCountComponent
 import fr.armandmgt.velo.features.web.WebFragment
+import fr.armandmgt.velo.main.SignOutRouteDecisionHandler
 
 class VeloApplication : Application() {
     override fun onCreate() {
@@ -35,8 +41,19 @@ class VeloApplication : Application() {
 
         // Native counterparts to the web's bridge Stimulus controllers.
         Hotwire.registerBridgeComponents(
+            BridgeComponentFactory("authentication", ::AuthenticationComponent),
             BridgeComponentFactory("navbar-buttons", ::NavbarButtonsComponent),
             BridgeComponentFactory("notification-count", ::NotificationCountComponent),
+        )
+
+        // Replaces the library defaults; SignOutRouteDecisionHandler runs
+        // first so /session/new visits from the authenticated MainActivity
+        // are intercepted before AppNavigation hands them to in-app routing.
+        Hotwire.registerRouteDecisionHandlers(
+            SignOutRouteDecisionHandler(),
+            AppNavigationRouteDecisionHandler(),
+            BrowserTabRouteDecisionHandler(),
+            SystemNavigationRouteDecisionHandler(),
         )
 
         // The "Hotwire Native" marker the prefix produces is what turbo-rails'

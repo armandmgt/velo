@@ -1,0 +1,40 @@
+appId: fr.armandmgt.velo
+name: Auth flow (cold-start, sign-in, tab bar appears)
+tags:
+  - regression
+---
+# At cold start the window root is an *unauthenticated* navigator pointing
+# straight at /session/new. The tab bar is not part of the view hierarchy
+# yet; it's only swapped in after the layout renders `sessions/meta` (whose
+# `bridge--authentication` controller fires the "connect" message → native
+# `AuthenticationComponent` posts `.didSignIn` → `SceneDelegate` swaps the
+# root to `HotwireTabBarController`).
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+
+- assertVisible: "Connexion"
+- assertVisible: "Se connecter"
+# Regression: tab bar must NOT be visible while signed out, otherwise the
+# user can hop between tabs that all 302 to /session/new and end up with
+# stale login HTML cached per tab.
+- assertNotVisible: "Tableau de bord"
+- assertNotVisible: "Activités"
+
+- hideKeyboard
+- tapOn: "Se connecter"
+
+# After login the dashboard renders inside the tab bar shell. The
+# "Résumé par période" h2 is a dashboard-only string (the words "Tableau
+# de bord" appear in both the page title and the tab label).
+- assertVisible: "Résumé par période"
+- assertVisible: "Tableau de bord"
+- assertVisible: "Activités"
+
+# Tap Activités. "Activités" also appears in the dashboard body as a stat
+# label, so target the second occurrence — the bottom tab.
+- tapOn:
+    text: "Activités"
+    index: 1
+- assertVisible: "Importer Strava ZIP"

@@ -1,0 +1,41 @@
+appId: fr.armandmgt.velo
+name: Logout returns to unauthenticated root
+tags:
+  - regression
+---
+# Sign in, then sign out via the top-bar overflow menu. After logout the
+# tab bar must be gone and the login form must be back. The pivot is the
+# `is_after_sign_out_path: true` path-property on /session/new: when a
+# tab-bar navigator proposes a visit there, the `SceneDelegate` rejects
+# the proposal and swaps the window root back to the unauthenticated
+# navigator instead of pushing a login VC inside a tab.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+
+- assertVisible: "Connexion"
+- hideKeyboard
+- tapOn: "Se connecter"
+- assertVisible: "Résumé par période"
+
+# Overflow menu is rendered natively as the trailing "More" UIBarButtonItem
+# (the `bridge--navbar-buttons` Stimulus controller forwards the items).
+# Its accessibility label is "More" but iOS doesn't surface an
+# `accessibilityIdentifier` on it, so target the nav-bar trailing area by
+# point.
+- tapOn:
+    point: "90%, 7%"
+- tapOn: "Se déconnecter"
+
+# Back at the unauthenticated root: login form is visible, tab bar is gone,
+# and the top-bar overflow menu is gone too (the navbar partial only renders
+# for authenticated users, so the `bridge--navbar-buttons` controller
+# never fires here).
+- assertVisible: "Connexion"
+- assertNotVisible: "Tableau de bord"
+- assertNotVisible: "Activités"
+- assertNotVisible: "Résumé par période"
+# The overflow ("More") UIBarButtonItem has no accessibility identifier on
+# iOS — match by accessibility label instead via `text:`.
+- assertNotVisible: "More"

@@ -15,7 +15,11 @@
     },
     {
       "patterns": ["/session/new$", "/users/new$"],
-      "properties": { "context": "default", "pull_to_refresh_enabled": false }
+      "properties": {
+        "context": "default",
+        "pull_to_refresh_enabled": false,
+        "is_after_sign_out_path": true
+      }
     }
   ]
 }
