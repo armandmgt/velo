@@ -154,15 +154,22 @@ export default class extends Controller {
   _resolveColor(color) {
     if (!color) return null
 
-    // Use canvas to normalize color (oklch -> rgb)
+    // MapLibre's style parser only understands legacy CSS color syntax
+    // (rgb/rgba/hex/named), not modern formats like oklch() that Tailwind v4
+    // emits. Reading ctx.fillStyle back isn't reliable: in current Chromium
+    // it just returns the oklch string unchanged. Instead, paint a 1×1 pixel
+    // and read the rendered RGB — that's always normalized.
     const canvas = document.createElement("canvas")
+    canvas.width = 1
+    canvas.height = 1
     const ctx = canvas.getContext("2d")
     if (!ctx) return null
 
     try {
-      ctx.fillStyle = "#000" // reset
       ctx.fillStyle = color
-      return ctx.fillStyle // normalized rgb/hex
+      ctx.fillRect(0, 0, 1, 1)
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+      return `rgba(${r}, ${g}, ${b}, ${a / 255})`
     } catch {
       return null
     }
