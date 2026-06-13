@@ -2,23 +2,43 @@
 description = "Start the Android emulator if not already running"
 run = """
 EMULATOR_PATH="$ANDROID_HOME/emulator/emulator"
-if ! adb get-state 1>/dev/null 2>&1; then
-  echo "No connected device found. Checking for available emulators..."
-  AVD=$($EMULATOR_PATH -list-avds | head -n 1)
-  if [ -n "$AVD" ]; then
-    echo "Starting emulator: $AVD"
-    python3 -c "import subprocess; subprocess.Popen(['$EMULATOR_PATH', '-avd', '$AVD', '-no-snapshot-load', '-no-boot-anim', '-no-audio'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)"
-    echo "Waiting for device to be ready..."
-    adb wait-for-device
-    echo "Waiting for boot to complete..."
-    while [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; do
-      sleep 1
-    done
-  else
-    echo "Error: No connected Android devices or emulators found, and no AVDs available."
-    exit 1
-  fi
+if adb get-state 1>/dev/null 2>&1; then
+  exit 0
 fi
+
+echo "No connected device found. Checking for available emulators..."
+AVDS=$("$EMULATOR_PATH" -list-avds)
+if [ -z "$AVDS" ]; then
+  echo "Error: No connected Android devices or emulators found, and no AVDs available."
+  exit 1
+fi
+
+echo "Available AVDs:"
+i=1
+while IFS= read -r avd; do
+  echo "  $i) $avd"
+  i=$((i + 1))
+done <<< "$AVDS"
+
+AVD_COUNT=$(printf '%s\n' "$AVDS" | wc -l | tr -d ' ')
+printf "Select an emulator [1-%s] (default 1): " "$AVD_COUNT"
+read -r SELECTION < /dev/tty
+SELECTION=${SELECTION:-1}
+
+AVD=$(printf '%s\n' "$AVDS" | sed -n "${SELECTION}p")
+if [ -z "$AVD" ]; then
+  echo "Invalid selection: $SELECTION"
+  exit 1
+fi
+
+echo "Starting emulator: $AVD"
+python3 -c "import subprocess; subprocess.Popen(['$EMULATOR_PATH', '-avd', '$AVD', '-no-snapshot-load', '-no-boot-anim', '-no-audio'], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)"
+echo "Waiting for device to be ready..."
+adb wait-for-device
+echo "Waiting for boot to complete..."
+while [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]; do
+  sleep 1
+done
 """
 
 [tasks.debug]
@@ -26,5 +46,5 @@ description = "Build and run the app in debug variant"
 depends = ["emulator"]
 run = """
 ./gradlew :app:installDebug
-adb shell am start -n fr.armandmgt.velo/.main.MainActivity
+adb shell am start -n fr.armandmgt.velo/.main.LoginActivity
 """
