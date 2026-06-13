@@ -58,12 +58,12 @@ final class NotificationCountComponent: BridgeComponent {
 /// A bell glyph with a small count badge in the top-right corner.
 private final class BellBadgeView: UIView {
     init(count: Int) {
-        super.init(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
+        super.init(frame: CGRect(x: 0, y: 0, width: 34, height: 34))
 
         let bell = UIImageView(image: UIImage(systemName: "bell"))
         bell.tintColor = .label
         bell.contentMode = .scaleAspectFit
-        bell.frame = bounds
+        bell.frame = CGRect(x: 2, y: 4, width: 26, height: 26)
         addSubview(bell)
 
         let badge = UILabel()
@@ -74,8 +74,8 @@ private final class BellBadgeView: UIView {
         badge.textAlignment = .center
         badge.sizeToFit()
 
-        let diameter = max(16, badge.frame.width + 8)
-        badge.frame = CGRect(x: bounds.width - diameter + 6, y: -4, width: diameter, height: 16)
+        let width = max(16, badge.frame.width + 8)
+        badge.frame = CGRect(x: bounds.width - width, y: 0, width: width, height: 16)
         badge.layer.cornerRadius = 8
         badge.layer.masksToBounds = true
         addSubview(badge)
