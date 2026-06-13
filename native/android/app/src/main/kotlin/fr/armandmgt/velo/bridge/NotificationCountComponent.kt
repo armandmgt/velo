@@ -47,7 +47,7 @@ class NotificationCountComponent(
         actionView.findViewById<TextView>(R.id.notification_badge).text =
             if (data.count > 99) "99+" else data.count.toString()
         actionView.setOnClickListener {
-            (delegate.destination.fragment.activity as? MainActivity)?.selectTab(DASHBOARD_TAB_INDEX)
+            (delegate.destination.fragment.activity as? MainActivity)?.showDashboard()
         }
 
         toolbar.menu.add(Menu.NONE, ITEM_ID, 0, "Notifications").apply {
@@ -62,7 +62,6 @@ class NotificationCountComponent(
 
     companion object {
         private const val ITEM_ID = 1002
-        private const val DASHBOARD_TAB_INDEX = 0
     }
 
     @Serializable

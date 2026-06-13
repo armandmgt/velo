@@ -49,6 +49,7 @@ final class NotificationCountComponent: BridgeComponent {
         if let nav = tabBar.selectedViewController as? UINavigationController {
             nav.popToRootViewController(animated: false)
         }
+        tabBar.activeNavigator.session.webView.scrollView.setContentOffset(.zero, animated: true)
     }
 }
 

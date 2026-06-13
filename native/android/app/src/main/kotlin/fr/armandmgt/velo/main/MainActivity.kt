@@ -30,7 +30,13 @@ class MainActivity : HotwireActivity() {
         bottomNavigationController.load(mainTabs, selectedTabIndex = 0)
     }
 
-    fun selectTab(index: Int) {
-        bottomNavigationController.selectTab(index)
+    fun showDashboard() {
+        bottomNavigationController.selectTab(DASHBOARD_TAB_INDEX)
+        delegate.findNavigatorHost(R.id.dashboard_navigator_host)
+            ?.navigator?.session?.webView?.scrollTo(0, 0)
+    }
+
+    private companion object {
+        const val DASHBOARD_TAB_INDEX = 0
     }
 }
