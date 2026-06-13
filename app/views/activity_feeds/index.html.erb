@@ -1,7 +1,7 @@
 <% content_for :title, "Tableau de bord" %>
 
 <main class="prose dark:prose-invert md:py-16 p-4 max-w-5xl mx-auto">
-  <h1 class="mt-0 mb-6">Tableau de bord</h1>
+  <h1 class="mt-0 mb-6 hotwire-native:hidden">Tableau de bord</h1>
 
   <%= render "activities/name_prompts_banner",
              activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>

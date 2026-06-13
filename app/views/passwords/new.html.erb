@@ -1,5 +1,7 @@
+<% content_for :title, "Mot de passe oublié" %>
+
 <div class="mx-auto md:w-2/3 w-full">
-  <h1 class="font-bold text-4xl">Mot de passe oublié ?</h1>
+  <h1 class="font-bold text-4xl hotwire-native:hidden">Mot de passe oublié ?</h1>
 
   <%= form_with url: passwords_path, class: "contents" do |form| %>
     <div class="my-5">

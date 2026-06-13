@@ -1,3 +1,5 @@
+<% content_for :title, "Connexion" %>
+
 <main class="no-overscroll flex min-h-dvh-safe flex-col p-6">
   <section class="mx-auto my-auto card bg-base-100 shadow-sm w-full max-w-sm py-6">
     <figure class="px-10 pt-10">
@@ -5,7 +7,7 @@
     </figure>
 
     <div class="card-body items-center text-center">
-      <h2 class="card-title">Connexion</h2>
+      <h2 class="card-title hotwire-native:hidden">Connexion</h2>
 
       <%= form_with url: session_path, scope: :user do |form| %>
         <div class="mt-2 flex flex-col gap-4 text-left">

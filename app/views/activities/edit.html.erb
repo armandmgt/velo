@@ -1,8 +1,8 @@
-<main class="prose dark:prose-invert md:py-16 p-4">
-  <% content_for :title, "Modifier activité" %>
+<% content_for :title, @activity.name.present? ? "Modifier #{@activity.name}" : "Modifier l'activité" %>
 
-  <header class="flex justify-between items-center mb-4">
-    <h1 class="mt-0 mb-0">Modifier activité</h1>
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="flex justify-between items-center mb-4 hotwire-native:hidden">
+    <h1 class="mt-0 mb-0">Modifier l'activité</h1>
   </header>
 
   <section id="<%= dom_id(@activity) %>" class="mb-4">
