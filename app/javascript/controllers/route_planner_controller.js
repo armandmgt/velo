@@ -186,7 +186,7 @@ export default class extends Controller {
 
       const data = await response.json()
       this._setRouteGeojson({ type: "FeatureCollection", features: [ data.geojson ] })
-      this._fitToFeature(data.geojson)
+      this._setFitBounds(data.geojson)
       this._updateStats(data.distance_meters, data.elevation_gain_meters)
     } catch (err) {
       console.error(err)
@@ -199,7 +199,7 @@ export default class extends Controller {
     if (source) source.setData(geojson)
   }
 
-  _fitToFeature(feature) {
+  _setFitBounds(feature) {
     const coords = feature?.geometry?.coordinates
     if (!coords?.length) return
     const bounds = coords.reduce(
@@ -207,7 +207,6 @@ export default class extends Controller {
       new maplibregl.LngLatBounds(coords[0], coords[0])
     )
     this._fitControl.setBounds(bounds)
-    this.map.fitBounds(bounds, { padding: 60, maxZoom: 15 })
   }
 
   _updateStats(distanceMeters, elevationGainMeters) {
