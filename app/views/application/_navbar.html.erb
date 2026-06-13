@@ -51,6 +51,12 @@
           <% end %>
         </li>
         <li>
+          <%= link_to planned_routes_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+            <%= icon "route", class: "size-[1.2em]" %>
+            <%= t("planned_route.nav.label") %>
+          <% end %>
+        </li>
+        <li>
           <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item" } do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations

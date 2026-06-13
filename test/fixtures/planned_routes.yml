@@ -1,0 +1,8 @@
+one:
+  user: one
+  name: Boucle Vincennes
+  sport: bike
+  waypoints: '[[2.3522,48.8566],[2.4322,48.8366]]'
+  distance_meters: 12500
+  elevation_gain_meters: 75
+  routing_profile: safety

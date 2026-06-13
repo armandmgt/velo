@@ -20,18 +20,27 @@ module ApplicationHelper
   end
 
   def sport_grouped_options(selected = nil)
+    grouped_sport_options(Activity.sports.each_key, selected)
+  end
+
+  def routable_sport_grouped_options(selected = nil)
+    grouped_sport_options(PlannedRoute.sports.each_key, selected)
+  end
+
+  def grouped_sport_options(sport_keys, selected)
     group_labels = {
       cycling: I18n.t("activity.sport_group.cycling"),
       running: I18n.t("activity.sport_group.running"),
       other:   I18n.t("activity.sport_group.other")
     }
     grouped = group_labels.transform_values { [] }
-    Activity.sports.each_key do |key|
+    sport_keys.each do |key|
       category = Activity::SPORT_CATEGORY[key.to_sym]
       grouped[category] << [ I18n.t("activity.sport.#{key}"), key ]
     end
     grouped_options_for_select(
-      grouped.map { |cat, options| [ group_labels[cat], options ] },
+      grouped.reject { |_cat, options| options.empty? }
+             .map { |cat, options| [ group_labels[cat], options ] },
       selected
     )
   end

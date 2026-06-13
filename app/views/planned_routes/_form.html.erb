@@ -1,0 +1,93 @@
+<%# locals: (planned_route:) %>
+
+<%= form_with model: planned_route,
+              data: {
+                controller: "route-planner",
+                "route-planner-preview-url-value": preview_planned_routes_path
+              },
+              class: "w-full" do |form| %>
+  <div class="grid gap-4 lg:grid-cols-[1fr_2fr]">
+    <div class="flex flex-col gap-4">
+      <div>
+        <%= form.label :name, class: "block mb-2 text-sm font-medium" %>
+        <%= form.text_field :name,
+              class: class_names("w-full input", { "input-error": planned_route.errors.include?(:name) }),
+              required: true %>
+        <% if planned_route.errors.include?(:name) %>
+          <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+            <%= planned_route.errors.full_messages_for(:name).to_sentence %>
+          </p>
+        <% end %>
+      </div>
+
+      <div>
+        <%= form.label :sport, class: "block mb-2 text-sm font-medium" %>
+        <%= form.select :sport,
+              routable_sport_grouped_options(planned_route.sport),
+              { include_blank: false },
+              {
+                class: class_names("w-full select", { "select-error": planned_route.errors.include?(:sport) }),
+                data: { "route-planner-target": "sportSelect" }
+              } %>
+      </div>
+
+      <div class="grid grid-cols-2 gap-px overflow-hidden rounded-box bg-base-300">
+        <div class="flex flex-col gap-1 bg-base-100 p-4">
+          <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
+            <%= icon "ruler", class: "size-3.5" %>
+            <%= t("activity.metric.distance") %>
+          </span>
+          <span class="text-2xl font-bold text-primary" data-route-planner-target="distance">—</span>
+        </div>
+        <div class="flex flex-col gap-1 bg-base-100 p-4">
+          <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
+            <%= icon "mountain", class: "size-3.5" %>
+            <%= t("activity.metric.elevation_gain") %>
+          </span>
+          <span class="text-2xl font-bold text-primary" data-route-planner-target="elevationGain">—</span>
+        </div>
+      </div>
+
+      <p class="text-sm opacity-70" data-route-planner-target="hint">
+        <%= t("planned_route.form.hint") %>
+      </p>
+
+      <p
+        class="alert alert-error hidden"
+        data-route-planner-target="error"
+        data-default-message="<%= t('planned_route.errors.routing_failed') %>"
+        data-no-route-message="<%= t('planned_route.errors.no_route') %>"
+        data-routing-failed-message="<%= t('planned_route.errors.routing_failed') %>"
+        data-invalid-input-message="<%= t('planned_route.errors.need_two_waypoints') %>"
+      ></p>
+
+      <%= form.hidden_field :waypoints_json,
+            value: "[]",
+            data: { "route-planner-target": "waypointsField" } %>
+
+      <div class="flex flex-wrap gap-2">
+        <%= form.submit t("planned_route.form.save"),
+              class: "btn btn-primary",
+              disabled: true,
+              data: { "route-planner-target": "submit" } %>
+        <button type="button"
+                class="btn btn-ghost hidden"
+                aria-label="<%= t("planned_route.form.undo") %>"
+                data-route-planner-target="undo">
+          <%= icon "undo-2", class: "size-[1.2em]" %>
+          <span class="hidden sm:inline"><%= t("planned_route.form.undo") %></span>
+        </button>
+        <button type="button"
+                class="btn btn-ghost hidden"
+                data-route-planner-target="clear">
+          <%= t("planned_route.form.clear") %>
+        </button>
+      </div>
+    </div>
+
+    <div
+      data-route-planner-map
+      class="map h-[500px] lg:h-[640px] overflow-hidden rounded-box border border-base-300"
+    ></div>
+  </div>
+<% end %>

@@ -269,6 +269,44 @@ ALTER SEQUENCE public.igpsport_connections_id_seq OWNED BY public.igpsport_conne
 
 
 --
+-- Name: planned_routes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.planned_routes (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    name character varying NOT NULL,
+    sport character varying NOT NULL,
+    waypoints jsonb DEFAULT '[]'::jsonb NOT NULL,
+    path public.geography(LineString,4326),
+    distance_meters integer,
+    elevation_gain_meters integer,
+    routing_profile character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: planned_routes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.planned_routes_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: planned_routes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.planned_routes_id_seq OWNED BY public.planned_routes.id;
+
+
+--
 -- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -387,6 +425,13 @@ ALTER TABLE ONLY public.igpsport_connections ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: planned_routes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.planned_routes ALTER COLUMN id SET DEFAULT nextval('public.planned_routes_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -462,6 +507,14 @@ ALTER TABLE ONLY public.data_migrations
 
 ALTER TABLE ONLY public.igpsport_connections
     ADD CONSTRAINT igpsport_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: planned_routes planned_routes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.planned_routes
+    ADD CONSTRAINT planned_routes_pkey PRIMARY KEY (id);
 
 
 --
@@ -545,6 +598,13 @@ CREATE UNIQUE INDEX index_igpsport_connections_on_user_id ON public.igpsport_con
 
 
 --
+-- Name: index_planned_routes_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_planned_routes_on_user_id ON public.planned_routes USING btree (user_id);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -607,12 +667,21 @@ ALTER TABLE ONLY public.active_storage_attachments
 
 
 --
+-- Name: planned_routes fk_rails_dda957683d; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.planned_routes
+    ADD CONSTRAINT fk_rails_dda957683d FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260613120000'),
 ('20260602120000'),
 ('20260524203939'),
 ('20260522120000'),

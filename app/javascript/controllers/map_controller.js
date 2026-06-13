@@ -1,37 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
-
-class FitToRouteControl {
-  constructor(bounds) {
-    this._bounds = bounds
-  }
-
-  onAdd(map) {
-    this._map = map
-
-    const span = document.createElement("span")
-    span.className = "maplibregl-ctrl-icon"
-
-    const button = document.createElement("button")
-    button.className = "maplibregl-ctrl-geolocate"
-    button.ariaLabel = "Back to center"
-    button.addEventListener("click", () => {
-      this._map.fitBounds(this._bounds, { padding: 40 })
-    })
-    button.appendChild(span)
-
-    this._container = document.createElement("div")
-    this._container.className = "maplibregl-ctrl maplibregl-ctrl-group"
-    this._container.appendChild(button)
-
-    return this._container
-  }
-
-  onRemove() {
-    this._container.remove()
-    this._map = undefined
-  }
-}
+import { primaryAccentColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
 
 export default class extends Controller {
   static values = {
@@ -41,13 +10,8 @@ export default class extends Controller {
   }
 
   connect() {
-    // Read primary color from CSS variable (supports oklch -> convert to rgb)
-    const rawColor = getComputedStyle(document.documentElement)
-      .getPropertyValue("--color-primary")
-      .trim()
+    this._accentColor = primaryAccentColor()
 
-    const cssColor = this._resolveColor(rawColor) || "#ff0000"
-    this._accentColor = cssColor
     // Compute initial bounds from route to avoid post-load zoom animation
     let initialBounds = null
     let initialGeojson = null
@@ -74,7 +38,7 @@ export default class extends Controller {
       zoom: initialBounds ? undefined : 13,
       bounds: initialBounds || undefined,
       fitBoundsOptions: initialBounds ? { padding: 40 } : undefined,
-      style: "https://api.maptiler.com/maps/streets/style.json?key=" + (window.MAPTILER_API_KEY || ""),
+      style: styleUrl(),
     })
 
     this.map.addControl(new maplibregl.NavigationControl({
@@ -83,7 +47,7 @@ export default class extends Controller {
       showZoom: true,
       showCompass: true,
     }))
-    this.map.addControl(new FitToRouteControl(initialBounds))
+    this.map.addControl(new FitToBoundsControl(initialBounds))
 
     this.map.on("load", () => {
       if (!this.hasRouteValue) return
@@ -103,7 +67,7 @@ export default class extends Controller {
         type: "line",
         source: "route",
         paint: {
-          "line-color": cssColor,
+          "line-color": this._accentColor,
           "line-width": 3,
         },
       })
@@ -149,29 +113,5 @@ export default class extends Controller {
 
   hidePoint() {
     this._marker?.remove()
-  }
-
-  _resolveColor(color) {
-    if (!color) return null
-
-    // MapLibre's style parser only understands legacy CSS color syntax
-    // (rgb/rgba/hex/named), not modern formats like oklch() that Tailwind v4
-    // emits. Reading ctx.fillStyle back isn't reliable: in current Chromium
-    // it just returns the oklch string unchanged. Instead, paint a 1×1 pixel
-    // and read the rendered RGB — that's always normalized.
-    const canvas = document.createElement("canvas")
-    canvas.width = 1
-    canvas.height = 1
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return null
-
-    try {
-      ctx.fillStyle = color
-      ctx.fillRect(0, 0, 1, 1)
-      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
-      return `rgba(${r}, ${g}, ${b}, ${a / 255})`
-    } catch {
-      return null
-    }
   }
 }

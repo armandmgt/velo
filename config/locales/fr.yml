@@ -10,6 +10,10 @@ fr:
         description: Description
         sport: Sport
         fit_file: Fichier (FIT ou GPX)
+      planned_route:
+        name: Nom
+        sport: Sport
+        waypoints: Waypoints
     errors:
       messages:
         record_invalid: 'La validation a échoué : %{errors}'
@@ -58,6 +62,34 @@ fr:
       heart_rate: "Fréquence cardiaque"
     heart_rate_zone:
       title: "Zones de fréquence cardiaque"
+  planned_route:
+    nav:
+      label: "Parcours"
+    index:
+      title: "Parcours planifiés"
+      new: "Nouveau parcours"
+      empty: "Vous n'avez pas encore planifié de parcours."
+    new:
+      title: "Nouveau parcours"
+      back: "Retour aux parcours"
+    show:
+      waypoints: "Étapes"
+      delete: "Supprimer"
+      confirm_delete: "Voulez-vous vraiment supprimer ce parcours ?"
+      back: "Retour aux parcours"
+    form:
+      hint: "Cliquez sur la carte pour ajouter des étapes. Clic droit (ou appui long) sur un repère pour le supprimer."
+      save: "Enregistrer"
+      undo: "Annuler le dernier"
+      clear: "Tout effacer"
+    flash:
+      created: "Parcours créé avec succès."
+      deleted: "Parcours supprimé."
+    errors:
+      invalid: "Le parcours n'a pas pu être enregistré :"
+      no_route: "Aucun itinéraire possible entre ces points pour ce sport."
+      routing_failed: "Impossible de calculer l'itinéraire. Réessayez dans un instant."
+      need_two_waypoints: "Ajoutez au moins deux étapes pour calculer un itinéraire."
       zone: "Zone"
       range: "Plage (bpm)"
       time: "Temps"
