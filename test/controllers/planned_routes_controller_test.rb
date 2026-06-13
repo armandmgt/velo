@@ -49,7 +49,7 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to planned_route_url(PlannedRoute.last)
     persisted = PlannedRoute.last
-    assert_equal "safety", persisted.routing_profile
+    assert_equal "fastbike", persisted.routing_profile
     assert_equal 1234, persisted.distance_meters
     assert_equal 42, persisted.elevation_gain_meters
     assert_not_nil persisted.path

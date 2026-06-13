@@ -29,7 +29,7 @@ class RoutePlannerTest < ActiveSupport::TestCase
     assert_equal "mtb", result.profile
   end
 
-  test "road bike maps to safety profile" do
+  test "road bike maps to fastbike profile" do
     fake_client = Object.new
     captured_profile = nil
     fake_client.define_singleton_method(:route) do |waypoints:, profile:|
@@ -38,7 +38,7 @@ class RoutePlannerTest < ActiveSupport::TestCase
     end
 
     RoutePlanner.new(sport: "bike", waypoints: [ [ 0.0, 0.0 ], [ 1.0, 1.0 ] ], client: fake_client).call
-    assert_equal "safety", captured_profile
+    assert_equal "fastbike", captured_profile
   end
 
   test "run maps to hiking-beta profile" do

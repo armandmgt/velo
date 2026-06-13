@@ -7,7 +7,7 @@ class PlannedRoute < ApplicationRecord
   ].freeze
 
   BROUTER_PROFILE = {
-    bike:               "safety",
+    bike:               "fastbike",
     gravel_ride:        "trekking",
     mountain_bike_ride: "mtb",
     e_bike_ride:        "trekking",
