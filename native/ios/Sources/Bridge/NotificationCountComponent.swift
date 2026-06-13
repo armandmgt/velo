@@ -2,8 +2,8 @@ import HotwireNative
 import UIKit
 
 /// Mirrors the web "sorties à nommer" bell: shows a bell nav-bar button with a
-/// numeric badge for the count, hidden when zero. Display-only (the web
-/// controller expects no reply).
+/// numeric badge for the count, hidden when zero. Tapping switches to the
+/// dashboard tab (popping its stack) so the prompts are visible.
 final class NotificationCountComponent: BridgeComponent {
     override class var name: String { "notification-count" }
 
@@ -29,12 +29,26 @@ final class NotificationCountComponent: BridgeComponent {
             return
         }
 
-        let item = UIBarButtonItem(customView: BellBadgeView(count: data.count))
+        let bell = BellBadgeView(count: data.count)
+        bell.isUserInteractionEnabled = true
+        bell.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+
+        let item = UIBarButtonItem(customView: bell)
         viewController.navigationItem.setBridgeRightBarButton(item, tag: Self.barButtonTag)
     }
 
     private func removeButton() {
         viewController?.navigationItem.setBridgeRightBarButton(nil, tag: Self.barButtonTag)
+    }
+
+    @objc private func handleTap() {
+        guard let window = viewController?.view.window,
+              let tabBar = window.rootViewController as? HotwireTabBarController else { return }
+
+        tabBar.selectedIndex = 0
+        if let nav = tabBar.selectedViewController as? UINavigationController {
+            nav.popToRootViewController(animated: false)
+        }
     }
 }
 

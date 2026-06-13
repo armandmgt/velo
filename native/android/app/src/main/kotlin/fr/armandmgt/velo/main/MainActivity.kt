@@ -29,4 +29,8 @@ class MainActivity : HotwireActivity() {
         bottomNavigationController = HotwireBottomNavigationController(this, bottomNavigationView)
         bottomNavigationController.load(mainTabs, selectedTabIndex = 0)
     }
+
+    fun selectTab(index: Int) {
+        bottomNavigationController.selectTab(index)
+    }
 }

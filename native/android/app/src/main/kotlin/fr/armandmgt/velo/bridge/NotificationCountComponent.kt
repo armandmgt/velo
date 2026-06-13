@@ -11,12 +11,13 @@ import dev.hotwire.core.bridge.BridgeDelegate
 import dev.hotwire.core.bridge.Message
 import dev.hotwire.navigation.destinations.HotwireDestination
 import fr.armandmgt.velo.R
+import fr.armandmgt.velo.main.MainActivity
 import kotlinx.serialization.Serializable
 
 /**
  * Mirrors the web "sorties à nommer" bell: a toolbar bell with a numeric badge
- * for the count, hidden when zero. Display-only (the web controller expects no
- * reply).
+ * for the count, hidden when zero. Tapping switches to the dashboard tab so the
+ * prompts are visible.
  */
 class NotificationCountComponent(
     name: String,
@@ -45,6 +46,9 @@ class NotificationCountComponent(
             .inflate(R.layout.notification_bell, toolbar, false)
         actionView.findViewById<TextView>(R.id.notification_badge).text =
             if (data.count > 99) "99+" else data.count.toString()
+        actionView.setOnClickListener {
+            (delegate.destination.fragment.activity as? MainActivity)?.selectTab(DASHBOARD_TAB_INDEX)
+        }
 
         toolbar.menu.add(Menu.NONE, ITEM_ID, 0, "Notifications").apply {
             setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
@@ -58,6 +62,7 @@ class NotificationCountComponent(
 
     companion object {
         private const val ITEM_ID = 1002
+        private const val DASHBOARD_TAB_INDEX = 0
     }
 
     @Serializable
