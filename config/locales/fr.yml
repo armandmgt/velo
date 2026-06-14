@@ -79,6 +79,7 @@ fr:
       waypoints: "Étapes"
       elevation_profile: "Profil altimétrique"
       edit: "Modifier"
+      export_gpx: "Exporter en GPX"
       delete: "Supprimer"
       confirm_delete: "Voulez-vous vraiment supprimer ce parcours ?"
       back: "Retour aux parcours"

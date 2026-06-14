@@ -65,6 +65,32 @@ class PlannedRoute < ApplicationRecord
     }
   end
 
+  # Serializes the route as a GPX 1.1 document with a single <trk>. <ele> is
+  # emitted only for points where BRouter provided a z-value. No <time> — a
+  # planned route is not a recording.
+  def to_gpx
+    points = path&.points || []
+    elevations = elevation_samples || []
+
+    Nokogiri::XML::Builder.new(encoding: "UTF-8") do |xml|
+      xml.gpx(version: "1.1", creator: "Velo",
+              xmlns: "http://www.topografix.com/GPX/1/1") do
+        xml.trk do
+          xml.name name
+          xml.type sport
+          xml.trkseg do
+            points.each_with_index do |point, i|
+              xml.trkpt(lat: point.y, lon: point.x) do
+                ele = elevations[i]&.last
+                xml.ele(ele) if ele
+              end
+            end
+          end
+        end
+      end
+    end.to_xml
+  end
+
   private
 
   def waypoints_shape

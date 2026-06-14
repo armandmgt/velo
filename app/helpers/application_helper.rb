@@ -1,4 +1,13 @@
 module ApplicationHelper
+  # Data hash for a navbar item that should also surface as a native bridge
+  # target. When the current page provides its own `:bridge_navbar_buttons`
+  # slot, the global items step aside (web dropdown still shows them; only the
+  # bridge attribute is dropped so native sees just the page's items).
+  def bridge_nav_item_data(extra = {})
+    return extra if content_for?(:bridge_navbar_buttons)
+    { "bridge--navbar-buttons-target": "item" }.merge(extra)
+  end
+
   # DaisyUI alert modifier for a flash type. `notice` is treated as success,
   # `alert` as error; other keys fall back to their own modifier or info.
   def flash_alert_class(type)

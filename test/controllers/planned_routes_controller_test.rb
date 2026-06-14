@@ -22,9 +22,35 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller~=route-planner]"
   end
 
+  test "new yields a primary-styled bridge Save button into the navbar slot" do
+    get new_planned_route_url
+    assert_response :success
+
+    # The hidden submit is the only bridge target on the page; default navbar
+    # items have their bridge-target attribute stripped via the helper.
+    assert_select %(button[type=submit][data-bridge--navbar-buttons-target=item][data-bridge-style=primary][form])
+    assert_select %(a[href="#{user_path}"][data-bridge--navbar-buttons-target=item]), false,
+                  "default Profil link should not be a bridge target when the form provides its own slot"
+  end
+
   test "show renders" do
     get planned_route_url(@planned_route)
     assert_response :success
+  end
+
+  test "show.gpx streams a GPX document built from path points" do
+    @planned_route.update_columns(
+      path: "SRID=4326;LINESTRING(2.35 48.85, 2.36 48.86)",
+      elevation_samples: [ [ 0, 100 ], [ 111, 105 ] ]
+    )
+
+    get planned_route_url(@planned_route, format: :gpx)
+
+    assert_response :success
+    assert_equal "application/gpx+xml", @response.media_type
+    assert_match(/filename=".+\.gpx"/, @response.headers["Content-Disposition"])
+    assert_match(/<gpx /, @response.body)
+    assert_match(/<trkpt /, @response.body)
   end
 
   test "edit renders the form pre-seeded with waypoints" do

@@ -1,9 +1,11 @@
 import HotwireNative
 import UIKit
 
-/// Renders the web navbar's menu items (hidden in native by native.css) as a
-/// native overflow (ellipsis) menu in the nav bar. Tapping an item replies the
-/// item's index so the web controller clicks the matching link/form.
+/// Renders the web navbar's menu items (hidden in native by native.css) as
+/// either an overflow (ellipsis) menu, or — when there's a single item with
+/// `style == "primary"` — as a filled bar button that reads as a primary
+/// call-to-action. Tapping replies the item's index so the web controller
+/// clicks the matching link/form.
 final class NavbarButtonsComponent: BridgeComponent {
     override class var name: String { "navbar-buttons" }
 
@@ -24,7 +26,26 @@ final class NavbarButtonsComponent: BridgeComponent {
     private func handleConnect(message: Message) {
         guard let data: MessageData = message.data(), let viewController else { return }
 
-        let actions = data.items.enumerated().map { index, item in
+        let button: UIBarButtonItem
+        if data.items.count == 1, let only = data.items.first, only.style == "primary" {
+            button = makePrimaryButton(only)
+        } else {
+            button = makeMenuButton(data.items)
+        }
+        viewController.navigationItem.setBridgeRightBarButton(button, tag: Self.barButtonTag)
+    }
+
+    private func makePrimaryButton(_ item: Item) -> UIBarButtonItem {
+        let action = UIAction(title: item.title) { [weak self] _ in
+            self?.reply(to: Event.connect.rawValue, with: SelectionData(index: 0))
+        }
+        let button = UIBarButtonItem(primaryAction: action)
+        button.style = .done
+        return button
+    }
+
+    private func makeMenuButton(_ items: [Item]) -> UIBarButtonItem {
+        let actions = items.enumerated().map { index, item in
             UIAction(
                 title: item.title,
                 image: item.iosImage.flatMap { UIImage(systemName: $0) }
@@ -32,12 +53,10 @@ final class NavbarButtonsComponent: BridgeComponent {
                 self?.reply(to: Event.connect.rawValue, with: SelectionData(index: index))
             }
         }
-
-        let button = UIBarButtonItem(
+        return UIBarButtonItem(
             image: UIImage(systemName: "ellipsis.circle"),
             menu: UIMenu(children: actions)
         )
-        viewController.navigationItem.setBridgeRightBarButton(button, tag: Self.barButtonTag)
     }
 
     private func removeButton() {
@@ -65,6 +84,7 @@ private extension NavbarButtonsComponent {
         let title: String
         let iosImage: String?
         let androidImage: String?
+        let style: String?
     }
 
     struct SelectionData: Encodable {

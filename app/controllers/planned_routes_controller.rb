@@ -6,6 +6,14 @@ class PlannedRoutesController < ApplicationController
   end
 
   def show
+    respond_to do |format|
+      format.html
+      format.gpx do
+        send_data @planned_route.to_gpx,
+                  filename: "#{@planned_route.name.parameterize.presence || 'route'}.gpx",
+                  type: "application/gpx+xml"
+      end
+    end
   end
 
   def new

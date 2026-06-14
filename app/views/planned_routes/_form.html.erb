@@ -1,6 +1,23 @@
 <%# locals: (planned_route:, title:, back_path:, back_label:) %>
 
+<% form_id = dom_id(planned_route, :form) %>
+
+<% content_for :bridge_navbar_buttons do %>
+  <%= button_tag t("planned_route.form.save"),
+        type: :submit,
+        form: form_id,
+        class: "hidden",
+        disabled: planned_route.waypoints.length < 2,
+        data: {
+          "bridge--navbar-buttons-target": "item",
+          "bridge-style": "primary",
+          "bridge-ios-image": "checkmark",
+          "bridge-android-image": "check"
+        } %>
+<% end %>
+
 <%= form_with model: planned_route,
+              id: form_id,
               data: {
                 controller: "route-planner",
                 "route-planner-preview-url-value": preview_planned_routes_path,
@@ -125,7 +142,7 @@
           <%= icon "trash-2", class: "size-[1.2em]" %>
         <% end %>
         <%= form.submit t("planned_route.form.save"),
-              class: "btn btn-primary btn-sm",
+              class: "btn btn-primary btn-sm hotwire-native:hidden",
               disabled: planned_route.waypoints.length < 2,
               data: { "route-planner-target": "submit" } %>
       </div>

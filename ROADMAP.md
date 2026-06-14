@@ -36,12 +36,14 @@ key, best-in-class cycling profiles. Easy to self-host later.
 - Modal presentation on iOS/Android: add `/planned_routes/new` to
   `MODAL_PATTERNS` in `ConfigurationsController`.
 
-## PR 4 — Activity integration
+## PR 4 — Parcours in the native tab bars
 
-- "Start from this route" button on the planned-route show page.
-- When viewing a past activity, optionally overlay the linked planned route
-  (planned vs. actual).
-- `Activity belongs_to :planned_route, optional: true` (nullable FK).
+- Add a Parcours tab to the iOS `HotwireTabBarController` (rooted at
+  `/planned_routes`) alongside the existing tabs, with an SF Symbol icon.
+- Add the matching destination to the Android nav-graph + bottom navigation,
+  using the same Material icon family as the other tabs.
+- Drop the "Parcours" link from the user dropdown in `_navbar.html.erb` on
+  native — the tab replaces it. Web users keep the dropdown entry.
 
 ## PR 5 — Sharing & library
 

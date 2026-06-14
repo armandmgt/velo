@@ -59,6 +59,13 @@
     <%= link_to t("planned_route.show.edit"),
                 edit_planned_route_path(@planned_route),
                 class: "btn btn-primary" %>
+    <% if @planned_route.path.present? %>
+      <%= link_to planned_route_path(@planned_route, format: :gpx),
+                  class: "btn btn-secondary" do %>
+        <%= icon "download", class: "size-[1.2em]" %>
+        <%= t("planned_route.show.export_gpx") %>
+      <% end %>
+    <% end %>
     <%= button_to t("planned_route.show.delete"),
                   @planned_route,
                   method: :delete,

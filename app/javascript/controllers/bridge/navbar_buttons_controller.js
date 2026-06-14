@@ -14,6 +14,7 @@ export default class extends BridgeComponent {
         title: element.title,
         iosImage: element.bridgeAttribute("ios-image"),
         androidImage: element.bridgeAttribute("android-image"),
+        style: element.bridgeAttribute("style") ?? "default",
       }
     })
 

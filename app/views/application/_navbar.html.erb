@@ -21,8 +21,10 @@
       <% end %>
     <% end %>
 
-    <%= render "application/name_prompts_nav",
-               activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>
+    <% unless content_for?(:bridge_navbar_buttons) %>
+      <%= render "application/name_prompts_nav",
+                 activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>
+    <% end %>
 
     <div class="dropdown dropdown-end">
       <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
@@ -39,7 +41,7 @@
           <span class="truncate font-medium text-base-content"><%= Current.user.email_address %></span>
         </li>
         <li>
-          <%= link_to user_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to user_path, data: bridge_nav_item_data do %>
             <%= icon "user", class: "size-[1.2em]" %>
             Profil
           <% end %>
@@ -51,20 +53,20 @@
           <% end %>
         </li>
         <li>
-          <%= link_to planned_routes_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to planned_routes_path, data: bridge_nav_item_data do %>
             <%= icon "route", class: "size-[1.2em]" %>
             <%= t("planned_route.nav.label") %>
           <% end %>
         </li>
         <li>
-          <%= link_to edit_igpsport_connection_path, data: { "bridge--navbar-buttons-target": "item" } do %>
+          <%= link_to edit_igpsport_connection_path, data: bridge_nav_item_data do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations
           <% end %>
         </li>
         <li><hr class="my-1 border-base-content/10" /></li>
         <li>
-          <%= button_to session_path, method: :delete, class: "flex w-full items-center gap-2 text-error", form_class: "w-full", data: { "bridge--navbar-buttons-target": "item", "bridge-ios-image": "power", "bridge-android-image": "logout" } do %>
+          <%= button_to session_path, method: :delete, class: "flex w-full items-center gap-2 text-error", form_class: "w-full", data: bridge_nav_item_data("bridge-ios-image": "power", "bridge-android-image": "logout") do %>
             <%= icon "log-out", class: "size-[1.2em] shrink-0" %>
             Se déconnecter
           <% end %>
@@ -72,4 +74,6 @@
       </ul>
     </div>
   </div>
+
+  <%= yield :bridge_navbar_buttons if content_for?(:bridge_navbar_buttons) %>
 </div>
