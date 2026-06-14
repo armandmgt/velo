@@ -87,23 +87,25 @@
               disabled: planned_route.waypoints.length < 2,
               data: { "route-planner-target": "submit" } %>
         <button type="button"
-                class="btn btn-ghost hidden"
+                class="btn btn-ghost"
                 aria-label="<%= t("planned_route.form.undo") %>"
+                disabled
                 data-route-planner-target="undo">
           <%= icon "undo-2", class: "size-[1.2em]" %>
-          <span class="hidden sm:inline"><%= t("planned_route.form.undo") %></span>
         </button>
         <button type="button"
-                class="btn btn-ghost hidden"
+                class="btn btn-ghost"
                 aria-label="<%= t("planned_route.form.redo") %>"
+                disabled
                 data-route-planner-target="redo">
           <%= icon "redo-2", class: "size-[1.2em]" %>
-          <span class="hidden sm:inline"><%= t("planned_route.form.redo") %></span>
         </button>
         <button type="button"
-                class="btn btn-ghost <%= "hidden" if planned_route.waypoints.empty? %>"
+                class="btn btn-ghost"
+                aria-label="<%= t("planned_route.form.clear") %>"
+                <%= "disabled" if planned_route.waypoints.empty? %>
                 data-route-planner-target="clear">
-          <%= t("planned_route.form.clear") %>
+          <%= icon "trash-2", class: "size-[1.2em]" %>
         </button>
       </div>
     </div>

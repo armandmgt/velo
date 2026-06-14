@@ -449,13 +449,13 @@ export default class extends Controller {
       this.hintTarget.classList.toggle("hidden", this._waypoints.length > 0)
     }
     if (this.hasClearTarget) {
-      this.clearTarget.classList.toggle("hidden", this._waypoints.length === 0)
+      this.clearTarget.disabled = this._waypoints.length === 0
     }
     if (this.hasUndoTarget) {
-      this.undoTarget.classList.toggle("hidden", this._history.length === 0)
+      this.undoTarget.disabled = this._history.length === 0
     }
     if (this.hasRedoTarget) {
-      this.redoTarget.classList.toggle("hidden", this._redoStack.length === 0)
+      this.redoTarget.disabled = this._redoStack.length === 0
     }
   }
 
