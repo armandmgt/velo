@@ -100,13 +100,13 @@
                 data-route-planner-target="redo">
           <%= icon "redo-2", class: "size-[1.2em]" %>
         </button>
-        <button type="button"
-                class="btn btn-ghost"
-                aria-label="<%= t("planned_route.form.clear") %>"
-                <%= "disabled" if planned_route.waypoints.empty? %>
-                data-route-planner-target="clear">
+        <%= tag.button(type: "button",
+                       class: "btn btn-ghost",
+                       aria: { label: t("planned_route.form.clear") },
+                       disabled: planned_route.waypoints.empty?,
+                       data: { "route-planner-target": "clear" }) do %>
           <%= icon "trash-2", class: "size-[1.2em]" %>
-        </button>
+        <% end %>
       </div>
     </div>
 
