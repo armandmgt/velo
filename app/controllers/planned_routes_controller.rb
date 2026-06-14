@@ -1,5 +1,5 @@
 class PlannedRoutesController < ApplicationController
-  before_action :set_planned_route, only: %i[ show destroy ]
+  before_action :set_planned_route, only: %i[ show edit update destroy ]
 
   def index
     @planned_routes = Current.user.planned_routes.recent
@@ -14,33 +14,15 @@ class PlannedRoutesController < ApplicationController
 
   def create
     @planned_route = Current.user.planned_routes.new(planned_route_params)
+    persist_with_routing(@planned_route, success_flash: t("planned_route.flash.created"), render_on_error: :new)
+  end
 
-    if @planned_route.invalid?
-      flash.now[:alert] = error_sentence(@planned_route)
-      return render :new, status: :unprocessable_content
-    end
+  def edit
+  end
 
-    result = RoutePlanner.new(sport: @planned_route.sport, waypoints: @planned_route.waypoints).call
-    @planned_route.assign_attributes(
-      path:                  result.path_wkt,
-      distance_meters:       result.distance_meters,
-      elevation_gain_meters: result.elevation_gain_meters,
-      routing_profile:       result.profile
-    )
-
-    if @planned_route.save
-      redirect_to @planned_route, notice: t("planned_route.flash.created")
-    else
-      flash.now[:alert] = error_sentence(@planned_route)
-      render :new, status: :unprocessable_content
-    end
-  rescue BRouterClient::NoRouteFound
-    flash.now[:alert] = t("planned_route.errors.no_route")
-    render :new, status: :unprocessable_content
-  rescue BRouterClient::Error => e
-    Rails.logger.warn("BRouter failed: #{e.message}")
-    flash.now[:alert] = t("planned_route.errors.routing_failed")
-    render :new, status: :unprocessable_content
+  def update
+    @planned_route.assign_attributes(planned_route_params)
+    persist_with_routing(@planned_route, success_flash: t("planned_route.flash.updated"), render_on_error: :edit)
   end
 
   def destroy
@@ -49,7 +31,7 @@ class PlannedRoutesController < ApplicationController
   end
 
   # JSON. Body: { sport: "bike", waypoints: [[lon, lat], ...] }
-  # Returns: { geojson:, distance_meters:, elevation_gain_meters: }
+  # Returns: { geojson:, distance_meters:, elevation_gain_meters:, elevation_samples: }
   def preview
     sport, waypoints = parse_preview_body
 
@@ -65,8 +47,10 @@ class PlannedRoutesController < ApplicationController
         geometry: { type: "LineString", coordinates: result.coordinates },
         properties: {}
       },
+      coordinates:           result.coordinates,
       distance_meters:       result.distance_meters,
-      elevation_gain_meters: result.elevation_gain_meters
+      elevation_gain_meters: result.elevation_gain_meters,
+      elevation_samples:     result.elevation_samples
     }
   rescue BRouterClient::NoRouteFound
     render json: { error: "no_route" }, status: :unprocessable_content
@@ -79,6 +63,36 @@ class PlannedRoutesController < ApplicationController
 
   def set_planned_route
     @planned_route = Current.user.planned_routes.find(params[:id])
+  end
+
+  def persist_with_routing(planned_route, success_flash:, render_on_error:)
+    if planned_route.invalid?
+      flash.now[:alert] = error_sentence(planned_route)
+      return render render_on_error, status: :unprocessable_content
+    end
+
+    result = RoutePlanner.new(sport: planned_route.sport, waypoints: planned_route.waypoints).call
+    planned_route.assign_attributes(
+      path:                  result.path_wkt,
+      distance_meters:       result.distance_meters,
+      elevation_gain_meters: result.elevation_gain_meters,
+      elevation_samples:     result.elevation_samples,
+      routing_profile:       result.profile
+    )
+
+    if planned_route.save
+      redirect_to planned_route, notice: success_flash
+    else
+      flash.now[:alert] = error_sentence(planned_route)
+      render render_on_error, status: :unprocessable_content
+    end
+  rescue BRouterClient::NoRouteFound
+    flash.now[:alert] = t("planned_route.errors.no_route")
+    render render_on_error, status: :unprocessable_content
+  rescue BRouterClient::Error => e
+    Rails.logger.warn("BRouter failed: #{e.message}")
+    flash.now[:alert] = t("planned_route.errors.routing_failed")
+    render render_on_error, status: :unprocessable_content
   end
 
   def planned_route_params

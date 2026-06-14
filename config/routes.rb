@@ -31,7 +31,7 @@ Rails.application.routes.draw do
 
   resource :activity_feeds
   resources :activities
-  resources :planned_routes, only: %i[ index new create show destroy ] do
+  resources :planned_routes, only: %i[ index new create edit update show destroy ] do
     post :preview, on: :collection
   end
   root "activity_feeds#index"

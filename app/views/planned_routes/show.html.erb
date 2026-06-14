@@ -7,6 +7,8 @@
   <% end %>
 <% end %>
 
+<% map_id = dom_id(@planned_route, :map) %>
+
 <main class="prose dark:prose-invert md:py-16 p-4">
   <article class="w-full">
     <header class="flex items-center gap-3">
@@ -21,37 +23,13 @@
       </div>
     </header>
 
-    <div class="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-box bg-base-300 sm:grid-cols-3">
-      <div class="flex flex-col gap-1 bg-base-100 p-4">
-        <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
-          <%= icon "ruler", class: "size-3.5" %>
-          <%= t("activity.metric.distance") %>
-        </span>
-        <span class="text-2xl font-bold text-primary">
-          <%= @planned_route.distance_meters ? "#{(@planned_route.distance_meters / 1000.0).round(2)} km" : "—" %>
-        </span>
-      </div>
-      <div class="flex flex-col gap-1 bg-base-100 p-4">
-        <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
-          <%= icon "mountain", class: "size-3.5" %>
-          <%= t("activity.metric.elevation_gain") %>
-        </span>
-        <span class="text-2xl font-bold text-primary">
-          <%= @planned_route.elevation_gain_meters ? "#{@planned_route.elevation_gain_meters} m" : "—" %>
-        </span>
-      </div>
-      <div class="flex flex-col gap-1 bg-base-100 p-4">
-        <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
-          <%= icon "waypoints", class: "size-3.5" %>
-          <%= t("planned_route.show.waypoints") %>
-        </span>
-        <span class="text-2xl font-bold text-primary"><%= @planned_route.waypoints.length %></span>
-      </div>
-    </div>
+    <%= render "shared/summary_metrics",
+               metrics: planned_route_summary_metrics(@planned_route),
+               grid_classes: "grid-cols-2 sm:grid-cols-3" %>
 
     <% if @planned_route.path.present? %>
       <div
-        id="<%= dom_id(@planned_route, :map) %>"
+        id="<%= map_id %>"
         data-controller="map"
         data-map-lng-value="<%= @planned_route.path.points.first.x %>"
         data-map-lat-value="<%= @planned_route.path.points.first.y %>"
@@ -59,9 +37,28 @@
         class="map my-4 h-[500px] overflow-hidden rounded-box"
       ></div>
     <% end %>
+
+    <% if (chart_data = @planned_route.elevation_chart_data) %>
+      <div class="my-3">
+        <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">
+          <%= t("planned_route.show.elevation_profile") %>
+        </h3>
+        <canvas
+          data-controller="elevation-profile"
+          data-elevation-profile-x-mode-value="distance"
+          data-elevation-profile-data-value="<%= chart_data.to_json %>"
+          data-elevation-profile-coordinates-value="<%= @planned_route.path_coordinates.to_json %>"
+          data-elevation-profile-map-outlet="#<%= map_id %>"
+          class="max-h-[200px]"
+        ></canvas>
+      </div>
+    <% end %>
   </article>
 
-  <section class="mb-4">
+  <section class="mb-4 flex flex-wrap gap-2">
+    <%= link_to t("planned_route.show.edit"),
+                edit_planned_route_path(@planned_route),
+                class: "btn btn-primary" %>
     <%= button_to t("planned_route.show.delete"),
                   @planned_route,
                   method: :delete,

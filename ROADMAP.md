@@ -8,7 +8,7 @@ use foot paths).
 Routing engine: **BRouter** public server (`brouter.de/brouter`). Free, no
 key, best-in-class cycling profiles. Easy to self-host later.
 
-## PR 1 — MVP (this PR)
+## PR 1 — MVP ✅ shipped
 
 - `PlannedRoute` model + migration (PostGIS `LineString`, jsonb waypoints).
 - `BRouterClient` + `RoutePlanner` (sport → profile mapping).
@@ -17,13 +17,17 @@ key, best-in-class cycling profiles. Easy to self-host later.
 - New Stimulus controller `route_planner` for interactive waypoint placement.
 - Reuses the existing `map_controller` for read-only display on the show page.
 
-## PR 2 — Edit & polish
+## PR 2 — Edit & polish ✅ shipped
 
-- Edit existing planned routes (drag waypoint markers, insert between, remove).
-- Elevation profile chart on show page (reuse `elevation_profile_controller`).
-- Distance / elevation stat cards on the show page (reuse the
-  `activity_summary_metrics` look).
-- Routing-error UX: toast + retry when BRouter returns no-route or 5xx.
+- Edit existing planned routes: drag markers, click on the route to insert
+  between waypoints, double-click (or right-click) to remove.
+- Elevation profile chart on show page (and live in the form): generalized
+  `elevation_profile_controller` to accept distance-based x-axis and a
+  `coordinates` value, with chart-hover → map highlight via Stimulus outlet.
+- Distance / elevation / waypoint stat cards on the show page, rendered via
+  a shared `shared/_summary_metrics` partial that activities also use.
+- Retry-able BRouter error alert: in-form DaisyUI `alert-error` with a
+  Retry button that re-fires the preview, plus existing flash on submit.
 
 ## PR 3 — GPX & native polish
 

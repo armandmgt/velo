@@ -283,7 +283,8 @@ CREATE TABLE public.planned_routes (
     elevation_gain_meters integer,
     routing_profile character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    elevation_samples jsonb
 );
 
 
@@ -681,6 +682,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260614120000'),
 ('20260613120000'),
 ('20260602120000'),
 ('20260524203939'),

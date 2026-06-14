@@ -1,7 +1,7 @@
 require "test_helper"
 
 class BRouterClientTest < ActiveSupport::TestCase
-  test "parses a successful GeoJSON FeatureCollection into a Route" do
+  test "parses a 2D GeoJSON FeatureCollection into a Route with nil elevations" do
     body = {
       type: "FeatureCollection",
       features: [
@@ -16,8 +16,28 @@ class BRouterClientTest < ActiveSupport::TestCase
     with_brouter_response(success_response(body)) do
       route = BRouterClient.new.route(waypoints: [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ], profile: "safety")
       assert_equal [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ], route.coordinates
+      assert_nil route.elevations
       assert_equal 1234, route.distance_meters
       assert_equal 42, route.elevation_gain_meters
+    end
+  end
+
+  test "captures per-point z-coord as elevations when present" do
+    body = {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: [ [ 2.35, 48.85, 35.0 ], [ 2.36, 48.86, 42.5 ] ] },
+          properties: { "track-length" => "1234", "filtered ascend" => "8" }
+        }
+      ]
+    }.to_json
+
+    with_brouter_response(success_response(body)) do
+      route = BRouterClient.new.route(waypoints: [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ], profile: "safety")
+      assert_equal [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ], route.coordinates
+      assert_equal [ 35.0, 42.5 ], route.elevations
     end
   end
 

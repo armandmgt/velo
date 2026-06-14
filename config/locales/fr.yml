@@ -72,18 +72,25 @@ fr:
     new:
       title: "Nouveau parcours"
       back: "Retour aux parcours"
+    edit:
+      title: "Modifier le parcours"
+      back: "Retour au parcours"
     show:
       waypoints: "Étapes"
+      elevation_profile: "Profil altimétrique"
+      edit: "Modifier"
       delete: "Supprimer"
       confirm_delete: "Voulez-vous vraiment supprimer ce parcours ?"
       back: "Retour aux parcours"
     form:
-      hint: "Cliquez sur la carte pour ajouter des étapes. Clic droit (ou appui long) sur un repère pour le supprimer."
+      hint: "Cliquez sur la carte pour ajouter une étape, sur le tracé pour insérer entre deux. Glissez un repère pour le déplacer, double-cliquez pour le supprimer."
       save: "Enregistrer"
       undo: "Annuler le dernier"
       clear: "Tout effacer"
+      retry: "Réessayer"
     flash:
       created: "Parcours créé avec succès."
+      updated: "Parcours mis à jour."
       deleted: "Parcours supprimé."
     errors:
       invalid: "Le parcours n'a pas pu être enregistré :"

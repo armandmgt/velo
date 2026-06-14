@@ -37,6 +37,11 @@ class PlannedRoute < ApplicationRecord
     { cycling: "bike", running: "sport-shoe", other: "zap" }.fetch(sport_category)
   end
 
+  def path_coordinates
+    return [] unless path
+    path.points.map { |point| [ point.x, point.y ] }
+  end
+
   def path_geojson
     return unless path
     {
@@ -44,9 +49,20 @@ class PlannedRoute < ApplicationRecord
       geometry: {
         type: "LineString",
         properties: {},
-        coordinates: path.points.map { |point| [ point.x, point.y ] }
+        coordinates: path_coordinates
       }
     }.to_json
+  end
+
+  # Shape consumed by elevation_profile_controller (xMode: distance).
+  # labels: cumulative distance in meters; data: elevation in meters.
+  # Returns nil when BRouter didn't provide z-values for this route.
+  def elevation_chart_data
+    return nil if elevation_samples.blank?
+    {
+      labels: elevation_samples.map { |sample| sample[0] },
+      data:   elevation_samples.map { |sample| sample[1] }
+    }
   end
 
   private

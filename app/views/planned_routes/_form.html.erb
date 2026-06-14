@@ -3,7 +3,9 @@
 <%= form_with model: planned_route,
               data: {
                 controller: "route-planner",
-                "route-planner-preview-url-value": preview_planned_routes_path
+                "route-planner-preview-url-value": preview_planned_routes_path,
+                "route-planner-initial-waypoints-value": planned_route.waypoints.to_json,
+                "route-planner-elevation-profile-outlet": "[data-route-planner-elevation-chart]"
               },
               class: "w-full" do |form| %>
   <div class="grid gap-4 lg:grid-cols-[1fr_2fr]">
@@ -37,14 +39,18 @@
             <%= icon "ruler", class: "size-3.5" %>
             <%= t("activity.metric.distance") %>
           </span>
-          <span class="text-2xl font-bold text-primary" data-route-planner-target="distance">—</span>
+          <span class="text-2xl font-bold text-primary" data-route-planner-target="distance">
+            <%= planned_route.distance_meters ? "#{(planned_route.distance_meters / 1000.0).round(2)} km" : "—" %>
+          </span>
         </div>
         <div class="flex flex-col gap-1 bg-base-100 p-4">
           <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
             <%= icon "mountain", class: "size-3.5" %>
             <%= t("activity.metric.elevation_gain") %>
           </span>
-          <span class="text-2xl font-bold text-primary" data-route-planner-target="elevationGain">—</span>
+          <span class="text-2xl font-bold text-primary" data-route-planner-target="elevationGain">
+            <%= planned_route.elevation_gain_meters ? "#{planned_route.elevation_gain_meters} m" : "—" %>
+          </span>
         </div>
       </div>
 
@@ -52,42 +58,62 @@
         <%= t("planned_route.form.hint") %>
       </p>
 
-      <p
+      <div
+        role="alert"
         class="alert alert-error hidden"
         data-route-planner-target="error"
         data-default-message="<%= t('planned_route.errors.routing_failed') %>"
         data-no-route-message="<%= t('planned_route.errors.no_route') %>"
         data-routing-failed-message="<%= t('planned_route.errors.routing_failed') %>"
         data-invalid-input-message="<%= t('planned_route.errors.need_two_waypoints') %>"
-      ></p>
+      >
+        <%= icon "circle-x", class: "size-5 shrink-0" %>
+        <span class="flex-1" data-route-planner-target="errorMessage"></span>
+        <button type="button"
+                class="btn btn-sm btn-ghost"
+                data-route-planner-target="retry">
+          <%= icon "rotate-cw", class: "size-4" %>
+          <%= t("planned_route.form.retry") %>
+        </button>
+      </div>
 
       <%= form.hidden_field :waypoints_json,
-            value: "[]",
+            value: planned_route.waypoints.to_json,
             data: { "route-planner-target": "waypointsField" } %>
 
       <div class="flex flex-wrap gap-2">
         <%= form.submit t("planned_route.form.save"),
               class: "btn btn-primary",
-              disabled: true,
+              disabled: planned_route.waypoints.length < 2,
               data: { "route-planner-target": "submit" } %>
         <button type="button"
-                class="btn btn-ghost hidden"
+                class="btn btn-ghost <%= "hidden" if planned_route.waypoints.empty? %>"
                 aria-label="<%= t("planned_route.form.undo") %>"
                 data-route-planner-target="undo">
           <%= icon "undo-2", class: "size-[1.2em]" %>
           <span class="hidden sm:inline"><%= t("planned_route.form.undo") %></span>
         </button>
         <button type="button"
-                class="btn btn-ghost hidden"
+                class="btn btn-ghost <%= "hidden" if planned_route.waypoints.empty? %>"
                 data-route-planner-target="clear">
           <%= t("planned_route.form.clear") %>
         </button>
       </div>
     </div>
 
-    <div
-      data-route-planner-map
-      class="map h-[500px] lg:h-[640px] overflow-hidden rounded-box border border-base-300"
-    ></div>
+    <div class="flex flex-col gap-3">
+      <div
+        data-route-planner-map
+        class="map h-[500px] lg:h-[640px] overflow-hidden rounded-box border border-base-300"
+      ></div>
+
+      <canvas
+        data-route-planner-elevation-chart
+        data-controller="elevation-profile"
+        data-elevation-profile-x-mode-value="distance"
+        data-elevation-profile-route-planner-outlet="[data-controller~=route-planner]"
+        class="max-h-[160px] hidden"
+      ></canvas>
+    </div>
   </div>
 <% end %>

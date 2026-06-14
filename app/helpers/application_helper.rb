@@ -118,4 +118,26 @@ module ApplicationHelper
 
     metrics
   end
+
+  # Summary metrics for a planned route. Same shape as activity_summary_metrics
+  # so both can render through shared/_summary_metrics.
+  def planned_route_summary_metrics(planned_route)
+    t = ->(key) { I18n.t("activity.metric.#{key}") }
+    metrics = []
+
+    if planned_route.distance_meters
+      metrics << { label: t.("distance"), icon: "ruler",
+                   value: "#{(planned_route.distance_meters / 1000.0).round(2)} km" }
+    end
+
+    if planned_route.elevation_gain_meters
+      metrics << { label: t.("elevation_gain"), icon: "mountain",
+                   value: "#{planned_route.elevation_gain_meters} m" }
+    end
+
+    metrics << { label: I18n.t("planned_route.show.waypoints"), icon: "waypoints",
+                 value: planned_route.waypoints.length.to_s }
+
+    metrics
+  end
 end

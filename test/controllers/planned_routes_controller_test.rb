@@ -27,6 +27,12 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "edit renders the form pre-seeded with waypoints" do
+    get edit_planned_route_url(@planned_route)
+    assert_response :success
+    assert_select "[data-controller~=route-planner][data-route-planner-initial-waypoints-value*='2.3522']"
+  end
+
   test "destroys a planned route" do
     assert_difference("PlannedRoute.count", -1) do
       delete planned_route_url(@planned_route)
@@ -42,7 +48,7 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
         planned_route: {
           name: "Tour matinal",
           sport: "bike",
-          waypoints_json: [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ].to_json
+          waypoints_json: [ [ 0.0, 0.0 ], [ 0.001, 0.0 ] ].to_json
         }
       }
     end
@@ -53,6 +59,10 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1234, persisted.distance_meters
     assert_equal 42, persisted.elevation_gain_meters
     assert_not_nil persisted.path
+    assert_equal 2, persisted.elevation_samples.length
+    assert_equal [ 0, 10 ], persisted.elevation_samples[0]
+    assert_in_delta 111, persisted.elevation_samples[1][0], 2
+    assert_equal 20, persisted.elevation_samples[1][1]
   end
 
   test "create rerenders new when BRouter has no route" do
@@ -69,11 +79,44 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
   end
 
-  test "preview returns geojson and stats for valid input" do
+  test "update re-runs routing and persists changes" do
+    stub_brouter_success
+
+    patch planned_route_url(@planned_route), params: {
+      planned_route: {
+        name: "Tour mis à jour",
+        sport: "gravel_ride",
+        waypoints_json: [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ].to_json
+      }
+    }
+
+    assert_redirected_to planned_route_url(@planned_route)
+    @planned_route.reload
+    assert_equal "Tour mis à jour", @planned_route.name
+    assert_equal "gravel_ride", @planned_route.sport
+    assert_equal "trekking", @planned_route.routing_profile
+    assert_equal 1234, @planned_route.distance_meters
+  end
+
+  test "update rerenders edit when BRouter fails" do
+    stub_brouter_error
+
+    patch planned_route_url(@planned_route), params: {
+      planned_route: {
+        name: @planned_route.name,
+        sport: @planned_route.sport,
+        waypoints_json: @planned_route.waypoints.to_json
+      }
+    }
+
+    assert_response :unprocessable_content
+  end
+
+  test "preview returns geojson, coordinates and elevation samples" do
     stub_brouter_success
 
     post preview_planned_routes_url,
-         params: { sport: "bike", waypoints: [ [ 2.35, 48.85 ], [ 2.36, 48.86 ] ] }.to_json,
+         params: { sport: "bike", waypoints: [ [ 0.0, 0.0 ], [ 0.001, 0.0 ] ] }.to_json,
          headers: { "Content-Type" => "application/json", "Accept" => "application/json" }
 
     assert_response :success
@@ -81,6 +124,11 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "LineString", body.dig("geojson", "geometry", "type")
     assert_equal 1234, body["distance_meters"]
     assert_equal 42, body["elevation_gain_meters"]
+    assert_equal 2, body["elevation_samples"].length
+    assert_equal [ 0, 10 ], body["elevation_samples"][0]
+    assert_in_delta 111, body["elevation_samples"][1][0], 2
+    assert_equal 20, body["elevation_samples"][1][1]
+    assert_kind_of Array, body["coordinates"]
   end
 
   test "preview rejects unknown sports" do
@@ -104,6 +152,7 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     fake_client.define_singleton_method(:route) do |waypoints:, profile:|
       BRouterClient::Route.new(
         coordinates:           waypoints.dup,
+        elevations:            [ 10.0, 20.0 ],
         distance_meters:       1234,
         elevation_gain_meters: 42
       )
@@ -114,6 +163,12 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
   def stub_brouter_no_route
     fake_client = Object.new
     fake_client.define_singleton_method(:route) { |**_| raise BRouterClient::NoRouteFound, "no track found" }
+    replace_brouter_client_new(fake_client)
+  end
+
+  def stub_brouter_error
+    fake_client = Object.new
+    fake_client.define_singleton_method(:route) { |**_| raise BRouterClient::Error, "boom" }
     replace_brouter_client_new(fake_client)
   end
 

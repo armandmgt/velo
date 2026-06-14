@@ -1,0 +1,12 @@
+<%# locals: (metrics:, grid_classes: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4") %>
+<div class="mt-4 grid <%= grid_classes %> gap-px overflow-hidden rounded-box bg-base-300">
+  <% metrics.each do |metric| %>
+    <div class="flex flex-col gap-1 bg-base-100 p-4">
+      <span class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
+        <%= icon metric[:icon], class: "size-3.5" %>
+        <%= metric[:label] %>
+      </span>
+      <span class="text-2xl font-bold text-primary"><%= metric[:value] %></span>
+    </div>
+  <% end %>
+</div>

@@ -8,7 +8,7 @@ class BRouterClient
   class Error < StandardError; end
   class NoRouteFound < Error; end
 
-  Route = Data.define(:coordinates, :distance_meters, :elevation_gain_meters)
+  Route = Data.define(:coordinates, :elevations, :distance_meters, :elevation_gain_meters)
 
   # waypoints: Array<[lon, lat]>, profile: String (BRouter profile name).
   # Returns a Route Data struct or raises.
@@ -37,8 +37,12 @@ class BRouterClient
     coords = feature.fetch("geometry").fetch("coordinates")
     props  = feature.fetch("properties")
 
+    has_elevation = coords.first&.length.to_i >= 3
+    elevations    = has_elevation ? coords.map { |c| c[2].to_f } : nil
+
     Route.new(
       coordinates:           coords.map { |c| [ c[0].to_f, c[1].to_f ] },
+      elevations:            elevations,
       distance_meters:       props["track-length"].to_i,
       elevation_gain_meters: props["filtered ascend"].to_i
     )

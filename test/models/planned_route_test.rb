@@ -32,4 +32,20 @@ class PlannedRouteTest < ActiveSupport::TestCase
   test "path_geojson is nil without a path" do
     assert_nil PlannedRoute.new.path_geojson
   end
+
+  test "elevation_chart_data returns nil without samples" do
+    assert_nil PlannedRoute.new.elevation_chart_data
+    assert_nil PlannedRoute.new(elevation_samples: []).elevation_chart_data
+  end
+
+  test "elevation_chart_data splits samples into labels and data arrays" do
+    pr = PlannedRoute.new(elevation_samples: [ [ 0, 10 ], [ 111, 12 ], [ 222, 11 ] ])
+    chart = pr.elevation_chart_data
+    assert_equal [ 0, 111, 222 ], chart[:labels]
+    assert_equal [ 10, 12, 11 ], chart[:data]
+  end
+
+  test "path_coordinates is empty without a path" do
+    assert_equal [], PlannedRoute.new.path_coordinates
+  end
 end
