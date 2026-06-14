@@ -239,16 +239,28 @@ export default class extends Controller {
   _handleMapClick(e) {
     if (this._suppressMapClickUntil && Date.now() < this._suppressMapClickUntil) return
 
-    const hits = this.map.queryRenderedFeatures(e.point, { layers: [ "geojson-line" ] })
     const lngLat = [ e.lngLat.lng, e.lngLat.lat ]
 
-    if (hits.length > 0 && this._waypoints.length >= 2 && this._routeCoordinates.length >= 2) {
+    if (this._waypoints.length >= 2 && this._routeCoordinates.length >= 2 && this._clickedOnRoute(e.point)) {
       const idx = this._insertionIndexFor(lngLat)
       this._insertWaypointAt(idx, lngLat)
       return
     }
 
     this._addWaypoint(lngLat)
+  }
+
+  // A 3px line is too narrow for a pixel-perfect hit-test. Query a small bbox
+  // around the click and include the wider casing layer.
+  _clickedOnRoute(point) {
+    const tolerance = 8
+    const bbox = [
+      [ point.x - tolerance, point.y - tolerance ],
+      [ point.x + tolerance, point.y + tolerance ],
+    ]
+    const layers = [ "geojson-line", "geojson-line-casing" ].filter((id) => this.map.getLayer(id))
+    if (layers.length === 0) return false
+    return this.map.queryRenderedFeatures(bbox, { layers }).length > 0
   }
 
   // Map waypoints onto the routed polyline by nearest-index, then bracket the
