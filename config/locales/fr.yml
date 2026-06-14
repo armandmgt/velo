@@ -85,7 +85,8 @@ fr:
     form:
       hint: "Cliquez sur la carte pour ajouter une étape, sur le tracé pour insérer entre deux. Glissez un repère pour le déplacer, double-cliquez pour le supprimer."
       save: "Enregistrer"
-      undo: "Annuler le dernier"
+      undo: "Annuler"
+      redo: "Rétablir"
       clear: "Tout effacer"
       retry: "Réessayer"
     flash:

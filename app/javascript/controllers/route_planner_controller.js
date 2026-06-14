@@ -24,6 +24,7 @@ export default class extends Controller {
     "retry",
     "clear",
     "undo",
+    "redo",
   ]
 
   static outlets = [ "elevation-profile" ]
@@ -32,6 +33,9 @@ export default class extends Controller {
     this._waypoints = []
     this._waypointMarkers = []
     this._routeCoordinates = []
+    this._history = []
+    this._redoStack = []
+    this._historyLimit = 50
     this._accentColor = primaryAccentColor()
     this._fitControl = new FitToBoundsControl(null)
     this._highlightMarker = null
@@ -85,6 +89,9 @@ export default class extends Controller {
     if (this.hasUndoTarget) {
       this.undoTarget.addEventListener("click", (e) => { e.preventDefault(); this.undo() })
     }
+    if (this.hasRedoTarget) {
+      this.redoTarget.addEventListener("click", (e) => { e.preventDefault(); this.redo() })
+    }
     if (this.hasRetryTarget) {
       this.retryTarget.addEventListener("click", (e) => { e.preventDefault(); this._fetchPreview() })
     }
@@ -124,6 +131,7 @@ export default class extends Controller {
   }
 
   clear() {
+    if (this._waypoints.length === 0) return
     this._setWaypoints([])
     this._setRouteGeojson({ type: "FeatureCollection", features: [] })
     this._fitControl.setBounds(null)
@@ -132,21 +140,47 @@ export default class extends Controller {
   }
 
   undo() {
-    if (this._waypoints.length === 0) return
-    const next = this._waypoints.slice(0, -1)
-    this._setWaypoints(next)
+    if (this._history.length === 0) return
+    this._redoStack.push(this._waypoints.map((p) => [ p[0], p[1] ]))
+    const previous = this._history.pop()
+    this._setWaypoints(previous, { record: false })
+  }
+
+  redo() {
+    if (this._redoStack.length === 0) return
+    this._history.push(this._waypoints.map((p) => [ p[0], p[1] ]))
+    const next = this._redoStack.pop()
+    this._setWaypoints(next, { record: false })
   }
 
   // --- waypoint mutation ---
 
-  _setWaypoints(next) {
-    this._waypoints = next.map((p) => [ p[0], p[1] ])
+  // Every mutation funnels through here. When `record` is true (the default)
+  // we push the prior waypoints onto the history stack so `undo()` can return
+  // to it — covering add, move, insert, remove, and clear with one path. Any
+  // fresh user action also invalidates the redo stack (timeline diverged).
+  _setWaypoints(next, { record = true } = {}) {
+    const normalized = next.map((p) => [ p[0], p[1] ])
+    if (record && !this._isSameWaypoints(this._waypoints, normalized)) {
+      this._history.push(this._waypoints.map((p) => [ p[0], p[1] ]))
+      if (this._history.length > this._historyLimit) this._history.shift()
+      this._redoStack = []
+    }
 
+    this._waypoints = normalized
     this._waypointMarkers.forEach((m) => m.remove())
     this._waypointMarkers = this._waypoints.map((lngLat, i) => this._buildWaypointMarker(lngLat, i))
 
     this._updateUI()
     this._schedulePreview()
+  }
+
+  _isSameWaypoints(a, b) {
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) {
+      if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) return false
+    }
+    return true
   }
 
   _addWaypoint(lngLat) {
@@ -175,7 +209,8 @@ export default class extends Controller {
     if (!this.hasInitialWaypointsValue) return
     const seeded = this.initialWaypointsValue
     if (!Array.isArray(seeded) || seeded.length === 0) return
-    this._setWaypoints(seeded)
+    // Seeded state is the baseline — don't make undo wipe it.
+    this._setWaypoints(seeded, { record: false })
     const bounds = seeded.reduce(
       (b, c) => b.extend(c),
       new maplibregl.LngLatBounds(seeded[0], seeded[0])
@@ -417,7 +452,10 @@ export default class extends Controller {
       this.clearTarget.classList.toggle("hidden", this._waypoints.length === 0)
     }
     if (this.hasUndoTarget) {
-      this.undoTarget.classList.toggle("hidden", this._waypoints.length === 0)
+      this.undoTarget.classList.toggle("hidden", this._history.length === 0)
+    }
+    if (this.hasRedoTarget) {
+      this.redoTarget.classList.toggle("hidden", this._redoStack.length === 0)
     }
   }
 
