@@ -38,6 +38,21 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "renders the heart rate zones partial when the user has a max HR and the activity has HR samples" do
+    users(:one).update!(max_heart_rate: 200)
+    t = Time.zone.parse("2026-01-01 10:00:00")
+    [ 110, 130, 150, 170, 190 ].each_with_index do |hr, i|
+      @activity.activity_data_points.create!(recorded_at: t + i.seconds, heart_rate: hr)
+    end
+
+    get activity_url(@activity)
+
+    assert_response :success
+    assert_select "h3", text: I18n.t("activity.heart_rate_zone.title")
+    assert_select "th", text: I18n.t("activity.heart_rate_zone.zone")
+    assert_select "td", text: I18n.t("activity.heart_rate_zone.z1")
+  end
+
   test "should get edit" do
     get edit_activity_url(@activity)
     assert_response :success
