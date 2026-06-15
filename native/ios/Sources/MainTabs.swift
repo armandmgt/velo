@@ -14,5 +14,11 @@ extension HotwireTab {
         url: AppConfig.baseURL.appendingPathComponent("activities")
     )
 
-    static let all: [HotwireTab] = [.dashboard, .activities]
+    static let plannedRoutes = HotwireTab(
+        title: "Parcours",
+        image: UIImage(systemName: "point.topleft.down.to.point.bottomright.curvepath")!,
+        url: AppConfig.baseURL.appendingPathComponent("planned_routes")
+    )
+
+    static let all: [HotwireTab] = [.dashboard, .activities, .plannedRoutes]
 }

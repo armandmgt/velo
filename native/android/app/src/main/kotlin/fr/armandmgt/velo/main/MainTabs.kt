@@ -25,4 +25,14 @@ private val activities = HotwireBottomTab(
     )
 )
 
-val mainTabs = listOf(dashboard, activities)
+private val plannedRoutes = HotwireBottomTab(
+    title = "Parcours",
+    iconResId = R.drawable.ic_route,
+    configuration = NavigatorConfiguration(
+        name = "planned_routes",
+        navigatorHostId = R.id.planned_routes_navigator_host,
+        startLocation = "${BuildConfig.BASE_URL}/planned_routes"
+    )
+)
+
+val mainTabs = listOf(dashboard, activities, plannedRoutes)
