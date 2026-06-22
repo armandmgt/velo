@@ -33,3 +33,11 @@ APP_PATH="build/Build/Products/Debug-iphonesimulator/Velo.app"
 xcrun simctl install "$UDID" "$APP_PATH"
 xcrun simctl launch "$UDID" fr.armandmgt.velo
 """
+
+[tasks.testflight]
+description = "Build and upload a TestFlight release via fastlane"
+run = "bundle exec fastlane beta"
+
+[tasks.release]
+description = "Submit the latest TestFlight build for App Store review"
+run = "bundle exec fastlane release"

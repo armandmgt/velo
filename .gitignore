@@ -73,3 +73,12 @@
 /native/android/**/*.keystore
 
 /native/ios/build/
+
+# Fastlane generated artifacts
+/native/ios/fastlane/report.xml
+/native/ios/fastlane/Preview.html
+/native/ios/fastlane/screenshots
+/native/ios/fastlane/test_output
+/native/ios/fastlane/README.md
+/native/ios/.env
+/native/ios/.env.*

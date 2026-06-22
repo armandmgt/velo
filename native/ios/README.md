@@ -51,6 +51,50 @@ clients).
 | `Sources/Info.plist` | Scene manifest + dev ATS exception |
 | `Resources/path-configuration.json` | Bundled fallback path config |
 
+## Release to TestFlight / App Store
+
+Releases are managed with [fastlane](https://docs.fastlane.tools/) — metadata,
+build numbers, and uploads stay on the command line instead of in App Store
+Connect's web UI.
+
+### One-time setup
+
+1. **App Store Connect API key.** In App Store Connect → Users and Access →
+   Integrations → App Store Connect API, generate a key with the **Admin**
+   role (downgrade to **App Manager** after the first `produce` run if you
+   prefer). Download the `.p8` (only available once) and note the **Key ID**
+   and **Issuer ID**.
+2. Drop the `.p8` at `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`.
+3. Export the IDs in your shell (a `.env` file in `native/ios/` works too,
+   and is gitignored):
+   ```bash
+   export ASC_KEY_ID=ABCD1234EF
+   export ASC_ISSUER_ID=69a6de70-…-…
+   ```
+4. Install gems: `cd native/ios && bundle install`.
+5. Create the app record on App Store Connect (run once):
+   ```bash
+   bundle exec fastlane create_app
+   ```
+
+### Day-to-day
+
+```bash
+cd native/ios
+mise run testflight   # → bundle exec fastlane beta
+```
+
+This regenerates the Xcode project if needed, fetches the latest TestFlight
+build number from ASC, bumps to `latest + 1`, archives with Release signing,
+and uploads. `MARKETING_VERSION` lives in `project.yml`; bump it there when
+you cut a new marketing version.
+
+When you're ready to push the current TestFlight build to App Store review:
+
+```bash
+mise run release      # → bundle exec fastlane release
+```
+
 ## Not yet implemented
 
 Native bridge components (custom toolbar buttons, notification badge, push

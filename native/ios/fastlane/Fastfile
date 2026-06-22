@@ -1,0 +1,85 @@
+default_platform(:ios)
+
+XCODEPROJ = "Velo.xcodeproj"
+SCHEME = "Velo"
+
+platform :ios do
+  before_all do
+    Dir.chdir("..") do
+      sh("xcodegen generate") unless File.exist?(XCODEPROJ)
+    end
+  end
+
+  desc "Create the App Store Connect app record (run once)"
+  lane :create_app do
+    produce(
+      app_name: "Velo - Activity Tracker",
+      language: "fr-FR",
+      app_version: "0.1.0",
+      sku: "fr.armandmgt.velo",
+    )
+  end
+
+  desc "Build and upload a TestFlight build"
+  lane :beta do
+    key = api_key
+
+    next_build = latest_testflight_build_number(
+      api_key: key,
+      initial_build_number: 0,
+    ) + 1
+
+    build_app(
+      project: XCODEPROJ,
+      scheme: SCHEME,
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "build/fastlane",
+      clean: true,
+      xcargs: "#{xcode_auth_args} CURRENT_PROJECT_VERSION=#{next_build}",
+    )
+
+    upload_to_testflight(
+      api_key: key,
+      skip_waiting_for_build_processing: true,
+    )
+  end
+
+  desc "Submit the latest TestFlight build to App Store review"
+  lane :release do
+    upload_to_app_store(
+      api_key: api_key,
+      build_number: latest_testflight_build_number(api_key: api_key).to_s,
+      submit_for_review: true,
+      automatic_release: true,
+      force: true,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+      },
+    )
+  end
+
+  def api_key
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: asc_key_filepath,
+    )
+  end
+
+  def asc_key_filepath
+    ENV["ASC_KEY_FILEPATH"] ||
+      File.expand_path("~/.appstoreconnect/private_keys/AuthKey_#{ENV.fetch("ASC_KEY_ID")}.p8")
+  end
+
+  def xcode_auth_args
+    [
+      "-authenticationKeyID #{ENV.fetch("ASC_KEY_ID")}",
+      "-authenticationKeyIssuerID #{ENV.fetch("ASC_ISSUER_ID")}",
+      "-authenticationKeyPath #{asc_key_filepath}",
+      "-allowProvisioningUpdates",
+    ].join(" ")
+  end
+end

@@ -32,8 +32,3 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: YES
         DEVELOPMENT_TEAM: "5B86S3AWVU"
         CODE_SIGN_STYLE: Automatic
-      configs:
-        Debug:
-          CODE_SIGN_IDENTITY: "Apple Development"
-        Release:
-          CODE_SIGN_IDENTITY: "Apple Distribution"
