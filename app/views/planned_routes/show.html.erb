@@ -1,59 +1,11 @@
 <% content_for :title, @planned_route.name %>
 
-<%= content_for :head do %>
-  <%= stylesheet_link_tag "maplibre-gl" %>
-  <%= javascript_tag do %>
-    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
-  <% end %>
-<% end %>
-
-<% map_id = dom_id(@planned_route, :map) %>
-
 <main class="prose dark:prose-invert md:py-16 p-4">
-  <article class="w-full">
-    <header class="flex items-center gap-3">
-      <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <%= icon @planned_route.sport_icon_name, class: "size-6" %>
-      </span>
-      <div>
-        <h1 class="mt-0 mb-0 text-xl font-bold leading-tight"><%= @planned_route.name %></h1>
-        <span class="text-xs uppercase font-semibold opacity-60">
-          <%= t("activity.sport.#{@planned_route.sport}") %>
-        </span>
-      </div>
-    </header>
+  <%= render @planned_route %>
 
-    <%= render "shared/summary_metrics",
-               metrics: planned_route_summary_metrics(@planned_route),
-               grid_classes: "grid-cols-2 sm:grid-cols-3" %>
-
-    <% if @planned_route.path.present? %>
-      <div
-        id="<%= map_id %>"
-        data-controller="map"
-        data-map-lng-value="<%= @planned_route.path.points.first.x %>"
-        data-map-lat-value="<%= @planned_route.path.points.first.y %>"
-        data-map-route-value="<%= @planned_route.path_geojson %>"
-        class="map my-4 h-[500px] overflow-hidden rounded-box"
-      ></div>
-    <% end %>
-
-    <% if (chart_data = @planned_route.elevation_chart_data) %>
-      <div class="my-3">
-        <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">
-          <%= t("planned_route.show.elevation_profile") %>
-        </h3>
-        <canvas
-          data-controller="elevation-profile"
-          data-elevation-profile-x-mode-value="distance"
-          data-elevation-profile-data-value="<%= chart_data.to_json %>"
-          data-elevation-profile-coordinates-value="<%= @planned_route.path_coordinates.to_json %>"
-          data-elevation-profile-map-outlet="#<%= map_id %>"
-          class="max-h-[200px]"
-        ></canvas>
-      </div>
-    <% end %>
-  </article>
+  <section class="mb-4">
+    <%= render "planned_routes/share_section", planned_route: @planned_route %>
+  </section>
 
   <section class="mb-4 flex flex-wrap gap-2">
     <%= link_to t("planned_route.show.edit"),

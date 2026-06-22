@@ -6,6 +6,10 @@
   </section>
 
   <section class="mb-4">
+    <%= render "activities/share_section", activity: @activity %>
+  </section>
+
+  <section class="mb-4">
     <%= link_to "Modifier", edit_activity_path(@activity), class: "btn" %>
     <%= button_to "Supprimer", @activity, method: :delete, form_class: "sm:inline-block mt-2 sm:mt-0 sm:ml-2", class: "btn btn-error", data: { turbo_confirm: "Voulez vous vraiment supprimer cette activité ?" } %>
   </section>

@@ -10,6 +10,7 @@
   </span>
 
   <%= form_with model: activity, html: { id: "name_prompt_#{context}_#{activity.id}", class: "join w-full" } do |form| %>
+    <%= hidden_field_tag :from, "name_prompt" %>
     <%= form.text_field :name,
           id: "name_prompt_#{context}_#{activity.id}_name",
           value: activity.name,

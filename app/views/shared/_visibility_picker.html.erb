@@ -1,0 +1,15 @@
+<%# locals: (form:, model_key:) %>
+
+<% icons = { private: "lock", shareable: "link", public: "globe" } %>
+
+<fieldset class="join">
+  <legend class="sr-only"><%= t("#{model_key}.visibility.legend") %></legend>
+  <% %i[private shareable public].each do |level| %>
+    <label class="join-item btn btn-sm has-[:checked]:btn-primary"
+           title="<%= t("#{model_key}.visibility.#{level}_hint") %>">
+      <%= form.radio_button :visibility, level, class: "hidden", data: { action: "change->auto-submit#submit" } %>
+      <%= icon icons[level], class: "size-4" %>
+      <span class="text-xs"><%= t("#{model_key}.visibility.#{level}") %></span>
+    </label>
+  <% end %>
+</fieldset>

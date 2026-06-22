@@ -147,7 +147,8 @@ CREATE TABLE public.activities (
     total_elevation_gain numeric,
     max_speed numeric,
     path public.geometry(LineString),
-    name_pending boolean DEFAULT false NOT NULL
+    name_pending boolean DEFAULT false NOT NULL,
+    visibility character varying DEFAULT 'private'::character varying NOT NULL
 );
 
 
@@ -284,7 +285,8 @@ CREATE TABLE public.planned_routes (
     routing_profile character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    elevation_samples jsonb
+    elevation_samples jsonb,
+    visibility character varying DEFAULT 'private'::character varying NOT NULL
 );
 
 
@@ -682,6 +684,8 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260616120001'),
+('20260616120000'),
 ('20260614120000'),
 ('20260613120000'),
 ('20260602120000'),

@@ -66,6 +66,16 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to planned_routes_url
   end
 
+  test "update_visibility updates only visibility without calling BRouter" do
+    BRouterClient.define_singleton_method(:new) { raise "BRouter should not be called" }
+
+    patch visibility_planned_route_url(@planned_route),
+          params: { planned_route: { visibility: "shareable" } }
+
+    assert_redirected_to planned_route_url(@planned_route)
+    assert_equal "shareable", @planned_route.reload.visibility
+  end
+
   test "create routes via BRouter and persists the planned route" do
     stub_brouter_success
 

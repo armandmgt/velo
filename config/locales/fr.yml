@@ -75,6 +75,17 @@ fr:
       set_max_hr_hint_html: "Définissez votre FC max dans %{link} pour voir vos zones d'entraînement."
       max_hr_label: "Fréquence cardiaque maximale"
       max_hr_help: "Utilisée pour calculer vos zones d'entraînement (entre 100 et 240 bpm)."
+    share:
+      button: "Partager — copier le lien"
+      copied: "Lien copié !"
+    visibility:
+      legend: "Visibilité"
+      private: "Privée"
+      private_hint: "Vous seul·e"
+      shareable: "Lien partageable"
+      shareable_hint: "Quiconque a le lien"
+      public: "Publique"
+      public_hint: "Visible par vos amis"
   planned_route:
     nav:
       label: "Parcours"
@@ -112,6 +123,17 @@ fr:
       no_route: "Aucun itinéraire possible entre ces points pour ce sport."
       routing_failed: "Impossible de calculer l'itinéraire. Réessayez dans un instant."
       need_two_waypoints: "Ajoutez au moins deux étapes pour calculer un itinéraire."
+    share:
+      button: "Partager — copier le lien"
+      copied: "Lien copié !"
+    visibility:
+      legend: "Visibilité"
+      private: "Privée"
+      private_hint: "Vous seul·e"
+      shareable: "Lien partageable"
+      shareable_hint: "Quiconque a le lien"
+      public: "Publique"
+      public_hint: "Visible par vos amis"
   date:
     abbr_day_names:
       - dim

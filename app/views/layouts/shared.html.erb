@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+<head>
+  <title><%= content_for?(:title) ? content_for(:title) : "Velo" %></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Velo">
+  <meta name="robots" content="noindex">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= yield :head %>
+
+  <%= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+  <link rel="icon" href="/icon.png" type="image/png">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon.png">
+
+  <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+
+  <meta name="turbo-refresh-method" content="morph">
+  <meta name="turbo-refresh-scroll" content="preserve">
+</head>
+
+<body>
+
+<%= render "application/flash" %>
+
+<header class="px-4 py-3 border-b border-base-300">
+  <%= link_to "Velo", root_path, class: "text-lg font-semibold" %>
+</header>
+
+<%= yield %>
+
+</body>
+</html>

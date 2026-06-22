@@ -1,0 +1,25 @@
+<%# locals: (activity:) %>
+
+<div id="<%= dom_id(activity, :share_section) %>" class="flex flex-wrap items-center gap-3">
+  <%= render "shared/visibility_control",
+             record: activity,
+             submit_url: visibility_activity_path(activity),
+             model_key: "activity" %>
+
+  <% if activity.shareable_link? %>
+    <div data-controller="clipboard"
+         data-clipboard-success-content-value="<%= t('activity.share.copied') %>">
+      <input type="text" readonly
+             class="sr-only"
+             data-clipboard-target="source"
+             value="<%= shared_activity_url(activity.signed_id(purpose: :share)) %>">
+      <button type="button"
+              class="btn btn-sm"
+              data-clipboard-target="button"
+              data-action="clipboard#copy">
+        <%= icon "share-2", class: "size-4" %>
+        <%= t("activity.share.button") %>
+      </button>
+    </div>
+  <% end %>
+</div>
