@@ -44,6 +44,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
     // MARK: NavigatorDelegate
 
     func handle(proposal: VisitProposal, from navigator: Navigator) -> ProposalResult {
+        // File exports (e.g. GPX) are served as attachments WKWebView can't
+        // render. Download them natively — reusing the webview's session
+        // cookies — and offer a share sheet instead of pushing a doomed visit.
+        if proposal.url.pathExtension == "gpx" {
+            FileDownloader.download(from: proposal.url, presentingFrom: navigator)
+            return .reject
+        }
+
         // The sign-out path-property only signals an *authenticated* webview
         // bouncing back to the login screen. The unauthenticated navigator's
         // own initial route to /session/new also carries this property —
