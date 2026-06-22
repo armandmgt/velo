@@ -1,5 +1,5 @@
 class ActivitiesController < ApplicationController
-  before_action :set_activity, only: %i[ show edit update destroy ]
+  before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
 
   def index
     @activities = Current.user.activities.order(start_time: :desc)
@@ -35,14 +35,32 @@ class ActivitiesController < ApplicationController
 
   def update
     if @activity.update(activity_params.merge(name_pending: false))
-      @pending_activities = Current.user.activities.awaiting_name.order(start_time: :desc)
-      respond_to do |format|
-        format.turbo_stream
-        format.html { redirect_to @activity, notice: "Activité mise à jour.", status: :see_other }
+      if params[:from] == "name_prompt"
+        @pending_activities = Current.user.activities.awaiting_name.order(start_time: :desc)
+        respond_to do |format|
+          format.turbo_stream
+          format.html { redirect_to @activity, notice: "Activité mise à jour.", status: :see_other }
+        end
+      else
+        redirect_to @activity, notice: "Activité mise à jour.", status: :see_other
       end
     else
       flash.now[:alert] = "L'activité n'a pas pu être mise à jour : #{@activity.errors.full_messages.to_sentence}."
       render :edit, status: :unprocessable_content
+    end
+  end
+
+  def update_visibility
+    @activity.update!(visibility: params.require(:activity).require(:visibility))
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          helpers.dom_id(@activity, :share_section),
+          partial: "activities/share_section",
+          locals: { activity: @activity }
+        )
+      end
+      format.html { redirect_to @activity, status: :see_other }
     end
   end
 
@@ -58,6 +76,6 @@ class ActivitiesController < ApplicationController
   end
 
   def activity_params
-    params.expect(activity: [ :name, :description, :sport, :fit_file ])
+    params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file ])
   end
 end

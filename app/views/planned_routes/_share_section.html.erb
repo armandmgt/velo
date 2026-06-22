@@ -1,0 +1,25 @@
+<%# locals: (planned_route:) %>
+
+<div id="<%= dom_id(planned_route, :share_section) %>" class="flex flex-wrap items-center gap-3">
+  <%= render "shared/visibility_control",
+             record: planned_route,
+             submit_url: visibility_planned_route_path(planned_route),
+             model_key: "planned_route" %>
+
+  <% if planned_route.shareable_link? %>
+    <div data-controller="clipboard"
+         data-clipboard-success-content-value="<%= t('planned_route.share.copied') %>">
+      <input type="text" readonly
+             class="sr-only"
+             data-clipboard-target="source"
+             value="<%= shared_planned_route_url(planned_route.signed_id(purpose: :share)) %>">
+      <button type="button"
+              class="btn btn-sm"
+              data-clipboard-target="button"
+              data-action="clipboard#copy">
+        <%= icon "share-2", class: "size-4" %>
+        <%= t("planned_route.share.button") %>
+      </button>
+    </div>
+  <% end %>
+</div>

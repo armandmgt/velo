@@ -47,11 +47,13 @@
 
   <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>
 
-  <% if hr_zones %>
-    <%= render "activities/heart_rate_zones", zones: hr_zones %>
-  <% elsif max_hr.nil? && activity.avg_heart_rate %>
-    <p class="mt-4 text-sm opacity-60">
-      <%= t("activity.heart_rate_zone.set_max_hr_hint_html", link: link_to(t("activity.heart_rate_zone.set_max_hr_link"), user_path)) %>
-    </p>
+  <% if local_assigns.fetch(:show_personal_data, true) %>
+    <% if hr_zones %>
+      <%= render "activities/heart_rate_zones", zones: hr_zones %>
+    <% elsif max_hr.nil? && activity.avg_heart_rate %>
+      <p class="mt-4 text-sm opacity-60">
+        <%= t("activity.heart_rate_zone.set_max_hr_hint_html", link: link_to(t("activity.heart_rate_zone.set_max_hr_link"), user_path)) %>
+      </p>
+    <% end %>
   <% end %>
 </article>

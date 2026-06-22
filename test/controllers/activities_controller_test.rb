@@ -74,7 +74,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
   test "inline rename responds with turbo_stream replacing the prompt containers" do
     activity = activities(:awaiting_name)
     patch activity_url(activity),
-          params: { activity: { name: "Sortie nommée" } },
+          params: { from: "name_prompt", activity: { name: "Sortie nommée" } },
           as: :turbo_stream
 
     assert_response :success
@@ -82,6 +82,28 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_match "navbar_name_prompts", @response.body
     assert_match "dashboard_name_prompts", @response.body
     refute activity.reload.name_pending
+  end
+
+  test "update from edit page redirects to show" do
+    activity = activities(:one)
+    patch activity_url(activity),
+          params: { activity: { name: "Renommée depuis l'edit" } },
+          as: :turbo_stream
+
+    assert_redirected_to activity_url(activity)
+    assert_equal "Renommée depuis l'edit", activity.reload.name
+  end
+
+  test "update_visibility updates only visibility and does not clear name_pending" do
+    activity = activities(:awaiting_name)
+    original_name = activity.name
+    patch visibility_activity_url(activity), params: { activity: { visibility: "shareable" } }
+
+    assert_redirected_to activity_url(activity)
+    activity.reload
+    assert_equal "shareable", activity.visibility
+    assert activity.name_pending, "name_pending should remain set"
+    assert_equal original_name, activity.name
   end
 
   test "should destroy activity" do

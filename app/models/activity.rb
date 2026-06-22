@@ -14,6 +14,8 @@ class Activity < ApplicationRecord
     hike alpine_ski nordic_ski swim workout
   ].index_by(&:itself)
 
+  enum :visibility, %i[private shareable public].index_by(&:itself), prefix: true
+
   SPORT_CATEGORY = {
     bike: :cycling, mountain_bike_ride: :cycling, gravel_ride: :cycling,
     virtual_ride: :cycling, e_bike_ride: :cycling,
@@ -65,5 +67,9 @@ class Activity < ApplicationRecord
 
   def sport_icon_name
     { cycling: "bike", running: "sport-shoe", other: "zap" }.fetch(sport_category)
+  end
+
+  def shareable_link?
+    visibility_shareable? || visibility_public?
   end
 end

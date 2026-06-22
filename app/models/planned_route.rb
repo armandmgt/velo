@@ -18,6 +18,7 @@ class PlannedRoute < ApplicationRecord
   }.freeze
 
   enum :sport, ROUTABLE_SPORTS.index_by(&:itself)
+  enum :visibility, %i[private shareable public].index_by(&:itself), prefix: true
 
   validates :name, presence: true
   validates :sport, presence: true, inclusion: { in: sports.keys }
@@ -35,6 +36,10 @@ class PlannedRoute < ApplicationRecord
 
   def sport_icon_name
     { cycling: "bike", running: "sport-shoe", other: "zap" }.fetch(sport_category)
+  end
+
+  def shareable_link?
+    visibility_shareable? || visibility_public?
   end
 
   def path_coordinates

@@ -1,0 +1,8 @@
+<%# locals: (record:, submit_url:, model_key:) %>
+
+<%= form_with model: record,
+              url: submit_url,
+              method: :patch,
+              data: { controller: "auto-submit" } do |form| %>
+  <%= render "shared/visibility_picker", form: form, model_key: model_key %>
+<% end %>

@@ -1,5 +1,5 @@
 class PlannedRoutesController < ApplicationController
-  before_action :set_planned_route, only: %i[ show edit update destroy ]
+  before_action :set_planned_route, only: %i[ show edit update update_visibility destroy ]
 
   def index
     @planned_routes = Current.user.planned_routes.recent
@@ -31,6 +31,20 @@ class PlannedRoutesController < ApplicationController
   def update
     @planned_route.assign_attributes(planned_route_params)
     persist_with_routing(@planned_route, success_flash: t("planned_route.flash.updated"), render_on_error: :edit)
+  end
+
+  def update_visibility
+    @planned_route.update!(visibility: params.require(:planned_route).require(:visibility))
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.replace(
+          helpers.dom_id(@planned_route, :share_section),
+          partial: "planned_routes/share_section",
+          locals: { planned_route: @planned_route }
+        )
+      end
+      format.html { redirect_to @planned_route, status: :see_other }
+    end
   end
 
   def destroy
@@ -104,7 +118,7 @@ class PlannedRoutesController < ApplicationController
   end
 
   def planned_route_params
-    permitted = params.require(:planned_route).permit(:name, :sport, :waypoints_json).to_h
+    permitted = params.require(:planned_route).permit(:name, :sport, :visibility, :waypoints_json).to_h
     raw = permitted.delete("waypoints_json").to_s
     permitted["waypoints"] = raw.present? ? JSON.parse(raw) : []
     permitted

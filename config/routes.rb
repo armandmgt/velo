@@ -30,10 +30,18 @@ Rails.application.routes.draw do
   resources :passwords, param: :token
 
   resource :activity_feeds
-  resources :activities
+  resources :activities do
+    patch :visibility, on: :member, action: :update_visibility
+  end
   resources :planned_routes, only: %i[ index new create edit update show destroy ] do
     post :preview, on: :collection
+    patch :visibility, on: :member, action: :update_visibility
   end
+
+  get "/a/:token", to: "shared/activities#show", as: :shared_activity
+  get "/r/:token(.:format)", to: "shared/planned_routes#show",
+      as: :shared_planned_route, constraints: { format: /(html|gpx)/ }
+
   root "activity_feeds#index"
 
   mount RailsIcons::Engine, at: "/rails_icons" if Rails.env.development?
