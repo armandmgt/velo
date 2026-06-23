@@ -17,18 +17,37 @@ import WebKit
 enum FileDownloader {
     static func download(from url: URL, presentingFrom navigator: Navigator) {
         WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
-            let configuration = URLSessionConfiguration.default
-            let storage = HTTPCookieStorage()
-            cookies.forEach { storage.setCookie($0) }
-            configuration.httpCookieStorage = storage
+            // Build the Cookie header explicitly. Handing cookies to a private
+            // `HTTPCookieStorage()` instance does not reliably feed them to the
+            // session, so the request would go out unauthenticated and the
+            // server would redirect to the login page.
+            let host = url.host ?? ""
+            let relevantCookies = cookies.filter { cookie in
+                let domain = cookie.domain.hasPrefix(".") ? String(cookie.domain.dropFirst()) : cookie.domain
+                return host == domain || host.hasSuffix("." + domain)
+            }
+
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.httpShouldSetCookies = false
+            configuration.httpCookieAcceptPolicy = .never
+
+            var request = URLRequest(url: url)
+            for (field, value) in HTTPCookie.requestHeaderFields(with: relevantCookies) {
+                request.setValue(value, forHTTPHeaderField: field)
+            }
 
             let session = URLSession(configuration: configuration)
-            let task = session.downloadTask(with: url) { tempURL, response, error in
+            let task = session.downloadTask(with: request) { tempURL, response, error in
+                let contentType = (response as? HTTPURLResponse)?.value(forHTTPHeaderField: "Content-Type") ?? ""
                 guard
                     error == nil,
                     let tempURL,
                     let response = response as? HTTPURLResponse,
-                    (200..<300).contains(response.statusCode)
+                    (200..<300).contains(response.statusCode),
+                    // A redirect to the login page would be followed and arrive
+                    // here as HTML — treat that (lost session) as a failure
+                    // rather than saving the login page as a `.gpx` file.
+                    !contentType.contains("text/html")
                 else {
                     DispatchQueue.main.async { presentFailure(from: navigator) }
                     return
