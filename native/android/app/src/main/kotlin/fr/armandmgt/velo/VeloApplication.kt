@@ -16,6 +16,7 @@ import fr.armandmgt.velo.bridge.AuthenticationComponent
 import fr.armandmgt.velo.bridge.NavbarButtonsComponent
 import fr.armandmgt.velo.bridge.NotificationCountComponent
 import fr.armandmgt.velo.features.web.WebFragment
+import fr.armandmgt.velo.main.FileDownloadRouteDecisionHandler
 import fr.armandmgt.velo.main.SignOutRouteDecisionHandler
 
 class VeloApplication : Application() {
@@ -46,11 +47,14 @@ class VeloApplication : Application() {
             BridgeComponentFactory("notification-count", ::NotificationCountComponent),
         )
 
-        // Replaces the library defaults; SignOutRouteDecisionHandler runs
-        // first so /session/new visits from the authenticated MainActivity
-        // are intercepted before AppNavigation hands them to in-app routing.
+        // Replaces the library defaults; the custom handlers run first so they
+        // intercept before AppNavigation hands a location to in-app routing:
+        // SignOut swaps back to LoginActivity on /session/new, and FileDownload
+        // diverts file exports (e.g. GPX) to the system DownloadManager instead
+        // of a web destination that can't render the attachment.
         Hotwire.registerRouteDecisionHandlers(
             SignOutRouteDecisionHandler(),
+            FileDownloadRouteDecisionHandler(),
             AppNavigationRouteDecisionHandler(),
             BrowserTabRouteDecisionHandler(),
             SystemNavigationRouteDecisionHandler(),
