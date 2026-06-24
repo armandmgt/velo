@@ -1,0 +1,40 @@
+default_platform(:android)
+
+platform :android do
+  desc "Build and upload an internal-track build (Android's TestFlight equivalent)"
+  lane :beta do
+    next_code = (
+      google_play_track_version_codes(track: "internal").max || 0
+    ).to_i + 1
+
+    gradle(
+      task: "clean bundle",
+      build_type: "Release",
+      properties: { "velo.versionCode" => next_code },
+    )
+
+    upload_to_play_store(
+      track: "internal",
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Promote the latest internal-track build to production"
+  lane :release do
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "production",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+end

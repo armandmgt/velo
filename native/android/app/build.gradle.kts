@@ -20,7 +20,9 @@ android {
         applicationId = "fr.armandmgt.velo"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
+        // Override at build time with `-Pvelo.versionCode=N` (fastlane does this from
+        // the latest Play Console internal-track code + 1).
+        versionCode = (project.findProperty("velo.versionCode") as String?)?.toIntOrNull() ?: 1
         versionName = "0.1.0"
     }
 

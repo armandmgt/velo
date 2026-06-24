@@ -48,3 +48,12 @@ run = """
 ./gradlew :app:installDebug
 adb shell am start -n fr.armandmgt.velo/.main.LoginActivity
 """
+
+[tasks.testflight]
+description = "Build and upload an internal-track release to Google Play via fastlane"
+run = "bundle exec fastlane beta"
+
+[tasks.release]
+description = "Promote the latest internal-track build to production"
+run = "bundle exec fastlane release"
+
