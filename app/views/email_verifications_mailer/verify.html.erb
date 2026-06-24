@@ -1,0 +1,6 @@
+<p>
+  Bienvenue sur Velo ! Confirmez votre adresse email en visitant
+  <%= link_to "cette page de confirmation", email_verification_url(token: @token) %>.
+
+  Ce lien expirera dans 24 heures.
+</p>

@@ -27,4 +27,37 @@ class UserTest < ActiveSupport::TestCase
     user.max_heart_rate = 300
     assert_not user.valid?
   end
+
+  test "email_verified? reflects email_verified_at" do
+    assert users(:one).email_verified?
+    assert_not users(:unverified).email_verified?
+  end
+
+  test "verify_email! sets email_verified_at" do
+    user = users(:unverified)
+    assert_changes -> { user.email_verified? }, from: false, to: true do
+      user.verify_email!
+    end
+  end
+
+  test "email_verification token round-trips" do
+    user = users(:unverified)
+    token = user.generate_token_for(:email_verification)
+    assert_equal user, User.find_by_token_for(:email_verification, token)
+  end
+
+  test "email_verification token is invalidated when the email address changes" do
+    user = users(:unverified)
+    token = user.generate_token_for(:email_verification)
+    user.update!(email_address: "changed@example.com")
+    assert_nil User.find_by_token_for(:email_verification, token)
+  end
+
+  test "email_verification token expires" do
+    user = users(:unverified)
+    token = user.generate_token_for(:email_verification)
+    travel 2.days do
+      assert_nil User.find_by_token_for(:email_verification, token)
+    end
+  end
 end

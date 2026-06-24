@@ -24,7 +24,8 @@ class UsersController < ApplicationController
     @user = User.new(user_params)
 
     if @user.save
-      redirect_to new_session_path, notice: "Compte créé avec succès. Il doit être approuvé par un admin avant de pouvoir vous connecter."
+      EmailVerificationsMailer.verify(@user).deliver_later
+      redirect_to new_session_path, notice: "Compte créé avec succès. Consultez vos emails pour confirmer votre adresse avant de vous connecter."
     else
       redirect_to new_user_path, alert: user.errors.full_messages.join(", ")
     end

@@ -27,6 +27,7 @@ Rails.application.routes.draw do
   resources :users, only: %i[ new create ]
   resource :user, only: %i[ show update destroy ]
   resource :session, only: %i[ show new create destroy ]
+  resource :email_verification, only: %i[ show create ]
   resources :passwords, param: :token
 
   resource :activity_feeds

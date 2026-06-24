@@ -18,6 +18,16 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
+  test "should send a verification email and leave the new user unverified" do
+    assert_enqueued_emails 1 do
+      post users_url, params: { user: { email_address: "four@example.com", password: "password" } }
+    end
+
+    new_user = User.find_by(email_address: "four@example.com")
+    assert_not new_user.email_verified?
+    assert_enqueued_email_with EmailVerificationsMailer, :verify, args: [ new_user ]
+  end
+
   test "should show user" do
     login(@user)
     get user_url
