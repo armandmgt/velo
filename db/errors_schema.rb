@@ -10,8 +10,8 @@ ActiveRecord::Schema[7.1].define(version: 1) do
     t.string "fingerprint", limit: 64, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["fingerprint"], name: "index_solid_errors_on_fingerprint", unique: true
-    t.index ["resolved_at"], name: "index_solid_errors_on_resolved_at"
+    t.index [ "fingerprint" ], name: "index_solid_errors_on_fingerprint", unique: true
+    t.index [ "resolved_at" ], name: "index_solid_errors_on_resolved_at"
   end
 
   create_table "solid_errors_occurrences", force: :cascade do |t|
@@ -20,7 +20,7 @@ ActiveRecord::Schema[7.1].define(version: 1) do
     t.json "context"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["error_id"], name: "index_solid_errors_occurrences_on_error_id"
+    t.index [ "error_id" ], name: "index_solid_errors_occurrences_on_error_id"
   end
 
   add_foreign_key "solid_errors_occurrences", "solid_errors", column: "error_id"

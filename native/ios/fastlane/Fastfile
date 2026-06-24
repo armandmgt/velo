@@ -56,7 +56,7 @@ platform :ios do
       precheck_include_in_app_purchases: false,
       submission_information: {
         add_id_info_uses_idfa: false,
-        export_compliance_uses_encryption: false,
+        export_compliance_uses_encryption: false
       },
     )
   end
@@ -79,7 +79,7 @@ platform :ios do
       "-authenticationKeyID #{ENV.fetch("ASC_KEY_ID")}",
       "-authenticationKeyIssuerID #{ENV.fetch("ASC_ISSUER_ID")}",
       "-authenticationKeyPath #{asc_key_filepath}",
-      "-allowProvisioningUpdates",
+      "-allowProvisioningUpdates"
     ].join(" ")
   end
 end
