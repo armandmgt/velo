@@ -42,6 +42,9 @@ Rails.application.routes.draw do
   get "/r/:token(.:format)", to: "shared/planned_routes#show",
       as: :shared_planned_route, constraints: { format: /(html|gpx)/ }
 
+  get "privacy", to: "pages#privacy", as: :privacy
+  get "support", to: "pages#support", as: :support
+
   root "activity_feeds#index"
 
   mount RailsIcons::Engine, at: "/rails_icons" if Rails.env.development?

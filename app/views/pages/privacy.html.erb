@@ -1,0 +1,125 @@
+<% content_for :title, "Politique de confidentialité — Velo" %>
+
+<main class="prose dark:prose-invert md:py-16 p-4 max-w-3xl mx-auto">
+  <h1>Politique de confidentialité</h1>
+
+  <p><em>Dernière mise à jour&nbsp;: 24 juin 2026</em></p>
+
+  <p>
+    Velo est un service auto-hébergé de suivi d'activités sportives (cyclisme,
+    course à pied, randonnée, etc.) opéré à titre personnel par Armand Mégrot.
+    Cette page décrit les données collectées par le service et la façon dont
+    elles sont traitées.
+  </p>
+
+  <h2>Données collectées</h2>
+
+  <h3>Compte utilisateur</h3>
+  <ul>
+    <li>Adresse e-mail (identifiant de connexion).</li>
+    <li>Mot de passe, stocké uniquement sous forme de hachage <code>bcrypt</code>.</li>
+    <li>Préférences d'affichage et de localisation.</li>
+  </ul>
+
+  <h3>Données d'activité</h3>
+  <ul>
+    <li>
+      Fichiers d'activité que vous importez ou synchronisez (FIT, GPX, exports
+      Strava, synchronisation iGPSport).
+    </li>
+    <li>
+      Métriques par seconde extraites de ces fichiers&nbsp;: position GPS,
+      vitesse, cadence, puissance, fréquence cardiaque, altitude.
+    </li>
+    <li>
+      Trajet GPS complet de chaque sortie, stocké dans la base de données
+      PostGIS.
+    </li>
+  </ul>
+
+  <h3>Connexions tierces</h3>
+  <ul>
+    <li>
+      Si vous activez la synchronisation iGPSport, vos identifiants iGPSport
+      (e-mail, mot de passe, jeton d'accès) sont chiffrés au repos avec la clé
+      d'application Rails <code>encrypts</code>.
+    </li>
+  </ul>
+
+  <h3>Données techniques</h3>
+  <ul>
+    <li>
+      Sessions actives&nbsp;: <code>User-Agent</code> et adresse IP de chaque
+      connexion, pour vous permettre de révoquer une session.
+    </li>
+    <li>Journaux serveur standard (requêtes HTTP, erreurs applicatives).</li>
+  </ul>
+
+  <h2>Services tiers</h2>
+
+  <ul>
+    <li>
+      <strong>Nominatim (OpenStreetMap)</strong>&nbsp;: la première position
+      GPS valide de chaque activité est envoyée à Nominatim pour en déduire la
+      commune. Aucune autre donnée personnelle n'est transmise.
+    </li>
+    <li>
+      <strong>iGPSport</strong>&nbsp;: si vous activez la synchronisation,
+      l'application se connecte à iGPSport en votre nom pour récupérer vos
+      activités.
+    </li>
+    <li>
+      <strong>MapLibre / fond de carte</strong>&nbsp;: l'affichage des cartes
+      utilise des tuiles servies par des fournisseurs externes&nbsp;; aucune
+      donnée personnelle ne leur est transmise au-delà de votre adresse IP.
+    </li>
+  </ul>
+
+  <h2>Partage public</h2>
+
+  <p>
+    Vous pouvez créer un lien public de partage pour une activité ou un
+    itinéraire planifié. Tant que le partage est activé, toute personne
+    disposant du lien peut consulter la trace, les statistiques agrégées et,
+    pour les itinéraires, télécharger le fichier GPX. Les données personnelles
+    (fréquence cardiaque, puissance, etc.) ne sont pas exposées sur les pages
+    partagées. Vous pouvez désactiver le partage à tout moment depuis l'activité
+    ou l'itinéraire concerné.
+  </p>
+
+  <h2>Conservation et suppression</h2>
+
+  <p>
+    Vos données sont conservées tant que votre compte est actif. Vous pouvez
+    supprimer une activité individuelle à tout moment, ou demander la
+    suppression complète de votre compte en nous contactant à l'adresse
+    indiquée ci-dessous&nbsp;; l'intégralité des activités, fichiers importés et
+    données associées seront alors supprimés.
+  </p>
+
+  <h2>Sécurité</h2>
+
+  <p>
+    Les mots de passe sont stockés hachés (<code>bcrypt</code>). Les
+    identifiants de services tiers sont chiffrés au repos. Les sessions
+    utilisent des cookies signés (<code>httponly</code>,
+    <code>same_site: lax</code>). L'ensemble du trafic vers
+    <code>velo.armandmgt.fr</code> est servi en HTTPS.
+  </p>
+
+  <h2>Vos droits (RGPD)</h2>
+
+  <p>
+    Conformément au RGPD, vous disposez d'un droit d'accès, de rectification,
+    d'effacement, de portabilité et d'opposition concernant vos données. Pour
+    exercer ces droits, contactez-nous à
+    <a href="mailto:privacy@amgt.fr">privacy@amgt.fr</a>.
+  </p>
+
+  <h2>Contact</h2>
+
+  <p>
+    Pour toute question relative à cette politique de confidentialité&nbsp;:
+    <a href="mailto:privacy@amgt.fr">privacy@amgt.fr</a>.
+  </p>
+</main>

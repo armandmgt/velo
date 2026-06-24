@@ -23,4 +23,13 @@
 
     <%= button_to "Supprimer mon compte", user_path(Current.user), method: :delete, data: { turbo_confirm: "Etes-vous sûr de vouloir supprimer votre compte ?" }, class: "btn btn-error" %>
   </section>
+
+  <section>
+    <h2>À propos</h2>
+
+    <ul class="not-prose flex flex-col gap-1">
+      <li><%= link_to "Support", support_path, class: "link" %></li>
+      <li><%= link_to "Politique de confidentialité", privacy_path, class: "link" %></li>
+    </ul>
+  </section>
 </main>
