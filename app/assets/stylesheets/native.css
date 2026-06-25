@@ -5,3 +5,8 @@
 [data-bridge-components~="navbar-buttons"] main {
     padding-top: calc(var(--spacing) * 4);
 }
+
+/* Hide the reactionview/Herb dev-tools badge inside native webviews (dev only). */
+.herb-floating-menu {
+    display: none !important;
+}

@@ -1,14 +1,14 @@
-<% content_for :title, "Importer Strava" %>
+<% content_for :title, "Importer une archive" %>
 
 <main class="prose dark:prose-invert md:py-16 p-4">
   <header class="flex justify-between items-center mb-4 hotwire-native:hidden">
-    <h1 class="mt-0 mb-0">Importer un ZIP Strava</h1>
+    <h1 class="mt-0 mb-0">Importer une archive</h1>
   </header>
 
   <section class="not-prose max-w-xl">
     <div class="card bg-base-100 shadow">
       <div class="card-body">
-        <p class="text-sm opacity-70">Téléversez votre export de compte Strava (ZIP). Seuls les fichiers .fit seront importés.</p>
+        <p class="text-sm opacity-70">Téléversez l'archive (ZIP) exportée depuis un autre service, par exemple Strava. Seuls les fichiers .fit seront importés.</p>
 
         <%= form_with url: strava_imports_path, multipart: true, class: "space-y-4" do |f| %>
           <div class="form-control">
