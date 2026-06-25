@@ -50,10 +50,10 @@ adb shell am start -n fr.armandmgt.velo/.main.LoginActivity
 """
 
 [tasks.testflight]
-description = "Build and upload an internal-track release to Google Play via fastlane"
+description = "Build and upload a closed-testing release to Google Play via fastlane"
 run = "bundle exec fastlane beta"
 
 [tasks.release]
-description = "Promote the latest internal-track build to production"
+description = "Promote the latest closed-testing build to production"
 run = "bundle exec fastlane release"
 

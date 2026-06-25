@@ -56,13 +56,14 @@ the native shell (the web navbar is hidden for native clients by `native.css`).
 | `res/xml/network_security_config.xml` | Dev cleartext whitelist |
 | `app/src/main/assets/json/path-configuration.json` | Bundled fallback path config |
 
-## Release to Google Play (internal track → production)
+## Release to Google Play (closed testing → production)
 
 Releases are managed with [fastlane](https://docs.fastlane.tools/) — version
 codes, AAB uploads, and track promotions stay on the command line instead of
-in the Play Console web UI. The internal testing track is Android's
-TestFlight equivalent: instant distribution to a whitelisted tester list, no
-review wait.
+in the Play Console web UI. Builds go to the **closed testing** (`alpha`)
+track: distribution to a defined tester list/group, and — for new personal
+developer accounts — the track that satisfies Google's 12-testers-for-14-days
+requirement before production access.
 
 ### One-time setup
 
@@ -86,8 +87,8 @@ review wait.
    AAB to be uploaded via the web UI — `fastlane supply` cannot create a new
    app. Build one with `./gradlew :app:bundleRelease` (output:
    `app/build/outputs/bundle/release/app-release.aab`) and upload it to the
-   **internal** testing track from the Play Console. All subsequent uploads
-   go through fastlane.
+   **closed testing** (Alpha) track from the Play Console. All subsequent
+   uploads go through fastlane.
 
 3. **Service account for the Play Developer API.**
    - In Play Console → Setup → API access, link a Google Cloud project (or
@@ -115,19 +116,19 @@ cd native/android
 mise run testflight   # → bundle exec fastlane beta
 ```
 
-This fetches the highest `versionCode` from the Play internal track, bumps
-to `latest + 1`, builds a signed AAB with that code (via
-`-Pvelo.versionCode=N` — no file mutation), and uploads to the internal
+This fetches the highest `versionCode` from the Play closed-testing (`alpha`)
+track, bumps to `latest + 1`, builds a signed AAB with that code (via
+`-Pvelo.versionCode=N` — no file mutation), and uploads to the closed-testing
 track. `versionName` lives in `app/build.gradle.kts`; bump it there when you
 cut a new marketing version.
 
-When the current internal build looks good, promote it to production:
+When the current closed-testing build looks good, promote it to production:
 
 ```bash
 mise run release      # → bundle exec fastlane release
 ```
 
-This does not re-upload — it just moves the existing artifact from `internal`
+This does not re-upload — it just moves the existing artifact from `alpha`
 to `production`.
 
 ## Not yet implemented

@@ -1,10 +1,10 @@
 default_platform(:android)
 
 platform :android do
-  desc "Build and upload an internal-track build (Android's TestFlight equivalent)"
+  desc "Build and upload a closed-testing (alpha track) build"
   lane :beta do
     next_code = (
-      google_play_track_version_codes(track: "internal").max || 0
+      google_play_track_version_codes(track: "alpha").max || 0
     ).to_i + 1
 
     gradle(
@@ -14,7 +14,7 @@ platform :android do
     )
 
     upload_to_play_store(
-      track: "internal",
+      track: "alpha",
       release_status: "completed",
       skip_upload_apk: true,
       skip_upload_metadata: true,
@@ -24,10 +24,10 @@ platform :android do
     )
   end
 
-  desc "Promote the latest internal-track build to production"
+  desc "Promote the latest closed-testing build to production"
   lane :release do
     upload_to_play_store(
-      track: "internal",
+      track: "alpha",
       track_promote_to: "production",
       skip_upload_apk: true,
       skip_upload_aab: true,
