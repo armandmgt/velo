@@ -33,6 +33,34 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_operator Activity.last.distance.to_f, :>, 0
   end
 
+  # The native recorder uploads multipart/form-data (the GPX file) while asking
+  # for JSON back via the Accept header — not a JSON-encoded body.
+  test "JSON create returns the activity id and url with a 201 and Location header" do
+    assert_difference("Activity.count") do
+      post activities_url,
+           params: { activity: { sport: "bike", fit_file: file_fixture_upload("gpx/native_recording.gpx") } },
+           headers: { "Accept" => "application/json" }
+    end
+
+    assert_response :created
+    created = Activity.last
+    body = response.parsed_body
+    assert_equal created.id, body["id"]
+    assert_equal activity_url(created), body["url"]
+    assert_equal activity_url(created), response.headers["Location"]
+  end
+
+  test "JSON create returns 422 with errors when the activity is invalid" do
+    assert_no_difference("Activity.count") do
+      post activities_url,
+           params: { activity: { fit_file: file_fixture_upload("gpx/empty.gpx") } },
+           headers: { "Accept" => "application/json" }
+    end
+
+    assert_response :unprocessable_content
+    assert response.parsed_body["errors"].present?
+  end
+
   test "should show activity" do
     get activity_url(@activity)
     assert_response :success
