@@ -10,6 +10,11 @@ tags:
     clearState: true
     clearKeychain: true
     stopApp: true
+    # Pre-grant "While Using" location so the S2 (#50) permission request the
+    # recording screen now fires doesn't pop a system alert over the assertions
+    # below. (We only ever request When-In-Use — never "Always".)
+    permissions:
+      location: inuse
 
 - assertVisible: "Se connecter"
 - hideKeyboard
@@ -27,6 +32,15 @@ tags:
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
 # — .fullScreen + isModalInPresentation), so the only way back is the button.
 - assertNotVisible: "Tableau de bord"
+
+# S2 (#50) smoke check: inject a fix and confirm the live GPS readout ticks the
+# point count. `setLocation` is a single static fix, so a *moving* count is
+# verified manually (Simulator → Features → Location → City Run); here we just
+# prove the feed is wired and the readout updates off "En attente du GPS…".
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "[0-9]+ points"
 
 - tapOn: "Arrêter"
 
