@@ -19,7 +19,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         delegate: self
     )
 
-    private lazy var tabBarController = HotwireTabBarController(navigatorDelegate: self)
+    private lazy var tabBarController = RecordTabBarController(navigatorDelegate: self)
 
     func scene(
         _ scene: UIScene,
