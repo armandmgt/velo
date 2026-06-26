@@ -68,6 +68,68 @@ class GpxExtractorTest < ActiveSupport::TestCase
     assert_equal 5, activity.reload.activity_data_points.count
   end
 
+  # --- Native recorder contract (issue #48) ---------------------------------
+  # The iOS/Android recorders serialize an on-device recording to GPX 1.1 and
+  # upload it through POST /activities, which routes .gpx to GpxExtractor. These
+  # tests pin the schema the apps must emit (see the device fixture and
+  # docs/native-recording/s0-gpx-upload-contract.md) and prove it round-trips.
+
+  def extract_native(activity = @user.activities.build)
+    gpx = Rails.root.join("test/fixtures/files/gpx/native_recording.gpx").read
+    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+    activity
+  end
+
+  test "device-style GPX builds one data point per track point" do
+    activity = extract_native
+    assert_equal 10, activity.activity_data_points.size
+    assert_kind_of RGeo::Feature::LineString, activity.path
+    assert_equal 10, activity.path.num_points
+  end
+
+  test "device-style GPX carries hr, cadence and power per point" do
+    points = extract_native.activity_data_points
+
+    assert_equal 112, points.first.heart_rate
+    assert_equal 84.0, points.first.cadence.to_f
+    assert_equal 180.0, points.first.power.to_f
+    assert_equal 35.0, points.first.altitude.to_f
+
+    assert_equal 130, points.last.heart_rate
+    assert_equal 87.0, points.last.cadence.to_f
+    assert_equal 185.0, points.last.power.to_f
+  end
+
+  test "device-style GPX maps <trk><type> onto the sport enum" do
+    activity = extract_native
+    assert_equal "bike", activity.sport
+    assert_equal "Sortie enregistrée sur le téléphone", activity.name
+  end
+
+  test "an explicit activity[sport] is not overridden by <trk><type>" do
+    # The device UX picks the sport; create() sets it from the param before the
+    # extractor runs, and the GPX <type> is only a fallback (||=).
+    activity = extract_native(@user.activities.build(sport: :gravel_ride))
+    assert_equal "gravel_ride", activity.sport
+  end
+
+  test "device-style GPX derives summary metrics and timestamps" do
+    activity = extract_native
+
+    assert_equal Time.utc(2026, 6, 25, 8, 0, 0), activity.start_time
+    assert_equal Time.utc(2026, 6, 25, 8, 0, 9), activity.end_time
+    assert_in_delta 50.1, activity.distance.to_f, 1.0
+    assert_equal "PT9S", activity.active_time
+    assert_operator activity.max_speed.to_f, :>, 0
+  end
+
+  test "device-style GPX persists end to end" do
+    activity = extract_native
+    activity.name ||= "Sans nom"
+    assert activity.save, activity.errors.full_messages.to_sentence
+    assert_equal 10, activity.reload.activity_data_points.count
+  end
+
   test "filters an isolated GPS spike so max_speed stays plausible" do
     # 21 points 1s apart progressing steadily north (~2 m/s), except point #10
     # is displaced ~55m east — a GPS spike reading as ~55 m/s on the way out and

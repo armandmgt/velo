@@ -26,10 +26,20 @@ class ActivitiesController < ApplicationController
     end
 
     if @activity.save
-      redirect_to @activity, notice: "Activité créée avec succès."
+      respond_to do |format|
+        format.html { redirect_to @activity, notice: "Activité créée avec succès." }
+        # Native recorders (issue #48) upload GPX out-of-band and navigate the
+        # webview to the returned URL — no Turbo redirect to follow.
+        format.json { render json: { id: @activity.id, url: activity_url(@activity) }, status: :created, location: @activity }
+      end
     else
-      flash.now[:alert] = "L'activité n'a pas pu être créée : #{@activity.errors.full_messages.to_sentence}."
-      render :new, status: :unprocessable_content
+      respond_to do |format|
+        format.html do
+          flash.now[:alert] = "L'activité n'a pas pu être créée : #{@activity.errors.full_messages.to_sentence}."
+          render :new, status: :unprocessable_content
+        end
+        format.json { render json: { errors: @activity.errors.full_messages }, status: :unprocessable_content }
+      end
     end
   end
 
