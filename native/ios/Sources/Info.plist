@@ -20,6 +20,17 @@
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- Location recording (#41/#50). We request "While Using" only — never
+	     "Always" — so only the When-In-Use string is declared. Combined with the
+	     `location` UIBackgroundMode below and `allowsBackgroundLocationUpdates`,
+	     this keeps the GPS feed alive while the app is backgrounded *during* a
+	     recording (blue status-bar pill), which is all the recorder needs. -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Velo utilise votre position pour enregistrer le tracé GPS de vos sorties, y compris lorsque l'écran est verrouillé pendant un enregistrement.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
