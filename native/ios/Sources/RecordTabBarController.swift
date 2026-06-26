@@ -29,11 +29,21 @@ final class RecordTabBarController: HotwireTabBarController {
     private func addRecordButton() {
         view.addSubview(recordButton)
 
+        // Float the button just above the bottom tab bar on iPhone. On iPad with
+        // iOS 18+/26 the tab bar is the floating *top* pill and is NOT a
+        // descendant of our view, so pinning to `tabBar.topAnchor` there throws
+        // an Auto Layout "no common ancestor" exception — a crash on sign-in.
+        // Fall back to the safe-area bottom whenever the tab bar isn't in our
+        // hierarchy (no bottom bar to clear there anyway).
+        let bottomAnchor = tabBar.isDescendant(of: view)
+            ? tabBar.topAnchor
+            : view.safeAreaLayoutGuide.bottomAnchor
+
         NSLayoutConstraint.activate([
             recordButton.widthAnchor.constraint(equalToConstant: Self.buttonSize),
             recordButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
             recordButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            recordButton.bottomAnchor.constraint(equalTo: tabBar.topAnchor, constant: -12),
+            recordButton.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
         ])
     }
 
