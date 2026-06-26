@@ -1,0 +1,35 @@
+appId: fr.armandmgt.velo
+name: Record flow (entry point opens native recording screen, Stop pops back)
+tags:
+  - regression
+---
+# S1 walking skeleton (#49): the Record button floats above the tab bar and
+# presents a fully native recording screen full-screen. No location/persistence
+# yet — this flow just guards the navigation and screen lifecycle.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+
+- assertVisible: "Se connecter"
+- hideKeyboard
+- tapOn: "Se connecter"
+
+- assertVisible: "Résumé par période"
+
+# The native Record button is a floating UIButton (accessibilityLabel), not a
+# tab — owned by RecordTabBarController so it can animate while recording later.
+- tapOn: "Enregistrer"
+
+# Fully native recording screen, presented as a full-screen modal.
+- assertVisible: "Enregistrement"
+- assertVisible: "Arrêter"
+# Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
+# — .fullScreen + isModalInPresentation), so the only way back is the button.
+- assertNotVisible: "Tableau de bord"
+
+- tapOn: "Arrêter"
+
+# Back on the dashboard inside the tab bar shell.
+- assertVisible: "Résumé par période"
+- assertVisible: "Tableau de bord"
