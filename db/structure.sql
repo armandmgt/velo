@@ -581,17 +581,10 @@ CREATE INDEX index_activities_on_user_id ON public.activities USING btree (user_
 
 
 --
--- Name: index_activity_data_points_on_activity_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_activity_data_points_on_activity_id_and_recorded_at; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_activity_data_points_on_activity_id ON public.activity_data_points USING btree (activity_id);
-
-
---
--- Name: index_activity_data_points_on_recorded_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_activity_data_points_on_recorded_at ON public.activity_data_points USING btree (recorded_at);
+CREATE UNIQUE INDEX index_activity_data_points_on_activity_id_and_recorded_at ON public.activity_data_points USING btree (activity_id, recorded_at);
 
 
 --
@@ -685,6 +678,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260627124421'),
 ('20260624173312'),
 ('20260616120001'),
 ('20260616120000'),
