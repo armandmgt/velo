@@ -63,6 +63,8 @@ tags:
 # the upload — the CSRF JSON exemption lets the out-of-webview POST through.
 - tapOn: "Arrêter"
 
-# Landed on the created activity's show page inside the tab bar shell.
-- assertVisible: "Retour à la liste"
+# Landed on the created activity's show page inside the tab bar shell. The
+# device names recordings "Sortie enregistrée sur le téléphone" (the <trk><name>
+# default), which only appears on the activity page.
+- assertVisible: "Sortie enregistrée sur le téléphone"
 - assertVisible: "Tableau de bord"

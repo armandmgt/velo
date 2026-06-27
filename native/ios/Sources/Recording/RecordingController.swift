@@ -65,6 +65,9 @@ final class RecordingController: NSObject {
     private var session: RecordingSession?
     private var accumulator = RecordingStatsAccumulator()
     private var lastFixSpeed: CLLocationSpeed = 0
+    /// Wall-clock second of the last persisted fix, to keep at most one point per
+    /// second (the ~1 Hz contract; see `locationRecorder(_:didUpdate:)`).
+    private var lastPersistedSecond: TimeInterval?
 
     // Elapsed clock: wall-clock recording time minus paused stretches.
     private var accumulatedElapsed: TimeInterval = 0
@@ -118,6 +121,7 @@ final class RecordingController: NSObject {
         pointCount = 0
         accumulator = RecordingStatsAccumulator()
         lastFixSpeed = 0
+        lastPersistedSecond = nil
         accumulatedElapsed = 0
         stretchStart = Date()
 
@@ -226,6 +230,18 @@ extension RecordingController: LocationRecorderDelegate {
             delegate?.recordingController(self, didReceiveFix: location, pointCount: pointCount)
             return
         }
+
+        // Keep at most one fix per wall-clock second (the ~1 Hz contract, S0 §2).
+        // `distanceFilter = kCLDistanceFilterNone` can deliver sub-second bursts;
+        // since the GPX emits whole-second `<time>`s, two points in the same second
+        // would carry identical timestamps and collide on the server's unique
+        // `recorded_at`. Surface the fix in the readout but don't persist it.
+        let second = location.timestamp.timeIntervalSince1970.rounded(.down)
+        guard second != lastPersistedSecond else {
+            delegate?.recordingController(self, didReceiveFix: location, pointCount: pointCount)
+            return
+        }
+        lastPersistedSecond = second
 
         let segmentSpeed = accumulator.add(location)
         lastFixSpeed = location.speed >= 0 ? location.speed : segmentSpeed
