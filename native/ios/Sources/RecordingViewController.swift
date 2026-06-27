@@ -16,6 +16,11 @@ import UIKit
 /// A sport is chosen up front via a native picker (S4 — #52), defaulting to the
 /// last-used sport.
 ///
+/// The design (#…) puts the **stats** at the centre — they're the main payload
+/// until a live map lands. GPS signal quality is intentionally minor: a slim
+/// colour-coded banner pinned at the top. State (recording/paused) reads from a
+/// small pill above the stats.
+///
 /// Two exits, now meaningfully distinct:
 /// - **Fermer** (close): leaves the screen — recording keeps running in the
 ///   background (the controller outlives this VC) and the tab-bar Record button
@@ -66,14 +71,13 @@ final class RecordingViewController: UIViewController {
 
     // MARK: - Layout
 
-    private let glyphView = UIImageView()
+    private let gpsBanner = GPSBannerView()
+    private let statePill = StatusPillView()
     private let elapsedLabel = UILabel()
+    private let elapsedCaption = UILabel()
     private let distanceStat = StatView(caption: "Distance")
     private let speedStat = StatView(caption: "Vitesse")
     private let avgStat = StatView(caption: "Moyenne")
-    private let readoutLabel = UILabel()
-    private let countLabel = UILabel()
-    private lazy var settingsButton: UIButton = makeSettingsButton()
 
     private lazy var sportButton = makeSportButton()
     private lazy var startButton = makeStartButton()
@@ -111,53 +115,61 @@ final class RecordingViewController: UIViewController {
     }()
 
     private func setupLayout() {
-        glyphView.image = symbol("record.circle", pointSize: 96)
-        glyphView.tintColor = .systemGray
-        glyphView.contentMode = .scaleAspectFit
+        // Tapping the banner when access is denied jumps to Settings.
+        gpsBanner.onTapWhenDenied = {
+            guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(url)
+        }
+        gpsBanner.translatesAutoresizingMaskIntoConstraints = false
 
+        // The hero: a big elapsed clock over a generous stats grid.
         elapsedLabel.text = "00:00"
-        elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 48, weight: .semibold)
+        elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 60, weight: .semibold)
         elapsedLabel.textColor = .label
+        elapsedLabel.textAlignment = .center
+
+        elapsedCaption.text = "temps"
+        elapsedCaption.font = .preferredFont(forTextStyle: .caption1)
+        elapsedCaption.textColor = .secondaryLabel
+        elapsedCaption.textAlignment = .center
 
         let statsRow = UIStackView(arrangedSubviews: [distanceStat, speedStat, avgStat])
         statsRow.axis = .horizontal
         statsRow.distribution = .fillEqually
         statsRow.spacing = 8
 
-        // Debug readout (kept from S2): live lat/lon + accuracy, point count below.
-        readoutLabel.font = .monospacedSystemFont(ofSize: 14, weight: .regular)
-        readoutLabel.textColor = .secondaryLabel
-        readoutLabel.numberOfLines = 0
-        readoutLabel.textAlignment = .center
-        readoutLabel.text = "En attente du GPS…"
+        let elapsedBlock = UIStackView(arrangedSubviews: [elapsedLabel, elapsedCaption])
+        elapsedBlock.axis = .vertical
+        elapsedBlock.alignment = .center
+        elapsedBlock.spacing = 0
 
-        countLabel.font = .monospacedDigitSystemFont(ofSize: 14, weight: .medium)
-        countLabel.textColor = .secondaryLabel
-        countLabel.textAlignment = .center
-        countLabel.isHidden = true
+        let centre = UIStackView(arrangedSubviews: [statePill, elapsedBlock, statsRow])
+        centre.axis = .vertical
+        centre.alignment = .center
+        centre.spacing = 28
+        centre.setCustomSpacing(32, after: elapsedBlock)
+        centre.translatesAutoresizingMaskIntoConstraints = false
 
-        settingsButton.isHidden = true
-
-        let stack = UIStackView(arrangedSubviews: [glyphView, elapsedLabel, statsRow, readoutLabel, countLabel, settingsButton])
-        stack.axis = .vertical
-        stack.alignment = .center
-        stack.spacing = 16
-        stack.setCustomSpacing(24, after: elapsedLabel)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-
-        view.addSubview(stack)
+        view.addSubview(gpsBanner)
+        view.addSubview(centre)
         view.addSubview(sportButton)
         view.addSubview(startButton)
         view.addSubview(activeControls)
         view.addSubview(uploadingStack)
 
         NSLayoutConstraint.activate([
-            stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            stack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            stack.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
-            statsRow.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
-            statsRow.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+            // Slim GPS banner pinned at the very top, low emphasis.
+            gpsBanner.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            gpsBanner.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
+            gpsBanner.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+
+            // Stats block owns the centre of the screen.
+            centre.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            centre.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            centre.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
+            centre.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
+            statsRow.leadingAnchor.constraint(equalTo: centre.leadingAnchor),
+            statsRow.trailingAnchor.constraint(equalTo: centre.trailingAnchor),
 
             // Sport picker sits just above Démarrer (both visible only while idle).
             sportButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
@@ -188,11 +200,8 @@ final class RecordingViewController: UIViewController {
     /// controller; `updateSportButton()` keeps the title/glyph and the menu's
     /// checkmark in sync.
     private func makeSportButton() -> UIButton {
-        var config = UIButton.Configuration.tinted()
-        config.cornerStyle = .large
-        config.imagePadding = 8
-        let button = UIButton(configuration: config)
-        button.translatesAutoresizingMaskIntoConstraints = false
+        let button = glassButton(prominent: false)
+        button.configuration?.imagePadding = 8
         button.showsMenuAsPrimaryAction = true
         button.accessibilityIdentifier = "sportPicker"
         return button
@@ -203,6 +212,13 @@ final class RecordingViewController: UIViewController {
         sportButton.configuration?.title = sport.displayName
         sportButton.configuration?.image = UIImage(systemName: sport.symbolName)
         sportButton.menu = makeSportMenu()
+        // Speed↔pace caption follows the sport; refresh the live values too.
+        updateMetricCaptions()
+        render(stats: controller.currentStats)
+    }
+
+    private func updateMetricCaptions() {
+        speedStat.caption = controller.sport.usesPace ? "Allure" : "Vitesse"
     }
 
     private func makeSportMenu() -> UIMenu {
@@ -221,53 +237,43 @@ final class RecordingViewController: UIViewController {
     }
 
     private func makeStartButton() -> UIButton {
-        var config = UIButton.Configuration.filled()
-        config.title = "Démarrer"
-        config.baseBackgroundColor = .systemGreen
-        config.cornerStyle = .large
-        let button = UIButton(
-            configuration: config,
-            primaryAction: UIAction { [weak self] _ in self?.controller.start() }
-        )
-        button.translatesAutoresizingMaskIntoConstraints = false
+        let button = glassButton(prominent: true, tint: .systemGreen)
+        button.configuration?.title = "Démarrer"
+        button.addAction(UIAction { [weak self] _ in self?.controller.start() }, for: .primaryActionTriggered)
         return button
     }
 
     private func makeStopButton() -> UIButton {
-        var config = UIButton.Configuration.filled()
-        config.title = "Arrêter"
-        config.baseBackgroundColor = .systemRed
-        config.cornerStyle = .large
-        let button = UIButton(
-            configuration: config,
-            primaryAction: UIAction { [weak self] _ in self?.stop() }
-        )
-        button.translatesAutoresizingMaskIntoConstraints = false
+        let button = glassButton(prominent: true, tint: .systemRed)
+        button.configuration?.title = "Arrêter"
+        button.addAction(UIAction { [weak self] _ in self?.stop() }, for: .primaryActionTriggered)
         return button
     }
 
     private func makeSecondaryButton(title: String, action: @escaping () -> Void) -> UIButton {
-        var config = UIButton.Configuration.tinted()
-        config.title = title
-        config.cornerStyle = .large
-        let button = UIButton(
-            configuration: config,
-            primaryAction: UIAction { _ in action() }
-        )
-        button.translatesAutoresizingMaskIntoConstraints = false
+        let button = glassButton(prominent: false)
+        button.configuration?.title = title
+        button.addAction(UIAction { _ in action() }, for: .primaryActionTriggered)
         return button
     }
 
-    private func makeSettingsButton() -> UIButton {
-        var config = UIButton.Configuration.tinted()
-        config.title = "Ouvrir les Réglages"
-        let button = UIButton(
-            configuration: config,
-            primaryAction: UIAction { _ in
-                guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                UIApplication.shared.open(url)
-            }
-        )
+    /// A Liquid Glass button, matching the tab-bar Record button's treatment
+    /// (`RecordTabBarController.makeRecordButton`): `prominentGlass` (tinted,
+    /// reads against content) for primary colour actions, plain `glass` for
+    /// secondary ones, with a filled/tinted fallback below iOS 26.
+    private func glassButton(prominent: Bool, tint: UIColor? = nil) -> UIButton {
+        var config: UIButton.Configuration
+        if #available(iOS 26.0, *) {
+            config = prominent ? .prominentGlass() : .glass()
+        } else {
+            config = prominent ? .filled() : .tinted()
+        }
+        if let tint {
+            config.baseBackgroundColor = tint
+            config.baseForegroundColor = .white
+        }
+        config.cornerStyle = .large
+        let button = UIButton(configuration: config)
         button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }
@@ -280,8 +286,6 @@ final class RecordingViewController: UIViewController {
 
     private func markLap() {
         controller.markLap()
-        countLabel.text = "Tour \(controller.currentLap) · \(controller.pointCount) points"
-        countLabel.isHidden = false
     }
 
     /// Leave the screen; recording continues in the background.
@@ -379,22 +383,22 @@ final class RecordingViewController: UIViewController {
         // state callback (the `.idle` transition stop() fires) unhide the buttons.
         guard !isUploading else { return }
 
-        // Same `record.circle` outline throughout; state reads from the tint.
-        // The sport picker only makes sense before a recording starts.
+        // The sport picker only makes sense before a recording starts; state reads
+        // from the pill above the stats.
         switch state {
         case .idle:
-            glyphView.tintColor = .systemGray
+            statePill.set(.idle)
             sportButton.isHidden = false
             startButton.isHidden = false
             activeControls.isHidden = true
         case .recording:
-            glyphView.tintColor = .systemRed
+            statePill.set(.recording)
             sportButton.isHidden = true
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Pause"
         case .paused:
-            glyphView.tintColor = .systemOrange
+            statePill.set(.paused)
             sportButton.isHidden = true
             startButton.isHidden = true
             activeControls.isHidden = false
@@ -403,14 +407,25 @@ final class RecordingViewController: UIViewController {
     }
 
     private func render(stats: RecordingStats) {
+        let usesPace = controller.sport.usesPace
         elapsedLabel.text = Self.elapsedFormatter.string(from: stats.elapsed) ?? "00:00"
         distanceStat.value = String(format: "%.2f km", stats.distance / 1000)
-        speedStat.value = String(format: "%.1f km/h", stats.currentSpeed * 3.6)
-        avgStat.value = String(format: "%.1f km/h", stats.averageSpeed * 3.6)
+        speedStat.value = usesPace ? Self.paceString(stats.currentSpeed) : Self.speedString(stats.currentSpeed)
+        avgStat.value = usesPace ? Self.paceString(stats.averageSpeed) : Self.speedString(stats.averageSpeed)
     }
 
-    private func symbol(_ name: String, pointSize: CGFloat) -> UIImage? {
-        UIImage(systemName: name, withConfiguration: UIImage.SymbolConfiguration(pointSize: pointSize, weight: .regular))
+    private static func speedString(_ metersPerSecond: CLLocationSpeed) -> String {
+        String(format: "%.1f km/h", max(metersPerSecond, 0) * 3.6)
+    }
+
+    /// `m:ss/km`. Instantaneous pace is inherently jumpy; near-zero speed reads as
+    /// `—` rather than an absurd figure (smoothing is a later refinement).
+    private static func paceString(_ metersPerSecond: CLLocationSpeed) -> String {
+        guard metersPerSecond > 0.3 else { return "—" }
+        let secondsPerKm = 1000 / metersPerSecond
+        let minutes = Int(secondsPerKm) / 60
+        let seconds = Int(secondsPerKm.rounded()) % 60
+        return String(format: "%d:%02d/km", minutes, seconds)
     }
 
     /// `H:MM:SS` once past an hour, else `MM:SS`.
@@ -428,15 +443,12 @@ extension RecordingViewController: RecordingControllerDelegate {
     func recordingController(_ controller: RecordingController, didChangeAuthorization status: LocationRecorder.Status) {
         switch status {
         case .denied:
-            readoutLabel.textColor = .systemRed
-            readoutLabel.text = "Accès à la position refusé.\nActivez-le dans les Réglages pour enregistrer."
-            countLabel.isHidden = true
-            settingsButton.isHidden = false
+            gpsBanner.setDenied()
             startButton.isEnabled = false
         case .authorized:
-            readoutLabel.textColor = .secondaryLabel
-            if readoutLabel.text == "En attente du GPS…" { readoutLabel.text = "GPS prêt" }
-            settingsButton.isHidden = true
+            // start() re-fires `.authorized` on every recording start — only
+            // recover from a denied banner, never clobber an acquired signal.
+            gpsBanner.clearDenied()
             startButton.isEnabled = true
         case .notDetermined:
             break
@@ -452,26 +464,14 @@ extension RecordingViewController: RecordingControllerDelegate {
     }
 
     func recordingController(_ controller: RecordingController, didReceiveFix location: CLLocation, pointCount: Int) {
-        let coordinate = location.coordinate
-        readoutLabel.textColor = .secondaryLabel
-        readoutLabel.text = String(
-            format: "lat %.6f   lon %.6f   ± %.0f m",
-            coordinate.latitude,
-            coordinate.longitude,
-            location.horizontalAccuracy
-        )
-        // Only meaningful while recording; the count is pluralized unconditionally
-        // to keep the maestro `[0-9]+ points` assertion stable.
-        if controller.isActive {
-            countLabel.text = "\(pointCount) points"
-            countLabel.isHidden = false
-        }
+        gpsBanner.update(horizontalAccuracy: location.horizontalAccuracy)
     }
 }
 
 // MARK: - StatView
 
-/// A small value-over-caption stat cell used in the live stats row.
+/// A value-over-caption stat cell used in the live stats grid — the screen's
+/// main payload, so the value is large.
 private final class StatView: UIView {
     private let valueLabel = UILabel()
     private let captionLabel = UILabel()
@@ -481,16 +481,21 @@ private final class StatView: UIView {
         set { valueLabel.text = newValue }
     }
 
+    var caption: String {
+        get { captionLabel.text ?? "" }
+        set { captionLabel.text = newValue }
+    }
+
     init(caption: String) {
         super.init(frame: .zero)
-        valueLabel.font = .monospacedDigitSystemFont(ofSize: 18, weight: .semibold)
+        valueLabel.font = .monospacedDigitSystemFont(ofSize: 30, weight: .semibold)
         valueLabel.textColor = .label
         valueLabel.textAlignment = .center
         valueLabel.text = "—"
         valueLabel.adjustsFontSizeToFitWidth = true
-        valueLabel.minimumScaleFactor = 0.7
+        valueLabel.minimumScaleFactor = 0.6
 
-        captionLabel.font = .preferredFont(forTextStyle: .caption2)
+        captionLabel.font = .preferredFont(forTextStyle: .caption1)
         captionLabel.textColor = .secondaryLabel
         captionLabel.textAlignment = .center
         captionLabel.text = caption
@@ -509,4 +514,153 @@ private final class StatView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+// MARK: - StatusPillView
+
+/// A small, secondary state indicator (dot + word) above the stats. Pulses while
+/// recording. Hidden when idle so it doesn't compete with the stats.
+private final class StatusPillView: UIView {
+    enum State { case idle, recording, paused }
+
+    private let dot = UIView()
+    private let label = UILabel()
+
+    init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+
+        dot.translatesAutoresizingMaskIntoConstraints = false
+        dot.layer.cornerRadius = 5
+
+        label.font = .preferredFont(forTextStyle: .subheadline)
+        label.textColor = .secondaryLabel
+
+        let stack = UIStackView(arrangedSubviews: [dot, label])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            dot.widthAnchor.constraint(equalToConstant: 10),
+            dot.heightAnchor.constraint(equalToConstant: 10),
+            stack.topAnchor.constraint(equalTo: topAnchor),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func set(_ state: State) {
+        switch state {
+        case .idle:
+            isHidden = true
+            stopPulsing()
+        case .recording:
+            isHidden = false
+            dot.backgroundColor = .systemRed
+            label.text = "Enregistrement"
+            startPulsing()
+        case .paused:
+            isHidden = false
+            dot.backgroundColor = .systemOrange
+            label.text = "En pause"
+            stopPulsing()
+        }
+    }
+
+    private func startPulsing() {
+        guard dot.layer.animation(forKey: "pulse") == nil else { return }
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1
+        pulse.toValue = 0.25
+        pulse.duration = 0.8
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        dot.layer.add(pulse, forKey: "pulse")
+    }
+
+    private func stopPulsing() {
+        dot.layer.removeAnimation(forKey: "pulse")
+    }
+}
+
+// MARK: - GPSBannerView
+
+/// A slim, colour-coded GPS-signal banner pinned at the top. Deliberately minor —
+/// the stats are the screen's focus — but it surfaces signal quality and the
+/// access-denied state (tap to open Settings).
+private final class GPSBannerView: UIView {
+    /// Invoked when the banner is tapped while access is denied.
+    var onTapWhenDenied: (() -> Void)?
+    private var isDenied = false
+
+    private let label = UILabel()
+
+    init() {
+        super.init(frame: .zero)
+        layer.cornerRadius = 8
+        layer.cornerCurve = .continuous
+
+        label.font = .preferredFont(forTextStyle: .footnote)
+        label.textAlignment = .center
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 30),
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
+        setSearching()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func handleTap() {
+        guard isDenied else { return }
+        onTapWhenDenied?()
+    }
+
+    func setSearching() {
+        isDenied = false
+        apply(text: "Recherche du GPS…", color: .secondaryLabel)
+    }
+
+    func setDenied() {
+        isDenied = true
+        apply(text: "Position refusée — Réglages", color: .systemRed)
+    }
+
+    /// Recover from the denied state (e.g. access granted in Settings). No-op when
+    /// not denied, so an already-acquired signal isn't reset to "searching".
+    func clearDenied() {
+        guard isDenied else { return }
+        setSearching()
+    }
+
+    func update(horizontalAccuracy: CLLocationDistance) {
+        guard !isDenied else { return }
+        let (text, color): (String, UIColor)
+        switch horizontalAccuracy {
+        case ..<0: (text, color) = ("Recherche du GPS…", .secondaryLabel) // invalid fix
+        case ..<8: (text, color) = ("GPS bon", .systemGreen)
+        case ..<20: (text, color) = ("GPS correct", .systemGreen)
+        case ..<50: (text, color) = ("GPS moyen", .systemOrange)
+        default: (text, color) = ("GPS faible", .systemOrange)
+        }
+        apply(text: text, color: color)
+    }
+
+    private func apply(text: String, color: UIColor) {
+        label.text = text
+        label.textColor = color
+        backgroundColor = color.withAlphaComponent(0.15)
+    }
 }

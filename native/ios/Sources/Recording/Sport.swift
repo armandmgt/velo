@@ -43,6 +43,26 @@ enum Sport: String, CaseIterable {
         }
     }
 
+    /// How the sport's live metrics read, mirroring the server's
+    /// `Activity::SPORT_CATEGORY`. Drives whether the recording screen shows
+    /// **speed** (km/h) or **pace** (min/km).
+    enum Category {
+        case cycling
+        case running
+        case other
+    }
+
+    var category: Category {
+        switch self {
+        case .bike, .mountainBikeRide, .gravelRide, .virtualRide, .eBikeRide: .cycling
+        case .run, .trailRun, .virtualRun, .walk: .running
+        case .hike, .alpineSki, .nordicSki, .swim, .workout: .other
+        }
+    }
+
+    /// Running-style sports read as pace (min/km); everything else as speed (km/h).
+    var usesPace: Bool { category == .running }
+
     /// SF Symbol shown in the picker.
     var symbolName: String {
         switch self {
