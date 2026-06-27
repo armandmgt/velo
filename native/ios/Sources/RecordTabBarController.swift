@@ -24,6 +24,11 @@ final class RecordTabBarController: HotwireTabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
         addRecordButton()
+        configureSelectedTabColor()
+        // Re-resolve the selected-tab accent when the app switches light/dark.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
+            self.configureSelectedTabColor()
+        }
         // Recording always starts/stops behind the full-screen recording modal,
         // i.e. while this controller is off-window. Touching the pulse animation
         // there is both pointless (the button is hidden) and broken: a CAAnimation
@@ -50,6 +55,29 @@ final class RecordTabBarController: HotwireTabBarController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         applyRecordButtonState()
+    }
+
+    /// Accent matching the web app's `--color-primary` (see AccentColor asset).
+    private static let accentOrange = UIColor(red: 0.982, green: 0.591, blue: 0.000, alpha: 1)
+    private static let accentBlue = UIColor(red: 0.165, green: 0.494, blue: 1.000, alpha: 1)
+
+    /// Pin the *selected* tab item to the app accent (orange light / blue dark) so
+    /// it matches the rest of the chrome.
+    ///
+    /// iOS 26's glass selected-tab pill resolves dynamic colours against a fixed
+    /// (light) trait, so a normal dynamic accent renders the same hue in both modes
+    /// there (it showed orange even in dark). So we resolve the accent ourselves
+    /// from the controller's actual appearance and hand the tab bar a plain colour,
+    /// re-running whenever the appearance changes.
+    private func configureSelectedTabColor() {
+        let color = traitCollection.userInterfaceStyle == .dark ? Self.accentBlue : Self.accentOrange
+        let appearance = tabBar.standardAppearance.copy()
+        for layout in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            layout.selected.iconColor = color
+            layout.selected.titleTextAttributes = [.foregroundColor: color]
+        }
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
     }
 
     @objc private func syncRecordButton() {
