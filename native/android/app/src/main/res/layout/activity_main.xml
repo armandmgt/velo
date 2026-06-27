@@ -55,6 +55,8 @@
         android:layout_marginBottom="16dp"
         android:contentDescription="@string/record"
         app:srcCompat="@drawable/ic_record"
+        app:backgroundTint="@color/brand_primary"
+        app:tint="@color/brand_on_primary"
         app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintEnd_toEndOf="parent" />
 

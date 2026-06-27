@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#FFFFFF</color>
+
+    <!-- daisyUI "bike" theme (light). Mirrors app/assets/tailwind/application.css —
+         the oklch values converted to sRGB. Dark overrides live in values-night. -->
+    <color name="brand_primary">#FA9700</color>
+    <color name="brand_on_primary">#FDF9E8</color>
+    <color name="brand_secondary">#00BA7B</color>
+    <color name="brand_on_secondary">#E9FAF2</color>
+    <color name="brand_error">#FF627D</color>
+    <color name="brand_on_error">#4D0218</color>
+    <color name="brand_base_100">#F8F8F8</color>
+    <color name="brand_base_200">#F5F5F5</color>
+    <color name="brand_base_300">#E4E4E4</color>
+    <color name="brand_base_content">#161616</color>
 </resources>
