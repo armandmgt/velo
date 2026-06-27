@@ -21,6 +21,11 @@
         <item name="colorSurface">@color/brand_base_100</item>
         <item name="colorOnSurface">@color/brand_base_content</item>
         <item name="colorSurfaceContainer">@color/brand_base_100</item>
+        <!-- daisyUI is flat (depth 0). Disable the Material elevation overlay so
+             elevated chrome (the Hotwire app bar, bottom nav) keeps its flat base
+             color instead of getting a tinted overlay. -->
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="appBarLayoutStyle">@style/Velo.AppBar</item>
         <item name="colorSurfaceVariant">@color/brand_base_300</item>
         <item name="colorOnSurfaceVariant">@color/brand_base_content_muted</item>
         <item name="bottomNavigationStyle">@style/Velo.BottomNav</item>
@@ -36,5 +41,11 @@
 
     <style name="Velo.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
         <item name="android:color">@color/brand_primary_container</item>
+    </style>
+
+    <!-- Flat base-100 app bar matching the web `navbar bg-base-100`; no lift tint. -->
+    <style name="Velo.AppBar" parent="Widget.Material3.AppBarLayout">
+        <item name="android:background">@color/brand_base_100</item>
+        <item name="liftOnScroll">false</item>
     </style>
 </resources>
