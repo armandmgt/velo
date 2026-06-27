@@ -1,13 +1,13 @@
 import CoreLocation
 
-/// Drives Core Location for an in-progress recording (#41, S2 — #50).
+/// Drives Core Location for an in-progress recording (#41, S2 — #50; S3 — #51).
 ///
 /// Deliberately a standalone object, *not* part of `RecordingViewController`:
-/// it owns the `CLLocationManager` and the accumulated points, so the recording
-/// outlives any one view. S2 keeps points **in memory only** — S3 (#51) backs
-/// this same object with Core Data and lifts ownership out of the view controller
-/// (so "Fermer" can leave the screen while recording continues). Nothing here
-/// touches UIKit, to keep that lift cheap.
+/// it owns the `CLLocationManager` and streams fixes to its delegate. S3 lifted
+/// ownership to `RecordingController` (the longer-lived owner) and moved point
+/// storage into Core Data there — so this object is now purely the Core Location
+/// pipe: it forwards every accepted fix and holds no points itself. Nothing here
+/// touches UIKit.
 ///
 /// **Permissions:** While-Using ("When In Use") *only* — we never request
 /// "Always". With `allowsBackgroundLocationUpdates` + the `location` background
@@ -24,9 +24,6 @@ final class LocationRecorder: NSObject {
     }
 
     weak var delegate: LocationRecorderDelegate?
-
-    /// Every accepted fix, in order. In-memory for S2; persisted in S3 (#51).
-    private(set) var points: [CLLocation] = []
 
     private let manager = CLLocationManager()
 
@@ -92,8 +89,7 @@ extension LocationRecorder: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         for location in locations where location.horizontalAccuracy >= 0 {
             // A negative `horizontalAccuracy` flags an invalid fix — drop it.
-            points.append(location)
-            delegate?.locationRecorder(self, didUpdate: location, pointCount: points.count)
+            delegate?.locationRecorder(self, didUpdate: location)
         }
     }
 
@@ -108,5 +104,5 @@ extension LocationRecorder: CLLocationManagerDelegate {
 /// (e.g. `NavigatorDelegate`) rather than reaching for Combine.
 protocol LocationRecorderDelegate: AnyObject {
     func locationRecorder(_ recorder: LocationRecorder, didChange status: LocationRecorder.Status)
-    func locationRecorder(_ recorder: LocationRecorder, didUpdate location: CLLocation, pointCount: Int)
+    func locationRecorder(_ recorder: LocationRecorder, didUpdate location: CLLocation)
 }

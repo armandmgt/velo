@@ -16,14 +16,102 @@ import UIKit
 final class RecordTabBarController: HotwireTabBarController {
     private static let buttonSize: CGFloat = 56
 
-    /// Exposed so later increments can drive its recording state: while a
-    /// recording is in progress the symbol should switch from `record.circle`
-    /// to `record.circle.fill` tinted red (and likely animate). See S3 (#51).
+    /// The floating Record entry point. While a recording is in progress (S3, #51)
+    /// the `record.circle` glass capsule turns from accent-tinted to red and pulses,
+    /// so the recording reads as active from anywhere in the tab bar.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         addRecordButton()
+        configureSelectedTabColor()
+        // Re-resolve the selected-tab accent when the app switches light/dark.
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _: UITraitCollection) in
+            self.configureSelectedTabColor()
+        }
+        // Recording always starts/stops behind the full-screen recording modal,
+        // i.e. while this controller is off-window. Touching the pulse animation
+        // there is both pointless (the button is hidden) and broken: a CAAnimation
+        // added to an off-window layer escapes `animationKeys()` once the glass
+        // configuration re-renders, so it can never be removed and outlives Stop.
+        // So we drive the pulse purely from `viewDidAppear` — which fires when the
+        // modal dismisses — plus app-foreground (CoreAnimation strips animations on
+        // backgrounding). The notification only refreshes the colour off-window.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(syncRecordButton),
+            name: .recordingStateDidChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(syncRecordButton),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        applyRecordButtonState()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        applyRecordButtonState()
+    }
+
+    /// Accent matching the web app's `--color-primary` (see AccentColor asset).
+    private static let accentOrange = UIColor(red: 0.982, green: 0.591, blue: 0.000, alpha: 1)
+    private static let accentBlue = UIColor(red: 0.165, green: 0.494, blue: 1.000, alpha: 1)
+
+    /// Pin the *selected* tab item to the app accent (orange light / blue dark) so
+    /// it matches the rest of the chrome.
+    ///
+    /// iOS 26's glass selected-tab pill resolves dynamic colours against a fixed
+    /// (light) trait, so a normal dynamic accent renders the same hue in both modes
+    /// there (it showed orange even in dark). So we resolve the accent ourselves
+    /// from the controller's actual appearance and hand the tab bar a plain colour,
+    /// re-running whenever the appearance changes.
+    private func configureSelectedTabColor() {
+        let color = traitCollection.userInterfaceStyle == .dark ? Self.accentBlue : Self.accentOrange
+        let appearance = tabBar.standardAppearance.copy()
+        for layout in [appearance.stackedLayoutAppearance, appearance.inlineLayoutAppearance, appearance.compactInlineLayoutAppearance] {
+            layout.selected.iconColor = color
+            layout.selected.titleTextAttributes = [.foregroundColor: color]
+        }
+        tabBar.standardAppearance = appearance
+        tabBar.scrollEdgeAppearance = appearance
+    }
+
+    @objc private func syncRecordButton() {
+        applyRecordButtonState()
+    }
+
+    /// Mirror the controller's active/idle state onto the button: a red, pulsing
+    /// glass capsule while recording; the accent-tinted capsule when idle. The
+    /// `record.circle` symbol is unchanged between states.
+    private func applyRecordButtonState() {
+        let isActive = RecordingController.shared.isActive
+        recordButton.configuration?.baseBackgroundColor = isActive ? .systemRed : .tintColor
+        // Only manage the pulse while on-window (see viewDidLoad). When off-window,
+        // skip it — `viewDidAppear` re-applies once the button is visible again.
+        guard view.window != nil else { return }
+        isActive ? startPulsing() : stopPulsing()
+    }
+
+    private static let pulseKey = "recordingPulse"
+
+    private func startPulsing() {
+        guard recordButton.layer.animation(forKey: Self.pulseKey) == nil else { return }
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.4
+        pulse.duration = 0.8
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        recordButton.layer.add(pulse, forKey: Self.pulseKey)
+    }
+
+    private func stopPulsing() {
+        recordButton.layer.removeAnimation(forKey: Self.pulseKey)
+        recordButton.layer.opacity = 1
     }
 
     private func addRecordButton() {
@@ -59,8 +147,8 @@ final class RecordTabBarController: HotwireTabBarController {
         }
         config.baseBackgroundColor = .tintColor
         config.baseForegroundColor = .white
-        // Idle look: a small `record.circle` outline. S3 (#51) swaps to
-        // `record.circle.fill` tinted red while a recording is in progress.
+        // A small `record.circle` outline in both states; `updateRecordButton()`
+        // turns the capsule red (and pulses) while recording (S3).
         config.image = UIImage(
             systemName: "record.circle",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
