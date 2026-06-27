@@ -24,40 +24,47 @@ final class RecordTabBarController: HotwireTabBarController {
     override func viewDidLoad() {
         super.viewDidLoad()
         addRecordButton()
+        // Recording always starts/stops behind the full-screen recording modal,
+        // i.e. while this controller is off-window. Touching the pulse animation
+        // there is both pointless (the button is hidden) and broken: a CAAnimation
+        // added to an off-window layer escapes `animationKeys()` once the glass
+        // configuration re-renders, so it can never be removed and outlives Stop.
+        // So we drive the pulse purely from `viewDidAppear` — which fires when the
+        // modal dismisses — plus app-foreground (CoreAnimation strips animations on
+        // backgrounding). The notification only refreshes the colour off-window.
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(syncRecordButton),
             name: .recordingStateDidChange,
             object: nil
         )
-        // The recording screen is a full-screen modal, so state changes posted
-        // while it's up reach us off-window (where layer animation changes don't
-        // reliably take). Re-sync on foreground too, and `viewWillAppear` re-syncs
-        // once the modal dismisses — without it the pulse outlived a Stop.
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(syncRecordButton),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        updateRecordButton()
+        applyRecordButtonState()
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        updateRecordButton()
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        applyRecordButtonState()
     }
 
     @objc private func syncRecordButton() {
-        updateRecordButton()
+        applyRecordButtonState()
     }
 
     /// Mirror the controller's active/idle state onto the button: a red, pulsing
     /// glass capsule while recording; the accent-tinted capsule when idle. The
     /// `record.circle` symbol is unchanged between states.
-    private func updateRecordButton() {
+    private func applyRecordButtonState() {
         let isActive = RecordingController.shared.isActive
         recordButton.configuration?.baseBackgroundColor = isActive ? .systemRed : .tintColor
+        // Only manage the pulse while on-window (see viewDidLoad). When off-window,
+        // skip it — `viewDidAppear` re-applies once the button is visible again.
+        guard view.window != nil else { return }
         isActive ? startPulsing() : stopPulsing()
     }
 
@@ -76,6 +83,7 @@ final class RecordTabBarController: HotwireTabBarController {
 
     private func stopPulsing() {
         recordButton.layer.removeAnimation(forKey: Self.pulseKey)
+        recordButton.layer.opacity = 1
     }
 
     private func addRecordButton() {
