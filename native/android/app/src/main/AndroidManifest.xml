@@ -3,6 +3,17 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Recording (#54): an ongoing notification + a foreground service so the
+         recording survives the app being backgrounded. POST_NOTIFICATIONS is the
+         runtime (API 33+) permission for the ongoing notification. The skeleton
+         runs the service as `dataSync` (an install-time permission, no runtime
+         gate); FOREGROUND_SERVICE_LOCATION is declared now so S7 can switch the
+         service type to `location` once GPS lands. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+
     <application
         android:name=".VeloApplication"
         android:allowBackup="false"
@@ -30,6 +41,16 @@
             android:exported="false"
             android:launchMode="singleInstance"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".features.record.RecordingActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Velo" />
+
+        <service
+            android:name=".features.record.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 

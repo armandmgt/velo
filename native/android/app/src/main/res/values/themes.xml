@@ -1,4 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Velo" parent="Theme.Material3.DayNight.NoActionBar" />
+    <!-- The web app's daisyUI "bike" palette mapped onto Material 3 color roles so
+         the whole native chrome (bottom nav, FAB, dialogs, …) matches the rest of
+         the app. The brand_* colors carry light + dark values (values +
+         values-night), so this single DayNight theme switches automatically. -->
+    <style name="Theme.Velo" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorOnPrimary">@color/brand_on_primary</item>
+        <item name="colorPrimaryContainer">@color/brand_primary</item>
+        <item name="colorOnPrimaryContainer">@color/brand_on_primary</item>
+        <item name="colorSecondary">@color/brand_secondary</item>
+        <item name="colorOnSecondary">@color/brand_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/brand_secondary</item>
+        <item name="colorOnSecondaryContainer">@color/brand_on_secondary</item>
+        <item name="colorTertiary">@color/brand_secondary</item>
+        <item name="colorOnTertiary">@color/brand_on_secondary</item>
+        <item name="colorError">@color/brand_error</item>
+        <item name="colorOnError">@color/brand_on_error</item>
+        <item name="android:colorBackground">@color/brand_base_200</item>
+        <item name="colorSurface">@color/brand_base_100</item>
+        <item name="colorOnSurface">@color/brand_base_content</item>
+        <item name="colorSurfaceContainer">@color/brand_base_100</item>
+        <!-- daisyUI is flat (depth 0). Disable the Material elevation overlay so
+             elevated chrome (the Hotwire app bar, bottom nav) keeps its flat base
+             color instead of getting a tinted overlay. -->
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="appBarLayoutStyle">@style/Velo.AppBar</item>
+        <item name="colorSurfaceVariant">@color/brand_base_300</item>
+        <item name="colorOnSurfaceVariant">@color/brand_base_content_muted</item>
+        <item name="bottomNavigationStyle">@style/Velo.BottomNav</item>
+    </style>
+
+    <!-- Selected tab reads as the accent (icon + label), over a soft accent pill —
+         mirrors the iOS tab-bar selected tint. -->
+    <style name="Velo.BottomNav" parent="Widget.Material3.BottomNavigationView">
+        <item name="itemActiveIndicatorStyle">@style/Velo.BottomNav.ActiveIndicator</item>
+        <item name="itemIconTint">@color/nav_item_tint</item>
+        <item name="itemTextColor">@color/nav_item_tint</item>
+    </style>
+
+    <style name="Velo.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/brand_primary_container</item>
+    </style>
+
+    <!-- Flat base-100 app bar matching the web `navbar bg-base-100`; no lift tint. -->
+    <style name="Velo.AppBar" parent="Widget.Material3.AppBarLayout">
+        <item name="android:background">@color/brand_base_100</item>
+        <item name="liftOnScroll">false</item>
+    </style>
 </resources>

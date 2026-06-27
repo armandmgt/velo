@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- daisyUI "bike-dark" theme (dark). Overrides the light brand_* in
+         values/colors.xml; a DayNight theme + colorResource() pick these up
+         automatically. Mirrors app/assets/tailwind/application.css. -->
+    <color name="brand_primary">#2A7EFF</color>
+    <color name="brand_on_primary">#EFF6FF</color>
+    <color name="brand_secondary">#605DFF</color>
+    <color name="brand_on_secondary">#EDF1FE</color>
+    <color name="brand_error">#EA003E</color>
+    <color name="brand_on_error">#FCEEEF</color>
+    <color name="brand_base_100">#0B0908</color>
+    <color name="brand_base_200">#1B1816</color>
+    <color name="brand_base_300">#272322</color>
+    <color name="brand_base_content">#F5F5F4</color>
+    <color name="brand_base_content_muted">#99F5F5F4</color>
+    <color name="brand_primary_container">#332A7EFF</color>
+</resources>
