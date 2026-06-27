@@ -1,6 +1,5 @@
 import HotwireNative
 import UIKit
-import WebKit
 
 /// Downloads a file the WKWebView can't render (e.g. a GPX export served as an
 /// `application/gpx+xml` attachment) and hands it to a share sheet so the user
@@ -16,23 +15,16 @@ import WebKit
 /// than opening Safari (which has its own, unauthenticated cookie store).
 enum FileDownloader {
     static func download(from url: URL, presentingFrom navigator: Navigator) {
-        WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
-            // Build the Cookie header explicitly. Handing cookies to a private
-            // `HTTPCookieStorage()` instance does not reliably feed them to the
-            // session, so the request would go out unauthenticated and the
-            // server would redirect to the login page.
-            let host = url.host ?? ""
-            let relevantCookies = cookies.filter { cookie in
-                let domain = cookie.domain.hasPrefix(".") ? String(cookie.domain.dropFirst()) : cookie.domain
-                return host == domain || host.hasSuffix("." + domain)
-            }
-
+        // Reuse the webview's session cookies (see WebSessionCookies) so the
+        // private export route is fetched as the logged-in user rather than
+        // redirected to the login page.
+        WebSessionCookies.headerFields(for: url) { cookieHeaders in
             let configuration = URLSessionConfiguration.ephemeral
             configuration.httpShouldSetCookies = false
             configuration.httpCookieAcceptPolicy = .never
 
             var request = URLRequest(url: url)
-            for (field, value) in HTTPCookie.requestHeaderFields(with: relevantCookies) {
+            for (field, value) in cookieHeaders {
                 request.setValue(value, forHTTPHeaderField: field)
             }
 

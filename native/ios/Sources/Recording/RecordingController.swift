@@ -43,6 +43,12 @@ final class RecordingController: NSObject {
 
     var isActive: Bool { state.isActive }
 
+    /// The sport the recording uploads as (S4 — #52). Chosen on the recording
+    /// screen; defaults to the last-used sport and becomes the new last-used when
+    /// a recording starts. Held here (not on the VC) so it survives Fermer/reopen
+    /// while the recording keeps running.
+    var sport: Sport = .lastUsed
+
     /// Current lap ordinal (1-based) while active, else 0. Laps are markers (S3).
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
@@ -59,6 +65,9 @@ final class RecordingController: NSObject {
     private var session: RecordingSession?
     private var accumulator = RecordingStatsAccumulator()
     private var lastFixSpeed: CLLocationSpeed = 0
+    /// Wall-clock second of the last persisted fix, to keep at most one point per
+    /// second (the ~1 Hz contract; see `locationRecorder(_:didUpdate:)`).
+    private var lastPersistedSecond: TimeInterval?
 
     // Elapsed clock: wall-clock recording time minus paused stretches.
     private var accumulatedElapsed: TimeInterval = 0
@@ -105,11 +114,14 @@ final class RecordingController: NSObject {
             store.save()
         }
         recoveredPointCount = 0
+        // Remember this sport so the next recording's picker defaults to it.
+        Sport.lastUsed = sport
 
         session = store.createSession()
         pointCount = 0
         accumulator = RecordingStatsAccumulator()
         lastFixSpeed = 0
+        lastPersistedSecond = nil
         accumulatedElapsed = 0
         stretchStart = Date()
 
@@ -151,10 +163,13 @@ final class RecordingController: NSObject {
         store.save()
     }
 
-    /// Finalize the recording: mark it stopped and stop streaming.
-    func stop() {
-        guard isActive else { return }
-        session?.recordingState = .stopped
+    /// Finalize the recording: mark it stopped, stop streaming, and return the
+    /// finalized session so the caller can serialize and upload it (S4 — #52).
+    /// The session stays in the store until the upload succeeds (`discard`).
+    @discardableResult
+    func stop() -> RecordingSession? {
+        guard isActive, let finished = session else { return nil }
+        finished.recordingState = .stopped
         store.save()
         stopTicker()
         recorder.stop()
@@ -162,6 +177,12 @@ final class RecordingController: NSObject {
         accumulatedElapsed = 0
         stretchStart = nil
         state = .idle
+        return finished
+    }
+
+    /// Clear a finalized recording from the store after it uploaded successfully.
+    func discard(_ session: RecordingSession) {
+        store.delete(session)
     }
 
     // MARK: - Elapsed clock
@@ -209,6 +230,18 @@ extension RecordingController: LocationRecorderDelegate {
             delegate?.recordingController(self, didReceiveFix: location, pointCount: pointCount)
             return
         }
+
+        // Keep at most one fix per wall-clock second (the ~1 Hz contract, S0 §2).
+        // `distanceFilter = kCLDistanceFilterNone` can deliver sub-second bursts;
+        // since the GPX emits whole-second `<time>`s, two points in the same second
+        // would carry identical timestamps and collide on the server's unique
+        // `recorded_at`. Surface the fix in the readout but don't persist it.
+        let second = location.timestamp.timeIntervalSince1970.rounded(.down)
+        guard second != lastPersistedSecond else {
+            delegate?.recordingController(self, didReceiveFix: location, pointCount: pointCount)
+            return
+        }
+        lastPersistedSecond = second
 
         let segmentSpeed = accumulator.add(location)
         lastFixSpeed = location.speed >= 0 ? location.speed : segmentSpeed

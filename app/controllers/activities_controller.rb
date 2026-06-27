@@ -1,4 +1,11 @@
 class ActivitiesController < ApplicationController
+  # Native recorders (#41) upload GPX via `POST /activities` with
+  # `Accept: application/json` from outside the webview, so they carry no CSRF
+  # token. Auth rides the signed `session_id` cookie (not the CSRF-bearing Rails
+  # session), so exempting only the JSON format is safe; the HTML form stays
+  # fully protected. Mirrors ConfigurationsController#skip_forgery_protection.
+  protect_from_forgery with: :exception, unless: -> { request.format.json? }
+
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
 
   def index

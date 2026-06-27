@@ -129,7 +129,10 @@ class GpxExtractor
     @activity.total_elevation_gain = elevation_gain.round(1)
     @activity.max_speed = max_speed if max_speed&.positive?
     @activity.active_time = ActiveSupport::Duration.build(moving_seconds.round).iso8601
-    @activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" unless coords.empty?
+    # A LineString needs at least two vertices; a single-point recording (e.g. a
+    # native recording stopped almost immediately, or one with a single GPS fix)
+    # legitimately has no path — leave it nil rather than build an invalid geometry.
+    @activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" if coords.size >= 2
 
     if @reverse_geocode && first_point
       @activity.location ||= NominatimClient.new.reverse_geocode(first_point[:lat], first_point[:lon])

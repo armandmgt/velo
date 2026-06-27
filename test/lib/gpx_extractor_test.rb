@@ -150,4 +150,20 @@ class GpxExtractorTest < ActiveSupport::TestCase
     assert_nil activity.activity_data_points[11].speed, "spike-return speed should be nulled"
     assert_equal 21, activity.activity_data_points.size, "all points kept; only spike speeds dropped"
   end
+
+  test "a single-point track has no path but still persists" do
+    # A native recording stopped almost immediately (or one with a single GPS
+    # fix) yields one point. A LineString needs >= 2 vertices, so the path stays
+    # nil rather than raising RGeo::Error::InvalidGeometry on save.
+    gpx = %(<?xml version="1.0"?><gpx><trk><type>cycling</type><trkseg>) +
+          %(<trkpt lat="48.8566" lon="2.3522"><time>2026-06-25T08:00:00Z</time></trkpt>) +
+          %(</trkseg></trk></gpx>)
+
+    activity = @user.activities.build(sport: :bike, name: "Une seconde")
+    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+
+    assert_equal 1, activity.activity_data_points.size
+    assert_nil activity.path
+    assert activity.save, activity.errors.full_messages.to_sentence
+  end
 end

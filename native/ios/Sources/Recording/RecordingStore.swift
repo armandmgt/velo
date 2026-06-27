@@ -85,6 +85,13 @@ final class RecordingStore {
         return point
     }
 
+    /// Delete a finalized session (its points cascade away) — used to clear the
+    /// local recording after a successful upload (S4 — #52).
+    func delete(_ session: RecordingSession) {
+        viewContext.delete(session)
+        save()
+    }
+
     // MARK: - Persistence
 
     func save() {
