@@ -13,4 +13,6 @@
     <color name="brand_base_200">#1B1816</color>
     <color name="brand_base_300">#272322</color>
     <color name="brand_base_content">#F5F5F4</color>
+    <color name="brand_base_content_muted">#99F5F5F4</color>
+    <color name="brand_primary_container">#332A7EFF</color>
 </resources>

@@ -14,4 +14,8 @@
     <color name="brand_base_200">#F5F5F5</color>
     <color name="brand_base_300">#E4E4E4</color>
     <color name="brand_base_content">#161616</color>
+    <!-- Derived: muted base-content for inactive controls, and a translucent
+         primary for the bottom-nav active-indicator pill. -->
+    <color name="brand_base_content_muted">#99161616</color>
+    <color name="brand_primary_container">#33FA9700</color>
 </resources>
