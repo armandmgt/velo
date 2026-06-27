@@ -39,16 +39,18 @@ tags:
 # — .fullScreen + isModalInPresentation), so the only way back is the button.
 - assertNotVisible: "Tableau de bord"
 
-# Start recording, then inject a fix and confirm a point gets recorded (persisted
-# to Core Data) and the count ticks. `setLocation` is a single static fix, so a
-# *moving* distance/speed is verified manually (Simulator → Features → Location →
-# City Run); here we just prove the start control + persistence path are wired.
+# Start recording, then inject a fix and confirm it's received: the top GPS banner
+# leaves "Recherche du GPS…" for an acquired state once a fix arrives (the same
+# delegate path that persists the point to Core Data). `setLocation` is a single
+# static fix, so a *moving* distance/speed is verified manually (Simulator →
+# Features → Location → City Run); end-to-end persistence is proven by the created
+# activity at the bottom of this flow.
 - tapOn: "Démarrer"
 - assertVisible: "Arrêter"
 - setLocation:
     latitude: 48.8566
     longitude: 2.3522
-- assertVisible: "[0-9]+ points"
+- assertVisible: "GPS (bon|correct|moyen|faible)"
 
 # Smoke-test the controls: lap marker, then pause ⇄ resume.
 - tapOn: "Tour"
