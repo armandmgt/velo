@@ -3,9 +3,10 @@ name: Record flow (entry point opens native recording screen, Stop pops back)
 tags:
   - regression
 ---
-# S1 walking skeleton (#49): the Record button floats above the tab bar and
-# presents a fully native recording screen full-screen. No location/persistence
-# yet — this flow just guards the navigation and screen lifecycle.
+# S1 (#49) floated the Record button + native screen; S2 (#50) added the live GPS
+# feed; S3 (#51) makes it statful: the screen opens *armed*, an explicit Démarrer
+# starts recording (Core Data), and live stats + a point count update. This flow
+# guards navigation, the start control, and that points get recorded.
 - launchApp:
     clearState: true
     clearKeychain: true
@@ -23,24 +24,33 @@ tags:
 - assertVisible: "Résumé par période"
 
 # The native Record button is a floating UIButton (accessibilityLabel), not a
-# tab — owned by RecordTabBarController so it can animate while recording later.
+# tab — owned by RecordTabBarController so it can animate while recording.
 - tapOn: "Enregistrer"
 
-# Fully native recording screen, presented as a full-screen modal.
+# Fully native recording screen, presented as a full-screen modal. It opens
+# *armed* (explicit-start UX): Démarrer is shown, recording hasn't begun.
 - assertVisible: "Enregistrement"
-- assertVisible: "Arrêter"
+- assertVisible: "Démarrer"
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
 # — .fullScreen + isModalInPresentation), so the only way back is the button.
 - assertNotVisible: "Tableau de bord"
 
-# S2 (#50) smoke check: inject a fix and confirm the live GPS readout ticks the
-# point count. `setLocation` is a single static fix, so a *moving* count is
-# verified manually (Simulator → Features → Location → City Run); here we just
-# prove the feed is wired and the readout updates off "En attente du GPS…".
+# Start recording, then inject a fix and confirm a point gets recorded (persisted
+# to Core Data) and the count ticks. `setLocation` is a single static fix, so a
+# *moving* distance/speed is verified manually (Simulator → Features → Location →
+# City Run); here we just prove the start control + persistence path are wired.
+- tapOn: "Démarrer"
+- assertVisible: "Arrêter"
 - setLocation:
     latitude: 48.8566
     longitude: 2.3522
 - assertVisible: "[0-9]+ points"
+
+# Smoke-test the controls: lap marker, then pause ⇄ resume.
+- tapOn: "Tour"
+- tapOn: "Pause"
+- assertVisible: "Reprendre"
+- tapOn: "Reprendre"
 
 - tapOn: "Arrêter"
 

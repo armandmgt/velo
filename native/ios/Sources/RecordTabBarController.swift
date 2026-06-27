@@ -16,14 +16,56 @@ import UIKit
 final class RecordTabBarController: HotwireTabBarController {
     private static let buttonSize: CGFloat = 56
 
-    /// Exposed so later increments can drive its recording state: while a
-    /// recording is in progress the symbol should switch from `record.circle`
-    /// to `record.circle.fill` tinted red (and likely animate). See S3 (#51).
+    /// The floating Record entry point. While a recording is in progress (S3, #51)
+    /// its symbol switches from `record.circle` to `record.circle.fill` tinted red
+    /// and pulses, so the recording reads as active from anywhere in the tab bar.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         addRecordButton()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recordingStateDidChange),
+            name: .recordingStateDidChange,
+            object: nil
+        )
+        // Reflect any recording already in progress (also primes kill recovery).
+        updateRecordButton()
+    }
+
+    @objc private func recordingStateDidChange() {
+        updateRecordButton()
+    }
+
+    /// Mirror the controller's active/idle state onto the button: red filled +
+    /// pulsing while recording, the understated outline when idle.
+    private func updateRecordButton() {
+        let isActive = RecordingController.shared.isActive
+        let symbol = isActive ? "record.circle.fill" : "record.circle"
+        recordButton.configuration?.image = UIImage(
+            systemName: symbol,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        )
+        recordButton.configuration?.baseForegroundColor = isActive ? .systemRed : .white
+        isActive ? startPulsing() : stopPulsing()
+    }
+
+    private static let pulseKey = "recordingPulse"
+
+    private func startPulsing() {
+        guard recordButton.layer.animation(forKey: Self.pulseKey) == nil else { return }
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1.0
+        pulse.toValue = 0.4
+        pulse.duration = 0.8
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        recordButton.layer.add(pulse, forKey: Self.pulseKey)
+    }
+
+    private func stopPulsing() {
+        recordButton.layer.removeAnimation(forKey: Self.pulseKey)
     }
 
     private func addRecordButton() {
@@ -59,8 +101,8 @@ final class RecordTabBarController: HotwireTabBarController {
         }
         config.baseBackgroundColor = .tintColor
         config.baseForegroundColor = .white
-        // Idle look: a small `record.circle` outline. S3 (#51) swaps to
-        // `record.circle.fill` tinted red while a recording is in progress.
+        // Idle look: a small `record.circle` outline. `updateRecordButton()` swaps
+        // to `record.circle.fill` tinted red (and pulses) while recording (S3).
         config.image = UIImage(
             systemName: "record.circle",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
