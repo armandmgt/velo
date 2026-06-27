@@ -86,7 +86,7 @@ final class RecordingViewController: UIViewController {
 
     private func setupLayout() {
         glyphView.image = symbol("record.circle", pointSize: 96)
-        glyphView.tintColor = .systemRed
+        glyphView.tintColor = .systemGray
         glyphView.contentMode = .scaleAspectFit
 
         elapsedLabel.text = "00:00"
@@ -225,21 +225,19 @@ final class RecordingViewController: UIViewController {
     // MARK: - Rendering
 
     private func render(state: RecordingController.State) {
+        // Same `record.circle` outline throughout; state reads from the tint.
         switch state {
         case .idle:
-            glyphView.image = symbol("record.circle", pointSize: 96)
-            glyphView.tintColor = .systemRed
+            glyphView.tintColor = .systemGray
             startButton.isHidden = false
             activeControls.isHidden = true
         case .recording:
-            glyphView.image = symbol("record.circle.fill", pointSize: 96)
             glyphView.tintColor = .systemRed
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Pause"
         case .paused:
-            glyphView.image = symbol("record.circle.fill", pointSize: 96)
-            glyphView.tintColor = .systemGray
+            glyphView.tintColor = .systemOrange
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Reprendre"

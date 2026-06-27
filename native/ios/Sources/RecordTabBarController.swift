@@ -17,8 +17,8 @@ final class RecordTabBarController: HotwireTabBarController {
     private static let buttonSize: CGFloat = 56
 
     /// The floating Record entry point. While a recording is in progress (S3, #51)
-    /// its symbol switches from `record.circle` to `record.circle.fill` tinted red
-    /// and pulses, so the recording reads as active from anywhere in the tab bar.
+    /// the `record.circle` glass capsule turns from accent-tinted to red and pulses,
+    /// so the recording reads as active from anywhere in the tab bar.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
     override func viewDidLoad() {
@@ -26,28 +26,38 @@ final class RecordTabBarController: HotwireTabBarController {
         addRecordButton()
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(recordingStateDidChange),
+            selector: #selector(syncRecordButton),
             name: .recordingStateDidChange,
             object: nil
         )
-        // Reflect any recording already in progress (also primes kill recovery).
+        // The recording screen is a full-screen modal, so state changes posted
+        // while it's up reach us off-window (where layer animation changes don't
+        // reliably take). Re-sync on foreground too, and `viewWillAppear` re-syncs
+        // once the modal dismisses — without it the pulse outlived a Stop.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(syncRecordButton),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
         updateRecordButton()
     }
 
-    @objc private func recordingStateDidChange() {
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         updateRecordButton()
     }
 
-    /// Mirror the controller's active/idle state onto the button: red filled +
-    /// pulsing while recording, the understated outline when idle.
+    @objc private func syncRecordButton() {
+        updateRecordButton()
+    }
+
+    /// Mirror the controller's active/idle state onto the button: a red, pulsing
+    /// glass capsule while recording; the accent-tinted capsule when idle. The
+    /// `record.circle` symbol is unchanged between states.
     private func updateRecordButton() {
         let isActive = RecordingController.shared.isActive
-        let symbol = isActive ? "record.circle.fill" : "record.circle"
-        recordButton.configuration?.image = UIImage(
-            systemName: symbol,
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
-        )
-        recordButton.configuration?.baseForegroundColor = isActive ? .systemRed : .white
+        recordButton.configuration?.baseBackgroundColor = isActive ? .systemRed : .tintColor
         isActive ? startPulsing() : stopPulsing()
     }
 
@@ -101,8 +111,8 @@ final class RecordTabBarController: HotwireTabBarController {
         }
         config.baseBackgroundColor = .tintColor
         config.baseForegroundColor = .white
-        // Idle look: a small `record.circle` outline. `updateRecordButton()` swaps
-        // to `record.circle.fill` tinted red (and pulses) while recording (S3).
+        // A small `record.circle` outline in both states; `updateRecordButton()`
+        // turns the capsule red (and pulses) while recording (S3).
         config.image = UIImage(
             systemName: "record.circle",
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
