@@ -1,12 +1,14 @@
 appId: fr.armandmgt.velo
-name: Record flow (entry point opens native recording screen, Stop pops back)
+name: Record flow (record → stop → upload → land on the new activity)
 tags:
   - regression
 ---
 # S1 (#49) floated the Record button + native screen; S2 (#50) added the live GPS
 # feed; S3 (#51) makes it statful: the screen opens *armed*, an explicit Démarrer
-# starts recording (Core Data), and live stats + a point count update. This flow
-# guards navigation, the start control, and that points get recorded.
+# starts recording (Core Data), and live stats + a point count update. S4 (#52)
+# adds sport selection, then on Arrêter serializes the recording to GPX, uploads
+# it via POST /activities, and jumps to the new activity. This flow guards
+# navigation, the start control, that points get recorded, and the upload path.
 - launchApp:
     clearState: true
     clearKeychain: true
@@ -28,8 +30,10 @@ tags:
 - tapOn: "Enregistrer"
 
 # Fully native recording screen, presented as a full-screen modal. It opens
-# *armed* (explicit-start UX): Démarrer is shown, recording hasn't begun.
+# *armed* (explicit-start UX): a sport picker (defaulting to the last-used sport,
+# "Vélo de route" on a fresh install) and Démarrer are shown; recording hasn't begun.
 - assertVisible: "Enregistrement"
+- assertVisible: "Vélo de route"
 - assertVisible: "Démarrer"
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
 # — .fullScreen + isModalInPresentation), so the only way back is the button.
@@ -52,8 +56,13 @@ tags:
 - assertVisible: "Reprendre"
 - tapOn: "Reprendre"
 
+# Arrêter finalizes the recording, serializes it to GPX, and uploads it via
+# POST /activities (S4 — #52). With a single static fix the activity is tiny but
+# valid; on success the app routes the Activités tab to the new activity's show
+# page and dismisses the modal. The dev server (already logged in above) handles
+# the upload — the CSRF JSON exemption lets the out-of-webview POST through.
 - tapOn: "Arrêter"
 
-# Back on the dashboard inside the tab bar shell.
-- assertVisible: "Résumé par période"
+# Landed on the created activity's show page inside the tab bar shell.
+- assertVisible: "Retour à la liste"
 - assertVisible: "Tableau de bord"

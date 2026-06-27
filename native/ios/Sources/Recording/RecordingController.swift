@@ -43,6 +43,12 @@ final class RecordingController: NSObject {
 
     var isActive: Bool { state.isActive }
 
+    /// The sport the recording uploads as (S4 — #52). Chosen on the recording
+    /// screen; defaults to the last-used sport and becomes the new last-used when
+    /// a recording starts. Held here (not on the VC) so it survives Fermer/reopen
+    /// while the recording keeps running.
+    var sport: Sport = .lastUsed
+
     /// Current lap ordinal (1-based) while active, else 0. Laps are markers (S3).
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
@@ -105,6 +111,8 @@ final class RecordingController: NSObject {
             store.save()
         }
         recoveredPointCount = 0
+        // Remember this sport so the next recording's picker defaults to it.
+        Sport.lastUsed = sport
 
         session = store.createSession()
         pointCount = 0
@@ -151,10 +159,13 @@ final class RecordingController: NSObject {
         store.save()
     }
 
-    /// Finalize the recording: mark it stopped and stop streaming.
-    func stop() {
-        guard isActive else { return }
-        session?.recordingState = .stopped
+    /// Finalize the recording: mark it stopped, stop streaming, and return the
+    /// finalized session so the caller can serialize and upload it (S4 — #52).
+    /// The session stays in the store until the upload succeeds (`discard`).
+    @discardableResult
+    func stop() -> RecordingSession? {
+        guard isActive, let finished = session else { return nil }
+        finished.recordingState = .stopped
         store.save()
         stopTicker()
         recorder.stop()
@@ -162,6 +173,12 @@ final class RecordingController: NSObject {
         accumulatedElapsed = 0
         stretchStart = nil
         state = .idle
+        return finished
+    }
+
+    /// Clear a finalized recording from the store after it uploaded successfully.
+    func discard(_ session: RecordingSession) {
+        store.delete(session)
     }
 
     // MARK: - Elapsed clock

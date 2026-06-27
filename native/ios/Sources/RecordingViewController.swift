@@ -1,4 +1,5 @@
 import CoreLocation
+import HotwireNative
 import UIKit
 
 /// The native recording surface (#41).
@@ -12,11 +13,16 @@ import UIKit
 /// ("GPS prêt") but does **not** record. **Démarrer** starts; then
 /// **Pause/Reprendre** and **Tour** (a lap marker) drive what's recorded.
 ///
+/// A sport is chosen up front via a native picker (S4 — #52), defaulting to the
+/// last-used sport.
+///
 /// Two exits, now meaningfully distinct:
 /// - **Fermer** (close): leaves the screen — recording keeps running in the
 ///   background (the controller outlives this VC) and the tab-bar Record button
 ///   reflects that.
-/// - **Arrêter** (stop): ends and finalizes the recording (upload is S4).
+/// - **Arrêter** (stop): ends and finalizes the recording, then serializes it to
+///   GPX and uploads it (S4 — #52). On success the webview jumps to the new
+///   activity; on failure the recording is kept and a retry is offered.
 final class RecordingViewController: UIViewController {
     private var controller: RecordingController { .shared }
 
@@ -39,6 +45,7 @@ final class RecordingViewController: UIViewController {
         controller.delegate = self
         // Reflect whatever the controller is already doing — the screen may have
         // been reopened onto an in-progress (or paused) recording.
+        updateSportButton()
         render(state: controller.state)
         render(stats: controller.currentStats)
     }
@@ -68,10 +75,29 @@ final class RecordingViewController: UIViewController {
     private let countLabel = UILabel()
     private lazy var settingsButton: UIButton = makeSettingsButton()
 
+    private lazy var sportButton = makeSportButton()
     private lazy var startButton = makeStartButton()
     private lazy var lapButton = makeSecondaryButton(title: "Tour") { [weak self] in self?.markLap() }
     private lazy var pauseResumeButton = makeSecondaryButton(title: "Pause") { [weak self] in self?.togglePause() }
     private lazy var stopButton = makeStopButton()
+
+    /// Shown while the recording is being serialized + uploaded after Arrêter.
+    private let uploadingSpinner = UIActivityIndicatorView(style: .medium)
+    private lazy var uploadingStack: UIStackView = {
+        let label = UILabel()
+        label.text = "Envoi en cours…"
+        label.font = .preferredFont(forTextStyle: .body)
+        label.textColor = .secondaryLabel
+        let stack = UIStackView(arrangedSubviews: [uploadingSpinner, label])
+        stack.axis = .horizontal
+        stack.spacing = 8
+        stack.alignment = .center
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        stack.isHidden = true
+        return stack
+    }()
+    private var isUploading = false
+
     private lazy var activeControls: UIStackView = {
         let row = UIStackView(arrangedSubviews: [lapButton, pauseResumeButton])
         row.axis = .horizontal
@@ -120,8 +146,10 @@ final class RecordingViewController: UIViewController {
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(stack)
+        view.addSubview(sportButton)
         view.addSubview(startButton)
         view.addSubview(activeControls)
+        view.addSubview(uploadingStack)
 
         NSLayoutConstraint.activate([
             stack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -130,6 +158,15 @@ final class RecordingViewController: UIViewController {
             stack.trailingAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
             statsRow.leadingAnchor.constraint(equalTo: stack.leadingAnchor),
             statsRow.trailingAnchor.constraint(equalTo: stack.trailingAnchor),
+
+            // Sport picker sits just above Démarrer (both visible only while idle).
+            sportButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
+            sportButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
+            sportButton.bottomAnchor.constraint(equalTo: startButton.topAnchor, constant: -12),
+            sportButton.heightAnchor.constraint(equalToConstant: 50),
+
+            uploadingStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            uploadingStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -40),
 
             startButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             startButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
@@ -146,6 +183,42 @@ final class RecordingViewController: UIViewController {
     }
 
     // MARK: - Buttons
+
+    /// A pull-down sport picker (UIMenu). The chosen sport lives on the
+    /// controller; `updateSportButton()` keeps the title/glyph and the menu's
+    /// checkmark in sync.
+    private func makeSportButton() -> UIButton {
+        var config = UIButton.Configuration.tinted()
+        config.cornerStyle = .large
+        config.imagePadding = 8
+        let button = UIButton(configuration: config)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.showsMenuAsPrimaryAction = true
+        button.accessibilityIdentifier = "sportPicker"
+        return button
+    }
+
+    private func updateSportButton() {
+        let sport = controller.sport
+        sportButton.configuration?.title = sport.displayName
+        sportButton.configuration?.image = UIImage(systemName: sport.symbolName)
+        sportButton.menu = makeSportMenu()
+    }
+
+    private func makeSportMenu() -> UIMenu {
+        let current = controller.sport
+        let actions = Sport.allCases.map { sport in
+            UIAction(
+                title: sport.displayName,
+                image: UIImage(systemName: sport.symbolName),
+                state: sport == current ? .on : .off
+            ) { [weak self] _ in
+                self?.controller.sport = sport
+                self?.updateSportButton()
+            }
+        }
+        return UIMenu(title: "Sport", children: actions)
+    }
 
     private func makeStartButton() -> UIButton {
         var config = UIButton.Configuration.filled()
@@ -216,28 +289,113 @@ final class RecordingViewController: UIViewController {
         dismiss(animated: true)
     }
 
-    /// End and finalize the recording.
+    /// End the recording, then serialize + upload it (S4 — #52).
     private func stop() {
-        controller.stop()
+        guard let session = controller.stop() else {
+            dismiss(animated: true)
+            return
+        }
+        // A stop with no fixes recorded has nothing to upload — drop it and leave.
+        guard !session.orderedPoints.isEmpty else {
+            controller.discard(session)
+            dismiss(animated: true)
+            return
+        }
+        upload(session)
+    }
+
+    /// Serialize the finalized session to GPX and POST it. On success the local
+    /// session is cleared and the webview jumps to the new activity; on failure
+    /// the recording is kept (still in Core Data) and a retry is offered.
+    private func upload(_ session: RecordingSession) {
+        enterUploadingState()
+        let sport = controller.sport
+        let gpx = RecordingGPXEncoder.gpx(for: session, sport: sport)
+        ActivityUploader.upload(gpx: gpx, sport: sport, name: nil) { [weak self] result in
+            guard let self else { return }
+            switch result {
+            case .success(let url):
+                self.controller.discard(session)
+                self.navigateToActivity(url)
+            case .failure(let error):
+                self.exitUploadingState()
+                self.presentUploadFailure(error, session: session)
+            }
+        }
+    }
+
+    /// Push the created activity onto the Activités tab, then dismiss the modal
+    /// to reveal it. Mirrors `NotificationCountComponent`'s tab-bar reach.
+    private func navigateToActivity(_ url: URL) {
+        if let tabBar = view.window?.rootViewController as? HotwireTabBarController {
+            tabBar.selectedIndex = 1 // Activités
+            tabBar.activeNavigator.route(url)
+        }
         dismiss(animated: true)
+    }
+
+    private func presentUploadFailure(_ error: ActivityUploader.UploadError, session: RecordingSession) {
+        let message: String
+        switch error {
+        case .validation(let errors):
+            message = errors.joined(separator: "\n")
+        case .network:
+            message = "L'enregistrement a été conservé. Vérifiez votre connexion, puis réessayez."
+        }
+        let alert = UIAlertController(title: "Envoi échoué", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Réessayer", style: .default) { [weak self] _ in
+            self?.upload(session)
+        })
+        alert.addAction(UIAlertAction(title: "Plus tard", style: .cancel) { [weak self] _ in
+            self?.dismiss(animated: true)
+        })
+        present(alert, animated: true)
+    }
+
+    private func enterUploadingState() {
+        isUploading = true
+        sportButton.isHidden = true
+        startButton.isHidden = true
+        activeControls.isHidden = true
+        uploadingStack.isHidden = false
+        uploadingSpinner.startAnimating()
+        // Block Fermer mid-upload so the modal can't be torn down under the request.
+        navigationItem.leftBarButtonItem?.isEnabled = false
+    }
+
+    private func exitUploadingState() {
+        isUploading = false
+        uploadingSpinner.stopAnimating()
+        uploadingStack.isHidden = true
+        navigationItem.leftBarButtonItem?.isEnabled = true
+        // The controller is idle after stop(); restore the idle controls.
+        render(state: controller.state)
     }
 
     // MARK: - Rendering
 
     private func render(state: RecordingController.State) {
+        // While uploading, the uploading UI owns the control area — don't let a
+        // state callback (the `.idle` transition stop() fires) unhide the buttons.
+        guard !isUploading else { return }
+
         // Same `record.circle` outline throughout; state reads from the tint.
+        // The sport picker only makes sense before a recording starts.
         switch state {
         case .idle:
             glyphView.tintColor = .systemGray
+            sportButton.isHidden = false
             startButton.isHidden = false
             activeControls.isHidden = true
         case .recording:
             glyphView.tintColor = .systemRed
+            sportButton.isHidden = true
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Pause"
         case .paused:
             glyphView.tintColor = .systemOrange
+            sportButton.isHidden = true
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Reprendre"
