@@ -3,4 +3,7 @@
     <string name="app_name">Velo</string>
     <string name="menu_open">Menu</string>
     <string name="download_started">Téléchargement en cours…</string>
+    <string name="record">Enregistrer</string>
+    <string name="recording_notification_channel_name">Enregistrement</string>
+    <string name="recording_notification_text">Enregistrement en cours</string>
 </resources>

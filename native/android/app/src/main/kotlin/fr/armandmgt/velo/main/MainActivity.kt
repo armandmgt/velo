@@ -1,14 +1,17 @@
 package fr.armandmgt.velo.main
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.tabs.HotwireBottomNavigationController
 import dev.hotwire.navigation.tabs.navigatorConfigurations
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import fr.armandmgt.velo.R
+import fr.armandmgt.velo.features.record.RecordingActivity
 
 class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
@@ -20,6 +23,10 @@ class MainActivity : HotwireActivity() {
         findViewById<View>(R.id.root).applyDefaultImeWindowInsets()
 
         initializeBottomTabs()
+
+        findViewById<FloatingActionButton>(R.id.record_fab).setOnClickListener {
+            startActivity(Intent(this, RecordingActivity::class.java))
+        }
     }
 
     override fun navigatorConfigurations() = mainTabs.navigatorConfigurations
