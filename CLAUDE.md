@@ -33,6 +33,11 @@ The database runs in Docker (`docker-compose.yml`: `postgis/postgis:17-3.5`, rol
 db `velo_development`, port 5432). Always use `docker compose up -d db` — do not start a
 locally installed (e.g. Homebrew) Postgres, which won't have this data.
 
+**Dev login:** the dev DB has a ready user (`test@example.com` / password `dev`), and the
+login form pre-fills both fields, so to sign in (web or the native shells against the dev
+server) just open the login page and submit — no typing needed. Don't change this user's
+password; the pre-fill expects `dev`.
+
 ## Workflow
 
 - Commit directly to the current branch (usually `main`); do not create new branches unless explicitly asked.
