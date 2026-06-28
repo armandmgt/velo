@@ -13,4 +13,15 @@
     <string name="recording_point_count">Points</string>
     <string name="recording_permission_denied">L\'accès à la position est nécessaire pour enregistrer un parcours.</string>
     <string name="recording_open_settings">Ouvrir les réglages</string>
+    <string name="recording_elapsed">Temps</string>
+    <string name="recording_distance">Distance</string>
+    <string name="recording_speed">Vitesse</string>
+    <string name="recording_average_speed">Moy.</string>
+    <string name="recording_lap">Tour %1$d</string>
+    <string name="recording_gps_signal">Signal GPS : %1$s</string>
+    <string name="recording_gps_searching">recherche…</string>
+    <string name="recording_pause">Pause</string>
+    <string name="recording_resume">Reprendre</string>
+    <string name="recording_mark_lap">Tour</string>
+    <string name="recording_stop">Arrêter</string>
 </resources>

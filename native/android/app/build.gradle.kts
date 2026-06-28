@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("com.google.devtools.ksp")
 }
 
 // Load signing credentials from keystore.properties (gitignored — copy from keystore.properties.example)
@@ -87,6 +88,12 @@ dependencies {
 
     // Fused Location Provider — streams GPS fixes for the native recording (#55).
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // Room — persists the in-progress recording session + ordered points so a ride
+    // survives a process kill (#56). room-ktx adds coroutine/suspend support.
+    implementation("androidx.room:room-runtime:2.7.1")
+    implementation("androidx.room:room-ktx:2.7.1")
+    ksp("androidx.room:room-compiler:2.7.1")
 
     // Jetpack Compose — the native recording screen (#54) is the first Compose
     // surface; the rest of the app stays webview/ViewBinding-based.

@@ -36,16 +36,20 @@ class RecordingActivity : ComponentActivity() {
     private var screenState by mutableStateOf<RecordingScreenState>(RecordingScreenState.RequestingPermission)
 
     private var isBound = false
+    private var binder: RecordingService.LocalBinder? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val binder = service as RecordingService.LocalBinder
+            val localBinder = service as RecordingService.LocalBinder
+            binder = localBinder
             lifecycleScope.launch {
-                binder.uiState.collect { screenState = RecordingScreenState.Streaming(it) }
+                localBinder.uiState.collect { screenState = RecordingScreenState.Streaming(it) }
             }
         }
 
-        override fun onServiceDisconnected(name: ComponentName?) {}
+        override fun onServiceDisconnected(name: ComponentName?) {
+            binder = null
+        }
     }
 
     private val requestNotificationPermission =
@@ -71,6 +75,9 @@ class RecordingActivity : ComponentActivity() {
             VeloTheme {
                 RecordingScreen(
                     state = screenState,
+                    onPause = { binder?.pause() },
+                    onResume = { binder?.resume() },
+                    onLap = { binder?.markLap() },
                     onStop = ::stopRecording,
                     onOpenSettings = ::openAppSettings,
                 )
@@ -104,8 +111,15 @@ class RecordingActivity : ComponentActivity() {
     }
 
     private fun stopRecording() {
+        // Route through the binder so the service finalizes the session (state =
+        // STOPPED) before tearing down; fall back to a plain stop if not bound.
+        val boundBinder = binder
+        if (boundBinder != null) {
+            boundBinder.stop()
+        } else {
+            RecordingService.stop(this)
+        }
         unbindIfNeeded()
-        RecordingService.stop(this)
         finish()
     }
 
@@ -113,6 +127,7 @@ class RecordingActivity : ComponentActivity() {
         if (isBound) {
             unbindService(connection)
             isBound = false
+            binder = null
         }
     }
 
