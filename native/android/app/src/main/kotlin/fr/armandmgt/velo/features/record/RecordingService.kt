@@ -14,6 +14,8 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -24,53 +26,103 @@ import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import fr.armandmgt.velo.R
+import fr.armandmgt.velo.features.record.data.RecordingDao
+import fr.armandmgt.velo.features.record.data.RecordingDatabase
+import fr.armandmgt.velo.features.record.data.RecordingPointEntity
+import fr.armandmgt.velo.features.record.data.RecordingSessionEntity
+import fr.armandmgt.velo.features.record.data.RecordingState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
-/** The latest GPS readout for the recording screen's debug display (#55). */
+/** The live state the recording screen renders (#56): GPS readout + derived stats. */
 data class RecordingUiState(
+    val recordingState: RecordingState = RecordingState.RECORDING,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val accuracy: Float? = null,
     val pointCount: Int = 0,
+    val lap: Int = 1,
+    val elapsedSeconds: Long = 0,
+    val distanceMeters: Double = 0.0,
+    val currentSpeedMps: Double = 0.0,
+    val averageSpeedMps: Double = 0.0,
 )
 
 /**
- * Foreground service backing a recording session (#54 skeleton; #55 adds GPS).
+ * Foreground service that owns an in-progress recording (#54 skeleton; #55 GPS;
+ * #56 persistence + live stats).
  *
- * It runs as a `location` foreground service (the S6 `dataSync` placeholder is
- * gone now that location permission is requested) and streams fixes from the
- * Fused Location Provider for as long as it lives — so updates keep flowing while
- * the app is backgrounded / the screen is off, with only While-Using
- * (`ACCESS_FINE_LOCATION`) permission. The recording screen binds to read the
- * live [RecordingUiState]; the service stays alive because it's *started*
- * (foreground), so unbinding when the screen leaves doesn't tear it down.
+ * It's the long-lived owner of the recording (the role iOS gives its
+ * `RecordingController`): it streams Fused-Location fixes, persists each one to
+ * the Room [RecordingDatabase], folds live stats from the fix stream, and exposes
+ * the result as [uiState]. Running as a *started* `location` foreground service
+ * means GPS keeps flowing — and points keep persisting — while the app is
+ * backgrounded or the screen is off, with only While-Using
+ * (`ACCESS_FINE_LOCATION`) permission. The recording screen binds purely to read
+ * live state and drive the [LocalBinder] controls (pause/resume/lap/stop).
+ *
+ * Exactly one session is active (state != STOPPED) at a time: a fresh start
+ * finalizes any orphan left by a previous process kill before opening a new one,
+ * so a killed ride's points stay in the store (mirroring iOS — recovery/resume is
+ * later work).
  */
 class RecordingService : Service() {
     private val _uiState = MutableStateFlow(RecordingUiState())
 
     private val binder = LocalBinder()
 
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    private val dao: RecordingDao by lazy { RecordingDatabase.get(this).recordingDao() }
+
     private val fusedClient: FusedLocationProviderClient by lazy {
         LocationServices.getFusedLocationProviderClient(this)
     }
 
+    // In-memory recording state — only touched on the main thread (location
+    // callback, ticker, and binder controls all run there), so no locking needed.
+    private var started = false
+    private var session: RecordingSessionEntity? = null
+    private var recordingState = RecordingState.RECORDING
+    private var accumulator = RecordingStatsAccumulator()
+    private var pointCount = 0
+    private var lap = 1
+    private var lastFixSpeed = 0.0
+    private var lastPersistedSecond: Long? = null
+    private var lastLatitude: Double? = null
+    private var lastLongitude: Double? = null
+    private var lastAccuracy: Float? = null
+
+    // Elapsed clock: wall-clock recording time minus paused stretches, on a
+    // monotonic base so a system clock change can't skew it.
+    private var accumulatedElapsedMs = 0L
+    private var stretchStartMs: Long? = null
+    private var tickerJob: Job? = null
+
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            val location = result.lastLocation ?: return
-            val current = _uiState.value
-            _uiState.value = current.copy(
-                latitude = location.latitude,
-                longitude = location.longitude,
-                accuracy = if (location.hasAccuracy()) location.accuracy else null,
-                pointCount = current.pointCount + 1,
-            )
+            onFix(result.lastLocation ?: return)
         }
     }
 
     inner class LocalBinder : Binder() {
         val uiState: StateFlow<RecordingUiState> get() = _uiState.asStateFlow()
+        fun pause() = this@RecordingService.pause()
+        fun resume() = this@RecordingService.resume()
+        fun markLap() = this@RecordingService.markLap()
+        fun stop() = this@RecordingService.stopRecording()
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -90,7 +142,13 @@ class RecordingService : Service() {
             buildNotification(),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
-        startLocationUpdates()
+
+        // Opening the screen again (rotation / redelivery) re-issues start; only
+        // open a session the first time so we never run two at once.
+        if (!started) {
+            started = true
+            beginSession()
+        }
 
         // Not sticky: a recording is an explicit user session. We don't want the
         // system to silently resume GPS after a kill with no user present (kill
@@ -100,7 +158,134 @@ class RecordingService : Service() {
 
     override fun onDestroy() {
         fusedClient.removeLocationUpdates(locationCallback)
+        stopTicker()
+        ioScope.cancel()
+        mainScope.cancel()
         super.onDestroy()
+    }
+
+    /**
+     * Open a fresh session: finalize any orphan from a previous kill (keeping its
+     * points), insert the new row, then start streaming + the elapsed ticker. The
+     * row exists before the first fix so points always have a session to attach to.
+     */
+    private fun beginSession() {
+        ioScope.launch {
+            dao.activeSession()?.let { orphan ->
+                val recovered = dao.pointCountFor(orphan.id)
+                Log.i(TAG, "recovered active session ${orphan.id} with $recovered points")
+            }
+            dao.finalizeOrphans()
+
+            val newSession = RecordingSessionEntity(
+                id = UUID.randomUUID().toString(),
+                startedAt = System.currentTimeMillis(),
+                state = RecordingState.RECORDING.ordinal,
+                lapCount = 1,
+            )
+            dao.insertSession(newSession)
+
+            withContext(Dispatchers.Main) {
+                session = newSession
+                recordingState = RecordingState.RECORDING
+                accumulator = RecordingStatsAccumulator()
+                pointCount = 0
+                lap = 1
+                lastFixSpeed = 0.0
+                lastPersistedSecond = null
+                accumulatedElapsedMs = 0L
+                stretchStartMs = SystemClock.elapsedRealtime()
+                startLocationUpdates()
+                startTicker()
+                emitState()
+            }
+        }
+    }
+
+    private fun onFix(location: android.location.Location) {
+        // Always surface the latest fix for the GPS-signal indicator.
+        lastLatitude = location.latitude
+        lastLongitude = location.longitude
+        lastAccuracy = if (location.hasAccuracy()) location.accuracy else null
+
+        val current = session
+        if (recordingState != RecordingState.RECORDING || current == null) {
+            emitState()
+            return
+        }
+
+        // Keep at most one fix per wall-clock second (the ~1 Hz contract): the
+        // provider can burst sub-second, and the eventual GPX emits whole-second
+        // timestamps that would collide on the server's unique recorded_at.
+        val second = location.time / 1000
+        if (second == lastPersistedSecond) {
+            emitState()
+            return
+        }
+        lastPersistedSecond = second
+
+        val segmentSpeed = accumulator.add(location)
+        lastFixSpeed = if (location.hasSpeed()) location.speed.toDouble() else segmentSpeed
+        pointCount++
+
+        val point = RecordingPointEntity(
+            sessionId = current.id,
+            timestamp = location.time,
+            latitude = location.latitude,
+            longitude = location.longitude,
+            elevation = if (location.hasAltitude()) location.altitude else null,
+            speed = segmentSpeed,
+            horizontalAccuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else 0.0,
+            lap = lap,
+        )
+        ioScope.launch { dao.insertPoint(point) }
+
+        emitState()
+    }
+
+    private fun pause() {
+        if (recordingState != RecordingState.RECORDING) return
+        val current = session ?: return
+        accumulatedElapsedMs = elapsedMs()
+        stretchStartMs = null
+        lastFixSpeed = 0.0
+        // Break the segment so the paused gap adds neither distance nor moving time.
+        accumulator.breakSegment()
+        recordingState = RecordingState.PAUSED
+        stopTicker()
+        ioScope.launch { dao.updateState(current.id, RecordingState.PAUSED.ordinal) }
+        emitState()
+    }
+
+    private fun resume() {
+        if (recordingState != RecordingState.PAUSED) return
+        val current = session ?: return
+        stretchStartMs = SystemClock.elapsedRealtime()
+        recordingState = RecordingState.RECORDING
+        startTicker()
+        ioScope.launch { dao.updateState(current.id, RecordingState.RECORDING.ordinal) }
+        emitState()
+    }
+
+    private fun markLap() {
+        val current = session ?: return
+        lap += 1
+        val ordinal = lap
+        ioScope.launch { dao.updateLapCount(current.id, ordinal) }
+        emitState()
+    }
+
+    /** Finalize the session to STOPPED, then tear the service down. */
+    private fun stopRecording() {
+        val id = session?.id
+        session = null
+        recordingState = RecordingState.STOPPED
+        stopTicker()
+        fusedClient.removeLocationUpdates(locationCallback)
+        ioScope.launch {
+            if (id != null) dao.updateState(id, RecordingState.STOPPED.ordinal)
+            withContext(Dispatchers.Main) { stopSelf() }
+        }
     }
 
     private fun startLocationUpdates() {
@@ -111,6 +296,41 @@ class RecordingService : Service() {
 
         if (!hasLocationPermission()) return
         fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+    }
+
+    private fun startTicker() {
+        stopTicker()
+        tickerJob = mainScope.launch {
+            while (isActive) {
+                delay(1000)
+                emitState()
+            }
+        }
+    }
+
+    private fun stopTicker() {
+        tickerJob?.cancel()
+        tickerJob = null
+    }
+
+    private fun elapsedMs(): Long {
+        val start = stretchStartMs
+        return accumulatedElapsedMs + if (start != null) SystemClock.elapsedRealtime() - start else 0L
+    }
+
+    private fun emitState() {
+        _uiState.value = RecordingUiState(
+            recordingState = recordingState,
+            latitude = lastLatitude,
+            longitude = lastLongitude,
+            accuracy = lastAccuracy,
+            pointCount = pointCount,
+            lap = lap,
+            elapsedSeconds = elapsedMs() / 1000,
+            distanceMeters = accumulator.distance,
+            currentSpeedMps = lastFixSpeed,
+            averageSpeedMps = accumulator.averageSpeed(),
+        )
     }
 
     private fun hasLocationPermission(): Boolean =
@@ -151,6 +371,7 @@ class RecordingService : Service() {
     }
 
     companion object {
+        private const val TAG = "RecordingService"
         private const val CHANNEL_ID = "recording"
         private const val NOTIFICATION_ID = 1
         private const val UPDATE_INTERVAL_MS = 1000L
