@@ -6,4 +6,11 @@
     <string name="record">Enregistrer</string>
     <string name="recording_notification_channel_name">Enregistrement</string>
     <string name="recording_notification_text">Enregistrement en cours</string>
+    <string name="recording_waiting_gps">En attente du signal GPS…</string>
+    <string name="recording_latitude">Latitude</string>
+    <string name="recording_longitude">Longitude</string>
+    <string name="recording_accuracy">Précision</string>
+    <string name="recording_point_count">Points</string>
+    <string name="recording_permission_denied">L\'accès à la position est nécessaire pour enregistrer un parcours.</string>
+    <string name="recording_open_settings">Ouvrir les réglages</string>
 </resources>

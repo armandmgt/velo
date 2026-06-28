@@ -85,6 +85,9 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.9.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
 
+    // Fused Location Provider — streams GPS fixes for the native recording (#55).
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // Jetpack Compose — the native recording screen (#54) is the first Compose
     // surface; the rest of the app stays webview/ViewBinding-based.
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
