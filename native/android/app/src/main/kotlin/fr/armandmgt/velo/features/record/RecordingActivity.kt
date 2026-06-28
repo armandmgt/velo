@@ -1,6 +1,7 @@
 package fr.armandmgt.velo.features.record
 
 import android.Manifest
+import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -12,6 +13,7 @@ import android.os.Bundle
 import android.os.IBinder
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -20,20 +22,31 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import fr.armandmgt.velo.R
+import fr.armandmgt.velo.features.record.data.RecordingDatabase
 import fr.armandmgt.velo.ui.theme.VeloTheme
 import kotlinx.coroutines.launch
 
 /**
- * Hosts the native recording screen (#54 skeleton; #55 adds the GPS feed).
+ * Hosts the native recording screen (#54 skeleton; #55 GPS feed; #57 upload).
  *
- * Opening it *is* the start of a recording: once location permission is granted
- * it starts the [RecordingService] (an ongoing-notification `location` foreground
- * service) and binds to it to mirror the live GPS readout. The service keeps
+ * Opening it *arms* GPS: once location permission is granted it starts the
+ * [RecordingService] (an ongoing-notification `location` foreground service) and
+ * binds to mirror the live GPS readout, but nothing is recorded until Démarrer.
+ * Arrêter finalizes the session, serializes its points to GPX and uploads them,
+ * handing the new activity URL back to [fr.armandmgt.velo.main.MainActivity] on
+ * success (the recording is kept for a retry on failure). The service keeps
  * streaming while this Activity is backgrounded; binding is only for the UI, so
- * Stop (or system back) tears the service back down and finishes.
+ * system back leaves an in-progress recording running (the notification brings
+ * the user back) and only tears the service down when merely armed.
  */
 class RecordingActivity : ComponentActivity() {
     private var screenState by mutableStateOf<RecordingScreenState>(RecordingScreenState.RequestingPermission)
+
+    /** The sport this recording uploads as; defaults to the last-used sport (#57). */
+    private var selectedSport by mutableStateOf(Sport.BIKE)
+
+    private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
 
     private var isBound = false
     private var binder: RecordingService.LocalBinder? = null
@@ -68,21 +81,35 @@ class RecordingActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        selectedSport = Sport.lastUsed(this)
+
         requestNotificationPermissionIfNeeded()
         ensureLocationPermission()
+
+        // Back press: while recording, leave the screen but keep the service running
+        // in the background (the notification brings the user back) — mirrors iOS
+        // "Fermer". While only armed (nothing recorded), tear the service down.
+        onBackPressedDispatcher.addCallback(this) { handleBack() }
 
         setContent {
             VeloTheme {
                 RecordingScreen(
                     state = screenState,
+                    selectedSport = selectedSport,
+                    onSelectSport = ::selectSport,
+                    onStartStop = { checked -> if (checked) binder?.start() else stopRecording() },
                     onPause = { binder?.pause() },
                     onResume = { binder?.resume() },
                     onLap = { binder?.markLap() },
-                    onStop = ::stopRecording,
                     onOpenSettings = ::openAppSettings,
                 )
             }
         }
+    }
+
+    private fun selectSport(sport: Sport) {
+        selectedSport = sport
+        Sport.setLastUsed(this, sport)
     }
 
     override fun onDestroy() {
@@ -110,17 +137,73 @@ class RecordingActivity : ComponentActivity() {
         isBound = true
     }
 
+    /**
+     * Arrêter: finalize the session (the service flips it to STOPPED and tears
+     * down), then serialize its points to GPX and upload. On success the local
+     * session is cleared and we hand the new activity URL back to [MainActivity]
+     * to navigate the webview; on failure the recording is kept for a retry (#57).
+     */
     private fun stopRecording() {
-        // Route through the binder so the service finalizes the session (state =
-        // STOPPED) before tearing down; fall back to a plain stop if not bound.
-        val boundBinder = binder
-        if (boundBinder != null) {
-            boundBinder.stop()
-        } else {
-            RecordingService.stop(this)
-        }
+        val id = binder?.sessionId()
+        binder?.stop() ?: RecordingService.stop(this)
         unbindIfNeeded()
-        finish()
+        if (id == null) {
+            finish()
+            return
+        }
+        uploadSession(id)
+    }
+
+    private fun uploadSession(id: String) {
+        screenState = RecordingScreenState.Uploading
+        val sport = selectedSport
+        lifecycleScope.launch {
+            val points = dao.pointsFor(id)
+            if (points.isEmpty()) {
+                // A stop with no fixes has nothing to upload — drop it and leave.
+                dao.deleteSession(id)
+                finish()
+                return@launch
+            }
+
+            val gpx = RecordingGpxEncoder.gpx(points.first().timestamp, points, sport)
+            when (val result = ActivityUploader.upload(gpx, sport)) {
+                is ActivityUploader.UploadResult.Success -> {
+                    dao.deleteSession(id)
+                    setResult(RESULT_OK, Intent().putExtra(EXTRA_ACTIVITY_URL, result.url))
+                    finish()
+                }
+                is ActivityUploader.UploadResult.Validation ->
+                    showUploadFailure(id, result.messages.joinToString("\n").ifBlank {
+                        getString(R.string.recording_upload_failed_network)
+                    })
+                is ActivityUploader.UploadResult.Network ->
+                    showUploadFailure(id, getString(R.string.recording_upload_failed_network))
+            }
+        }
+    }
+
+    private fun showUploadFailure(id: String, message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.recording_upload_failed_title)
+            .setMessage(message)
+            .setCancelable(false)
+            .setPositiveButton(R.string.recording_retry) { _, _ -> uploadSession(id) }
+            .setNegativeButton(R.string.recording_later) { _, _ -> finish() }
+            .show()
+    }
+
+    private fun handleBack() {
+        if (binder?.sessionId() != null) {
+            // Recording in progress: keep it running in the background, just leave.
+            unbindIfNeeded()
+            finish()
+        } else {
+            // Armed only — nothing recorded yet; tear the readiness service down.
+            binder?.stop() ?: RecordingService.stop(this)
+            unbindIfNeeded()
+            finish()
+        }
     }
 
     private fun unbindIfNeeded() {
@@ -148,5 +231,10 @@ class RecordingActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    companion object {
+        /** Result extra: the created activity's URL for [fr.armandmgt.velo.main.MainActivity] to open (#57). */
+        const val EXTRA_ACTIVITY_URL = "fr.armandmgt.velo.ACTIVITY_URL"
     }
 }

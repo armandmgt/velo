@@ -48,6 +48,8 @@ import java.util.UUID
 /** The live state the recording screen renders (#56): GPS readout + derived stats. */
 data class RecordingUiState(
     val recordingState: RecordingState = RecordingState.RECORDING,
+    /** True before Démarrer: GPS is armed for readiness but nothing is recorded yet (#57). */
+    val armed: Boolean = true,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val accuracy: Float? = null,
@@ -93,7 +95,7 @@ class RecordingService : Service() {
 
     // In-memory recording state — only touched on the main thread (location
     // callback, ticker, and binder controls all run there), so no locking needed.
-    private var started = false
+    private var armed = false
     private var session: RecordingSessionEntity? = null
     private var recordingState = RecordingState.RECORDING
     private var accumulator = RecordingStatsAccumulator()
@@ -119,10 +121,14 @@ class RecordingService : Service() {
 
     inner class LocalBinder : Binder() {
         val uiState: StateFlow<RecordingUiState> get() = _uiState.asStateFlow()
+        fun start() = this@RecordingService.startRecording()
         fun pause() = this@RecordingService.pause()
         fun resume() = this@RecordingService.resume()
         fun markLap() = this@RecordingService.markLap()
         fun stop() = this@RecordingService.stopRecording()
+
+        /** The in-progress session id (main thread), so Stop can locate its points to encode (#57). */
+        fun sessionId(): String? = this@RecordingService.session?.id
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -139,15 +145,18 @@ class RecordingService : Service() {
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
-            buildNotification(),
+            buildNotification(recording = false),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
 
-        // Opening the screen again (rotation / redelivery) re-issues start; only
-        // open a session the first time so we never run two at once.
-        if (!started) {
-            started = true
-            beginSession()
+        // Opening the screen arms GPS for readiness but does NOT record yet — the
+        // session begins only on start() (the Démarrer gate, #57). onFix already
+        // no-ops persistence while there's no session, so arming just feeds the
+        // GPS-signal indicator. Re-issued start (rotation / redelivery) is a no-op.
+        if (!armed) {
+            armed = true
+            startLocationUpdates()
+            emitState()
         }
 
         // Not sticky: a recording is an explicit user session. We don't want the
@@ -165,11 +174,14 @@ class RecordingService : Service() {
     }
 
     /**
-     * Open a fresh session: finalize any orphan from a previous kill (keeping its
-     * points), insert the new row, then start streaming + the elapsed ticker. The
-     * row exists before the first fix so points always have a session to attach to.
+     * Begin a fresh recording on Démarrer (#57): finalize any orphan from a
+     * previous kill (keeping its points), insert the new row, reset the live
+     * stats, and start the elapsed ticker. GPS is already streaming from arming,
+     * and the row exists before the next fix so points always have a session to
+     * attach to. A no-op once a session is open (guards against a double tap).
      */
-    private fun beginSession() {
+    private fun startRecording() {
+        if (session != null) return
         ioScope.launch {
             dao.activeSession()?.let { orphan ->
                 val recovered = dao.pointCountFor(orphan.id)
@@ -195,8 +207,8 @@ class RecordingService : Service() {
                 lastPersistedSecond = null
                 accumulatedElapsedMs = 0L
                 stretchStartMs = SystemClock.elapsedRealtime()
-                startLocationUpdates()
                 startTicker()
+                updateNotification(recording = true)
                 emitState()
             }
         }
@@ -321,6 +333,7 @@ class RecordingService : Service() {
     private fun emitState() {
         _uiState.value = RecordingUiState(
             recordingState = recordingState,
+            armed = session == null,
             latitude = lastLatitude,
             longitude = lastLongitude,
             accuracy = lastAccuracy,
@@ -337,7 +350,13 @@ class RecordingService : Service() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun buildNotification(): Notification {
+    /** Re-post the ongoing notification so its text follows armed → recording (#57). */
+    private fun updateNotification(recording: Boolean) {
+        getSystemService(NotificationManager::class.java)
+            .notify(NOTIFICATION_ID, buildNotification(recording))
+    }
+
+    private fun buildNotification(recording: Boolean): Notification {
         createChannel()
 
         val contentIntent = PendingIntent.getActivity(
@@ -347,10 +366,16 @@ class RecordingService : Service() {
             PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val text = if (recording) {
+            R.string.recording_notification_text
+        } else {
+            R.string.recording_notification_text_armed
+        }
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_record)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(getString(R.string.recording_notification_text))
+            .setContentText(getString(text))
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .setSilent(true)

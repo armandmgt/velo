@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dev.hotwire.navigation.activities.HotwireActivity
@@ -16,6 +17,16 @@ import fr.armandmgt.velo.features.record.RecordingActivity
 class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
 
+    // A finished recording uploads out-of-band and returns the new activity's URL;
+    // open it in the Activités tab's webview (#57).
+    private val recordLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            val url = result.data?.getStringExtra(RecordingActivity.EXTRA_ACTIVITY_URL)
+                ?: return@registerForActivityResult
+            openActivity(url)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -25,7 +36,7 @@ class MainActivity : HotwireActivity() {
         initializeBottomTabs()
 
         findViewById<FloatingActionButton>(R.id.record_fab).setOnClickListener {
-            startActivity(Intent(this, RecordingActivity::class.java))
+            recordLauncher.launch(Intent(this, RecordingActivity::class.java))
         }
     }
 
@@ -43,7 +54,16 @@ class MainActivity : HotwireActivity() {
             ?.navigator?.session?.webView?.scrollTo(0, 0)
     }
 
+    /** Switch to the Activités tab and route its navigator to the freshly created activity (#57). */
+    private fun openActivity(url: String) {
+        bottomNavigationController.selectTab(ACTIVITIES_TAB_INDEX)
+        val host = delegate.findNavigatorHost(R.id.activities_navigator_host) ?: return
+        // Post so the tab's navigator is ready when it was never opened before.
+        host.view?.post { host.navigator?.route(url) }
+    }
+
     private companion object {
         const val DASHBOARD_TAB_INDEX = 0
+        const val ACTIVITIES_TAB_INDEX = 1
     }
 }
