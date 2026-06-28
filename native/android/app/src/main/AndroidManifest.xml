@@ -3,15 +3,18 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Recording (#54): an ongoing notification + a foreground service so the
-         recording survives the app being backgrounded. POST_NOTIFICATIONS is the
-         runtime (API 33+) permission for the ongoing notification. The skeleton
-         runs the service as `dataSync` (an install-time permission, no runtime
-         gate); FOREGROUND_SERVICE_LOCATION is declared now so S7 can switch the
-         service type to `location` once GPS lands. -->
+    <!-- Recording (#54, #55): an ongoing notification + a `location` foreground
+         service so GPS keeps streaming while the recording is backgrounded.
+         POST_NOTIFICATIONS is the runtime (API 33+) permission for the ongoing
+         notification. ACCESS_FINE_LOCATION is the runtime (foreground) location
+         permission; a `location`-typed foreground service keeps updates flowing
+         while backgrounded with this alone — so we request While-Using only and
+         deliberately do NOT declare ACCESS_BACKGROUND_LOCATION (mirrors the iOS
+         When-In-Use-only choice). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
@@ -50,7 +53,7 @@
         <service
             android:name=".features.record.RecordingService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="location" />
 
     </application>
 

@@ -1,5 +1,6 @@
 package fr.armandmgt.velo.features.record
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,38 +8,114 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import fr.armandmgt.velo.R
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/** The latest GPS readout for the recording screen's debug display (#55). */
+data class RecordingUiState(
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val accuracy: Float? = null,
+    val pointCount: Int = 0,
+)
 
 /**
- * Foreground service backing a recording session (#54, S6 — the Android mirror of
- * the iOS skeleton).
+ * Foreground service backing a recording session (#54 skeleton; #55 adds GPS).
  *
- * For now it does nothing but hold an ongoing notification so a recording survives
- * the app being backgrounded; GPS/location lands in S7+. It runs as a `dataSync`
- * foreground service rather than `location`: on Android 14+ (targetSdk 35) a
- * `location`-typed service throws `SecurityException` from `startForeground` unless
- * location permission is already granted, and the skeleton has none. When S7 adds
- * While-Using location, switch the manifest `foregroundServiceType` and the type
- * passed below to `location`.
+ * It runs as a `location` foreground service (the S6 `dataSync` placeholder is
+ * gone now that location permission is requested) and streams fixes from the
+ * Fused Location Provider for as long as it lives — so updates keep flowing while
+ * the app is backgrounded / the screen is off, with only While-Using
+ * (`ACCESS_FINE_LOCATION`) permission. The recording screen binds to read the
+ * live [RecordingUiState]; the service stays alive because it's *started*
+ * (foreground), so unbinding when the screen leaves doesn't tear it down.
  */
 class RecordingService : Service() {
-    override fun onBind(intent: Intent?): IBinder? = null
+    private val _uiState = MutableStateFlow(RecordingUiState())
+
+    private val binder = LocalBinder()
+
+    private val fusedClient: FusedLocationProviderClient by lazy {
+        LocationServices.getFusedLocationProviderClient(this)
+    }
+
+    private val locationCallback = object : LocationCallback() {
+        override fun onLocationResult(result: LocationResult) {
+            val location = result.lastLocation ?: return
+            val current = _uiState.value
+            _uiState.value = current.copy(
+                latitude = location.latitude,
+                longitude = location.longitude,
+                accuracy = if (location.hasAccuracy()) location.accuracy else null,
+                pointCount = current.pointCount + 1,
+            )
+        }
+    }
+
+    inner class LocalBinder : Binder() {
+        val uiState: StateFlow<RecordingUiState> get() = _uiState.asStateFlow()
+    }
+
+    override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Defensive: the Activity only starts us once fine-location is granted, but
+        // a `location` foreground service throws SecurityException from
+        // startForeground without it. Bail cleanly rather than crash.
+        if (!hasLocationPermission()) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
             buildNotification(),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
-        return START_STICKY
+        startLocationUpdates()
+
+        // Not sticky: a recording is an explicit user session. We don't want the
+        // system to silently resume GPS after a kill with no user present (kill
+        // recovery is later work, mirroring iOS's no-auto-resume).
+        return START_NOT_STICKY
     }
+
+    override fun onDestroy() {
+        fusedClient.removeLocationUpdates(locationCallback)
+        super.onDestroy()
+    }
+
+    private fun startLocationUpdates() {
+        // ~1 Hz, high accuracy — matches the iOS kCLDistanceFilterNone ~1 Hz feed.
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
+            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)
+            .build()
+
+        if (!hasLocationPermission()) return
+        fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+    }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun buildNotification(): Notification {
         createChannel()
@@ -76,6 +153,7 @@ class RecordingService : Service() {
     companion object {
         private const val CHANNEL_ID = "recording"
         private const val NOTIFICATION_ID = 1
+        private const val UPDATE_INTERVAL_MS = 1000L
 
         fun start(context: Context) {
             ContextCompat.startForegroundService(
