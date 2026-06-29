@@ -32,9 +32,15 @@ tags:
 - assertVisible: "Tableau de bord"
 - assertVisible: "Activités"
 
-# Tap Activités. "Activités" also appears in the dashboard body as a stat
-# label, so target the second occurrence — the bottom tab.
+# Tap the Activités tab. "Activités" appears three times: the "7 derniers jours"
+# and "Ce mois" dashboard stat labels, then the native tab-bar item (exposed via
+# its accessibilityText) last — so the tab is index 2. (The old `index: 1`
+# stopped at the second stat card, which is why it silently stayed put.)
 - tapOn:
     text: "Activités"
-    index: 1
-- assertVisible: "Importer Strava ZIP"
+    index: 2
+# The tab switched: the activities index renders, so the dashboard's "Résumé par
+# période" is gone. (Its h1 is `hotwire-native:hidden` and "Nouvelle activité" is
+# sm-only, leaving no stable activities-only visible string — the old "Importer
+# Strava ZIP" assertion referred to UI that no longer exists.)
+- assertNotVisible: "Résumé par période"

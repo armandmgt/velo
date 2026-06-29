@@ -1,0 +1,43 @@
+appId: fr.armandmgt.velo
+name: Auth flow (cold-start, sign-in, bottom nav appears)
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/auth_flow.yaml. At cold start the task
+# root is the unauthenticated LoginActivity (a single Hotwire fragment pointed
+# at /session/new); there is no bottom nav yet. Submitting the pre-filled dev
+# login fires the layout's `bridge--authentication` "connect" message, which
+# AuthenticationComponent turns into a swap to MainActivity (the bottom-nav
+# shell), finishing LoginActivity so it leaves the back stack.
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- assertVisible: "Connexion"
+- assertVisible: "Se connecter"
+# Regression: the bottom nav must NOT exist while signed out — it lives in
+# MainActivity, not the LoginActivity root, so its tab labels are absent.
+- assertNotVisible: "Tableau de bord"
+- assertNotVisible: "Activités"
+
+# No hideKeyboard: on Android it falls back to Back, which would finish the root
+# LoginActivity. The dev form is pre-filled (test@example.com / dev), so submit.
+- tapOn: "Se connecter"
+
+# After login the dashboard renders inside the bottom-nav shell. "Résumé par
+# période" is a dashboard-only heading (the words "Tableau de bord" also appear
+# as the bottom-nav tab label).
+- assertVisible: "Résumé par période"
+- assertVisible: "Tableau de bord"
+- assertVisible: "Activités"
+
+# Tap the Activités bottom tab. "Activités" appears three times: the "7 derniers
+# jours" and "Ce mois" dashboard stat labels, then the bottom-nav item last — so
+# the tab is index 2. (index 1 stops at the second stat card and stays put.)
+- tapOn:
+    text: "Activités"
+    index: 2
+# The tab switched: the activities index renders, so the dashboard's "Résumé par
+# période" is gone. (Its own h1 is `hotwire-native:hidden` and "Nouvelle activité"
+# is sm-only, leaving no stable activities-only *visible* string to match on.)
+- assertNotVisible: "Résumé par période"

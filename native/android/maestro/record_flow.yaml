@@ -1,0 +1,84 @@
+appId: fr.armandmgt.velo
+name: Record flow (record → stop → upload → land on the new activity)
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/record_flow.yaml, adapted to the Jetpack
+# Compose recording screen. S6 (#54) floated the Record FAB + native screen; S7
+# (#55) added the foreground-service GPS feed; S8 (#56) made it stateful (Room).
+# S9 (#57) makes the screen open *armed* (an explicit Démarrer starts recording),
+# adds sport selection, and on Arrêter serializes the recording to GPX, uploads
+# it via POST /activities, and jumps to the new activity. This flow guards
+# navigation, the start control, the live controls, and the upload path.
+- launchApp:
+    clearState: true
+    stopApp: true
+    # Pre-grant location + notifications so neither the S7 (#55) location request
+    # nor the foreground-service POST_NOTIFICATIONS request the recording screen
+    # fires pops a system dialog over the assertions below. The app only ever
+    # requests While-Using location (fine/coarse) — never background location.
+    permissions:
+      location: allow
+      notifications: allow
+
+# Cold start lands on the unauthenticated LoginActivity (the dev login form is
+# pre-filled with test@example.com / dev, so we just submit). No hideKeyboard
+# here: on Android that falls back to Back, which would finish the root
+# LoginActivity and drop us to the launcher.
+- assertVisible: "Se connecter"
+- tapOn: "Se connecter"
+
+# After login AuthenticationComponent hands off to MainActivity (the bottom-nav
+# shell). "Résumé par période" is a dashboard-only heading.
+- assertVisible: "Résumé par période"
+
+# The native Record button is a floating FAB (contentDescription = "Enregistrer"),
+# right-aligned above the bottom nav — not a 4th tab.
+- tapOn: "Enregistrer"
+
+# Fully native recording screen (a full-screen Activity). It opens *armed*: a
+# sport picker (defaulting to the last-used sport, "Vélo de route" on a fresh
+# install) and Démarrer are shown; recording hasn't begun.
+- assertVisible: "Démarrer"
+- assertVisible: "Vélo de route"
+# Regression: the recording Activity covers the bottom nav, so the only way back
+# is the controls — the dashboard tab must not be visible underneath.
+- assertNotVisible: "Tableau de bord"
+- takeScreenshot: record-armed
+
+# Start recording, then inject a fix: the top GPS indicator leaves "recherche…"
+# for an accuracy readout once a fix arrives (the same delegate path that
+# persists the point to Room). setLocation is a single static fix, so a *moving*
+# distance/speed is verified manually; end-to-end persistence is proven by the
+# created activity at the bottom of this flow.
+- tapOn: "Démarrer"
+- assertVisible: "Arrêter"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+# A numeric accuracy ("Signal GPS : 5 m") confirms a fix arrived — the indicator
+# leaves "recherche…" only once the location callback fires.
+- assertVisible: "Signal GPS : [0-9]+ m"
+
+# Smoke-test the live controls: lap marker, then pause ⇄ resume. "^Tour$" anchors
+# the lap button's contentDescription so it doesn't match the "Tour 0" counter.
+- tapOn: "^Tour$"
+- tapOn: "Pause"
+- assertVisible: "Reprendre"
+- tapOn: "Reprendre"
+- takeScreenshot: record-active
+
+# Arrêter finalizes the recording, serializes it to GPX, and uploads it via
+# POST /activities (#57): the screen shows "Envoi en cours…", then on 201 the
+# app routes the Activités tab to the new activity's show page and finishes.
+# The dev server (logged in above) handles the upload — the CSRF JSON exemption
+# lets the out-of-webview POST through.
+- tapOn: "Arrêter"
+
+# Landed on the created activity's show page inside the bottom-nav shell. The
+# device names recordings "Sortie enregistrée sur le téléphone" (the <trk><name>
+# default), which only appears on the activity page.
+- extendedWaitUntil:
+    visible: "Sortie enregistrée sur le téléphone"
+    timeout: 30000
+- assertVisible: "Tableau de bord"

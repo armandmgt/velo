@@ -20,12 +20,10 @@ tags:
 - assertVisible: "Résumé par période"
 
 # Overflow menu is rendered natively as the trailing "More" UIBarButtonItem
-# (the `bridge--navbar-buttons` Stimulus controller forwards the items).
-# Its accessibility label is "More" but iOS doesn't surface an
-# `accessibilityIdentifier` on it, so target the nav-bar trailing area by
-# point.
-- tapOn:
-    point: "90%, 7%"
+# (the `bridge--navbar-buttons` Stimulus controller forwards the items). Match
+# it by its "More" accessibility label — far steadier than a nav-bar point,
+# which sat just above the button — then pick Se déconnecter from the menu.
+- tapOn: "More"
 - tapOn: "Se déconnecter"
 
 # Back at the unauthenticated root: login form is visible, tab bar is gone,

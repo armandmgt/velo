@@ -32,4 +32,8 @@ interface RecordingDao {
 
     @Query("SELECT COUNT(*) FROM recording_points WHERE sessionId = :sessionId")
     suspend fun pointCountFor(sessionId: String): Int
+
+    /** Clear a session (and its points, via the FK cascade) after a successful upload (#57). */
+    @Query("DELETE FROM recording_sessions WHERE id = :id")
+    suspend fun deleteSession(id: String)
 }

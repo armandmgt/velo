@@ -6,6 +6,7 @@
     <string name="record">Enregistrer</string>
     <string name="recording_notification_channel_name">Enregistrement</string>
     <string name="recording_notification_text">Enregistrement en cours</string>
+    <string name="recording_notification_text_armed">Prêt à enregistrer</string>
     <string name="recording_waiting_gps">En attente du signal GPS…</string>
     <string name="recording_latitude">Latitude</string>
     <string name="recording_longitude">Longitude</string>
@@ -24,4 +25,26 @@
     <string name="recording_resume">Reprendre</string>
     <string name="recording_mark_lap">Tour</string>
     <string name="recording_stop">Arrêter</string>
+    <string name="recording_start">Démarrer</string>
+    <string name="recording_uploading">Envoi en cours…</string>
+    <string name="recording_upload_failed_title">Envoi échoué</string>
+    <string name="recording_upload_failed_network">L\'enregistrement a été conservé. Vérifiez votre connexion, puis réessayez.</string>
+    <string name="recording_retry">Réessayer</string>
+    <string name="recording_later">Plus tard</string>
+
+    <!-- Sport names — match the web app's fr.yml activity.sport.* labels (#57). -->
+    <string name="sport_bike">Vélo de route</string>
+    <string name="sport_mountain_bike_ride">VTT</string>
+    <string name="sport_gravel_ride">Gravel</string>
+    <string name="sport_virtual_ride">Vélo virtuel</string>
+    <string name="sport_e_bike_ride">Vélo électrique</string>
+    <string name="sport_run">Course à pied</string>
+    <string name="sport_trail_run">Trail</string>
+    <string name="sport_virtual_run">Course virtuelle</string>
+    <string name="sport_walk">Marche</string>
+    <string name="sport_hike">Randonnée</string>
+    <string name="sport_alpine_ski">Ski alpin</string>
+    <string name="sport_nordic_ski">Ski de fond</string>
+    <string name="sport_swim">Natation</string>
+    <string name="sport_workout">Entraînement</string>
 </resources>
