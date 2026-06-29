@@ -1,30 +1,38 @@
 package fr.armandmgt.velo.features.record
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -56,10 +66,15 @@ sealed interface RecordingScreenState {
     data object Uploading : RecordingScreenState
 }
 
+/** Amber used for the paused state (Material has no built-in "warning" role). */
+private val PausedColor = Color(0xFFF59E0B)
+
 /**
- * The native recording screen (#56): live stats dominate — elapsed, distance,
- * current/average speed and lap — with GPS signal as a slim top indicator
- * (diagnostics stay small). Controls run pause/resume, lap, and stop.
+ * The native recording screen (#56), redesigned as a **dashboard**: a compact
+ * header (sport chip ⟷ GPS chip), a pulsing state pill, a large **distance** hero,
+ * and a filled 2×2 metric card (temps · vitesse/allure · moyenne · tours) that
+ * gives the body weight. GPS signal stays a minor chip; recording state reads from
+ * the pill. Controls run start, pause/resume, lap, and stop.
  */
 @Composable
 fun RecordingScreen(
@@ -96,69 +111,43 @@ fun RecordingScreen(
                     UploadingBody(bodyModifier)
 
                 is RecordingScreenState.Streaming ->
-                    if (state.state.armed) {
-                        ArmedBody(bodyModifier, state.state)
-                    } else {
-                        StreamingBody(bodyModifier, state.state)
-                    }
+                    DashboardBody(bodyModifier, state.state, selectedSport, onSelectSport)
             }
 
-            // Bottom action: Démarrer while armed, Arrêter while recording, nothing
-            // during permission/upload states.
+            // Bottom action area: Démarrer while armed; Tour/Pause + Arrêter while
+            // recording; nothing during the permission/upload states.
             if (state is RecordingScreenState.Streaming) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    if (state.state.armed) {
-                        SportPicker(selectedSport, onSelectSport)
-                    } else {
-                        FilledIconToggleButton(
-                            checked = state.state.recordingState != RecordingState.PAUSED,
-                            onCheckedChange = { checked -> if (checked) onResume() else onPause() },
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    if (state.state.recordingState == RecordingState.PAUSED) R.drawable.ic_play_arrow_filled_24px else R.drawable.ic_pause_outlined_24px,
-                                ),
-                                contentDescription = stringResource(
-                                    if (state.state.recordingState == RecordingState.PAUSED) R.string.recording_resume else R.string.recording_pause,
-                                )
-                            )
-                        }
-                    }
-
-                    StartStopButton(state.state.armed, onStartStop)
-
-                    if (state.state.armed) {
-                        Box(modifier = Modifier.width(40.dp)) { }
-                    } else {
-                        OutlinedIconButton(
-                            onClick = onLap,
-                            enabled = state.state.recordingState != RecordingState.PAUSED,
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_laps_24px),
-                                contentDescription = stringResource(R.string.recording_mark_lap)
-                            )
-                        }
-                    }
-                }
+                Controls(
+                    ui = state.state,
+                    onStartStop = onStartStop,
+                    onPause = onPause,
+                    onResume = onResume,
+                    onLap = onLap,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StreamingBody(
+private fun DashboardBody(
     modifier: Modifier,
     ui: RecordingUiState,
+    selectedSport: Sport,
+    onSelectSport: (Sport) -> Unit,
 ) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        GpsSignal(ui.accuracy)
+        Header(selectedSport, onSelectSport, ui.accuracy, armed = ui.armed)
+
+        Spacer(Modifier.size(12.dp))
+
+        // Reserve the pill's row even while armed (hidden) so the hero doesn't jump
+        // vertically the moment recording starts.
+        if (ui.armed) {
+            Spacer(Modifier.size(20.dp))
+        } else {
+            StatePill(ui.recordingState)
+        }
 
         Column(
             modifier = Modifier
@@ -167,112 +156,285 @@ private fun StreamingBody(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Hero(formatElapsed(ui.elapsedSeconds), stringResource(R.string.recording_elapsed))
+            Hero(ui.distanceMeters)
 
-            Spacer(Modifier.size(32.dp))
+            Spacer(Modifier.size(28.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Stat(
-                    formatDistanceKm(ui.distanceMeters),
-                    stringResource(R.string.recording_distance)
-                )
-                Stat(formatSpeedKmh(ui.currentSpeedMps), stringResource(R.string.recording_speed))
-                Stat(
-                    formatSpeedKmh(ui.averageSpeedMps),
-                    stringResource(R.string.recording_average_speed)
-                )
-            }
-
-            Spacer(Modifier.size(20.dp))
-
-            Text(
-                text = stringResource(R.string.recording_lap, ui.lap),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            )
+            MetricCard(ui, selectedSport.usesPace)
         }
+    }
+}
+
+/** Sport chip (left) ⟷ GPS chip (right). */
+@Composable
+private fun Header(
+    selectedSport: Sport,
+    onSelectSport: (Sport) -> Unit,
+    accuracy: Float?,
+    armed: Boolean,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SportChip(selectedSport, onSelectSport, enabled = armed)
+        GpsChip(accuracy)
     }
 }
 
 /**
- * Armed (pre-Démarrer) body: GPS readiness + a zeroed stats preview, with the
- * sport picker pinned just above the Démarrer button (#57) — mirrors iOS's idle
- * state where the sport is chosen up front, defaulting to the last-used sport.
+ * Sport chip — an outlined button showing the sport's icon + name, with a pull-down
+ * picker over [Sport.entries]. The picker only opens while [enabled] (pre-Démarrer);
+ * once recording the sport is locked, but the chip stays a full-colour label.
  */
 @Composable
-private fun ArmedBody(
-    modifier: Modifier,
-    ui: RecordingUiState,
-) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        GpsSignal(ui.accuracy)
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Hero(formatElapsed(0L), stringResource(R.string.recording_elapsed))
-
-            Spacer(Modifier.size(32.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-            ) {
-                Stat(formatDistanceKm(0.0), stringResource(R.string.recording_distance))
-                Stat(formatSpeedKmh(0.0), stringResource(R.string.recording_speed))
-                Stat(formatSpeedKmh(0.0), stringResource(R.string.recording_average_speed))
-            }
-        }
-    }
-}
-
-/** A pull-down sport picker over [Sport.entries]; the chosen sport drives the upload's `activity[sport]`. */
-@Composable
-private fun SportPicker(selected: Sport, onSelect: (Sport) -> Unit) {
+private fun SportChip(selected: Sport, onSelect: (Sport) -> Unit, enabled: Boolean) {
     var expanded by remember { mutableStateOf(false) }
 
-    OutlinedIconButton(
-        onClick = { expanded = true },
-    ) {
-        Icon(
-            painter = painterResource(R.drawable.ic_bike),
-            contentDescription = stringResource(selected.nameRes)
-        )
+    Box {
+        OutlinedButton(
+            onClick = { if (enabled) expanded = true },
+            contentPadding = ButtonDefaults.TextButtonContentPadding,
+        ) {
+            Icon(
+                painter = painterResource(selected.iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(selected.nameRes))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Sport.entries.forEach { sport ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(sport.nameRes)) },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(sport.iconRes),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    },
+                    onClick = {
+                        onSelect(sport)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-        Sport.entries.forEach { sport ->
-            DropdownMenuItem(
-                text = { Text(stringResource(sport.nameRes)) },
-                onClick = {
-                    onSelect(sport)
-                    expanded = false
-                },
+}
+
+/** Slim GPS-signal chip: a coloured dot + the current horizontal accuracy. */
+@Composable
+private fun GpsChip(accuracy: Float?) {
+    val color = when {
+        accuracy == null -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+        accuracy <= 15f -> MaterialTheme.colorScheme.secondary
+        accuracy <= 40f -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.error
+    }
+    val value =
+        accuracy?.let { "%.0f m".format(it) } ?: stringResource(R.string.recording_gps_searching)
+
+    Surface(color = color.copy(alpha = 0.15f), shape = RoundedCornerShape(14.dp)) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(color = color, shape = CircleShape, modifier = Modifier.size(8.dp)) {}
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(R.string.recording_gps_signal, value),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
             )
         }
     }
 }
 
-/**
- * Start/stop gate: a Material 3 Expressive [ToggleButton] — "checked" while
- * recording. Shows Démarrer while armed, Arrêter while recording. The current
- * [armed] flag is handed back so the caller decides start vs stop.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+/** Recording/paused state pill with a pulsing dot (red recording, amber paused). */
 @Composable
-private fun StartStopButton(armed: Boolean, onStartStop: (Boolean) -> Unit) {
-    ToggleButton(
-        checked = armed,
-        onCheckedChange = { onStartStop(armed) },
-        contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.LargeContainerHeight),
+private fun StatePill(recordingState: RecordingState) {
+    val recording = recordingState != RecordingState.PAUSED
+    val color = if (recording) MaterialTheme.colorScheme.error else PausedColor
+
+    val transition = rememberInfiniteTransition(label = "pill")
+    val pulse by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.25f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "pulse",
+    )
+    val dotAlpha = if (recording) pulse else 1f
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            color = color,
+            shape = CircleShape,
+            modifier = Modifier
+                .size(10.dp)
+                .alpha(dotAlpha),
+        ) {}
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(
+                if (recording) R.string.recording_state_recording else R.string.recording_state_paused,
+            ),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        )
+    }
+}
+
+/** The hero: a large distance number with a small unit, over a quiet caption. */
+@Composable
+private fun Hero(distanceMeters: Double) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = "%.2f".format(distanceMeters / 1000),
+                style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "km",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        Text(
+            text = stringResource(R.string.recording_distance).uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+    }
+}
+
+/** Filled 2×2 metric card with hairline dividers: temps · vitesse/allure · moyenne · tours. */
+@Composable
+private fun MetricCard(ui: RecordingUiState, usesPace: Boolean) {
+    val speed = if (usesPace) formatPace(ui.currentSpeedMps) else formatSpeedKmh(ui.currentSpeedMps)
+    val average = if (usesPace) formatPace(ui.averageSpeedMps) else formatSpeedKmh(ui.averageSpeedMps)
+    val speedLabel = stringResource(if (usesPace) R.string.recording_pace else R.string.recording_speed)
+
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(stringResource(if (armed) R.string.recording_start else R.string.recording_stop))
+        Column {
+            MetricRow(
+                left = formatElapsed(ui.elapsedSeconds) to stringResource(R.string.recording_elapsed),
+                right = speed to speedLabel,
+            )
+            HorizontalDivider()
+            MetricRow(
+                left = average to stringResource(R.string.recording_average_speed),
+                right = ui.lap.toString() to stringResource(R.string.recording_laps),
+            )
+        }
+    }
+}
+
+/** One grid row: two equal stat cells split by a vertical hairline. */
+@Composable
+private fun MetricRow(left: Pair<String, String>, right: Pair<String, String>) {
+    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+        Stat(left.first, left.second, Modifier.weight(1f))
+        VerticalDivider(modifier = Modifier.fillMaxHeight())
+        Stat(right.first, right.second, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.padding(vertical = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"),
+        )
+        Spacer(Modifier.size(4.dp))
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+    }
+}
+
+/**
+ * Bottom controls: a full-width Démarrer while armed, else a Tour ⟷ Pause/Reprendre
+ * row above a full-width Arrêter. [onStartStop] is handed the current [armed] flag so
+ * the caller decides start vs stop.
+ */
+@Composable
+private fun Controls(
+    ui: RecordingUiState,
+    onStartStop: (Boolean) -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onLap: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
+        if (ui.armed) {
+            Button(
+                onClick = { onStartStop(true) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+            ) {
+                Text(stringResource(R.string.recording_start))
+            }
+        } else {
+            val paused = ui.recordingState == RecordingState.PAUSED
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onLap,
+                    enabled = !paused,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                ) {
+                    // Visible text doubles as the contentDescription Maestro taps via
+                    // "^Tour$" — kept distinct from the "Tours" metric caption.
+                    Text(stringResource(R.string.recording_mark_lap))
+                }
+                OutlinedButton(
+                    onClick = { if (paused) onResume() else onPause() },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(54.dp),
+                ) {
+                    Text(
+                        stringResource(
+                            if (paused) R.string.recording_resume else R.string.recording_pause,
+                        ),
+                    )
+                }
+            }
+            Spacer(Modifier.size(12.dp))
+            Button(
+                onClick = { onStartStop(false) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+            ) {
+                Text(stringResource(R.string.recording_stop))
+            }
+        }
     }
 }
 
@@ -289,63 +451,6 @@ private fun UploadingBody(modifier: Modifier) {
         Text(
             text = stringResource(R.string.recording_uploading),
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-        )
-    }
-}
-
-/** Slim GPS-signal indicator: a coloured dot + the current horizontal accuracy. */
-@Composable
-private fun GpsSignal(accuracy: Float?) {
-    val color = when {
-        accuracy == null -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        accuracy <= 15f -> MaterialTheme.colorScheme.secondary
-        accuracy <= 40f -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.error
-    }
-    val value =
-        accuracy?.let { "%.0f m".format(it) } ?: stringResource(R.string.recording_gps_searching)
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Surface(color = color, shape = CircleShape, modifier = Modifier.size(8.dp)) {}
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = stringResource(R.string.recording_gps_signal, value),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-        )
-    }
-}
-
-@Composable
-private fun Hero(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.displayLarge.copy(fontFeatureSettings = "tnum"),
-        )
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-        )
-    }
-}
-
-@Composable
-private fun Stat(value: String, label: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.headlineSmall.copy(fontFeatureSettings = "tnum"),
-        )
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
         )
     }
@@ -396,10 +501,20 @@ private fun formatElapsed(totalSeconds: Long): String {
     }
 }
 
-private fun formatDistanceKm(meters: Double): String = "%.2f km".format(meters / 1000)
-
 private fun formatSpeedKmh(metersPerSecond: Double): String =
     "%.1f km/h".format(metersPerSecond * 3.6)
+
+/**
+ * `m:ss/km`. Mirrors iOS: instantaneous pace is jumpy, so near-zero speed reads as
+ * `—` rather than an absurd figure.
+ */
+private fun formatPace(metersPerSecond: Double): String {
+    if (metersPerSecond <= 0.3) return "—"
+    val secondsPerKm = 1000 / metersPerSecond
+    val minutes = (secondsPerKm / 60).toInt()
+    val seconds = (secondsPerKm % 60).toInt()
+    return "%d:%02d/km".format(minutes, seconds)
+}
 
 @Preview(name = "Armed")
 @Composable
@@ -458,4 +573,3 @@ private fun RecordingScreenStreamingPreview() {
         )
     }
 }
-

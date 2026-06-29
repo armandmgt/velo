@@ -16,10 +16,10 @@ import UIKit
 /// A sport is chosen up front via a native picker (S4 — #52), defaulting to the
 /// last-used sport.
 ///
-/// The design (#…) puts the **stats** at the centre — they're the main payload
-/// until a live map lands. GPS signal quality is intentionally minor: a slim
-/// colour-coded banner pinned at the top. State (recording/paused) reads from a
-/// small pill above the stats.
+/// The design is a **dashboard**: a compact header (sport chip ⟷ GPS chip), a
+/// pulsing state pill, a large **distance** hero, and a filled 2×2 metric card
+/// (temps · vitesse/allure · moyenne · tours) that gives the body weight. GPS
+/// signal stays a minor chip, top-right; recording state reads from the pill.
 ///
 /// Two exits, now meaningfully distinct:
 /// - **Fermer** (close): leaves the screen — recording keeps running in the
@@ -71,19 +71,56 @@ final class RecordingViewController: UIViewController {
 
     // MARK: - Layout
 
-    private let gpsBanner = GPSBannerView()
+    private let gpsChip = GPSChipView()
     private let statePill = StatusPillView()
-    private let elapsedLabel = UILabel()
-    private let elapsedCaption = UILabel()
-    private let distanceStat = StatView(caption: "Distance")
+
+    // Hero: a big distance number with a small unit, over a caption.
+    private let heroValueLabel = UILabel()
+    private let heroUnitLabel = UILabel()
+    private let heroCaptionLabel = UILabel()
+
+    // The 2×2 metric grid filling the card.
+    private let elapsedStat = StatView(caption: "Temps")
     private let speedStat = StatView(caption: "Vitesse")
     private let avgStat = StatView(caption: "Moyenne")
+    private let lapStat = StatView(caption: "Tours")
 
     private lazy var sportButton = makeSportButton()
     private lazy var startButton = makeStartButton()
     private lazy var lapButton = makeSecondaryButton(title: "Tour") { [weak self] in self?.markLap() }
     private lazy var pauseResumeButton = makeSecondaryButton(title: "Pause") { [weak self] in self?.togglePause() }
     private lazy var stopButton = makeStopButton()
+
+    /// The top header: sport chip on the left, GPS chip on the right.
+    private lazy var headerStack: UIStackView = {
+        let stack = UIStackView(arrangedSubviews: [sportButton, gpsChip])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.distribution = .equalSpacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    /// The hero + metric card group that fills the centre of the screen.
+    private lazy var centreStack: UIStackView = {
+        let heroRow = UIStackView(arrangedSubviews: [heroValueLabel, heroUnitLabel])
+        heroRow.axis = .horizontal
+        heroRow.alignment = .lastBaseline
+        heroRow.spacing = 6
+        let heroBlock = UIStackView(arrangedSubviews: [heroRow, heroCaptionLabel])
+        heroBlock.axis = .vertical
+        heroBlock.alignment = .center
+        heroBlock.spacing = 2
+
+        let stack = UIStackView(arrangedSubviews: [heroBlock, metricCard])
+        stack.axis = .vertical
+        stack.alignment = .fill
+        stack.spacing = 24
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }()
+
+    private lazy var metricCard = makeMetricCard()
 
     /// Shown while the recording is being serialized + uploaded after Arrêter.
     private let uploadingSpinner = UIActivityIndicatorView(style: .medium)
@@ -115,75 +152,59 @@ final class RecordingViewController: UIViewController {
     }()
 
     private func setupLayout() {
-        // Tapping the banner when access is denied jumps to Settings.
-        gpsBanner.onTapWhenDenied = {
+        // Tapping the GPS chip when access is denied jumps to Settings.
+        gpsChip.onTapWhenDenied = {
             guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
             UIApplication.shared.open(url)
         }
-        gpsBanner.translatesAutoresizingMaskIntoConstraints = false
 
-        // The hero: a big elapsed clock over a generous stats grid.
-        elapsedLabel.text = "00:00"
-        elapsedLabel.font = .monospacedDigitSystemFont(ofSize: 60, weight: .semibold)
-        elapsedLabel.textColor = .label
-        elapsedLabel.textAlignment = .center
+        // Hero: a large distance number, a smaller unit, a quiet caption.
+        heroValueLabel.text = "0.00"
+        heroValueLabel.font = .monospacedDigitSystemFont(ofSize: 64, weight: .semibold)
+        heroValueLabel.textColor = .label
+        heroValueLabel.adjustsFontSizeToFitWidth = true
+        heroValueLabel.minimumScaleFactor = 0.6
 
-        elapsedCaption.text = "temps"
-        elapsedCaption.font = .preferredFont(forTextStyle: .caption1)
-        elapsedCaption.textColor = .secondaryLabel
-        elapsedCaption.textAlignment = .center
+        heroUnitLabel.text = "km"
+        heroUnitLabel.font = .systemFont(ofSize: 22, weight: .medium)
+        heroUnitLabel.textColor = .secondaryLabel
 
-        let statsRow = UIStackView(arrangedSubviews: [distanceStat, speedStat, avgStat])
-        statsRow.axis = .horizontal
-        statsRow.distribution = .fillEqually
-        statsRow.spacing = 8
+        heroCaptionLabel.text = "DISTANCE"
+        heroCaptionLabel.font = .preferredFont(forTextStyle: .caption1)
+        heroCaptionLabel.textColor = .secondaryLabel
 
-        let elapsedBlock = UIStackView(arrangedSubviews: [elapsedLabel, elapsedCaption])
-        elapsedBlock.axis = .vertical
-        elapsedBlock.alignment = .center
-        elapsedBlock.spacing = 0
-
-        let centre = UIStackView(arrangedSubviews: [statePill, elapsedBlock, statsRow])
-        centre.axis = .vertical
-        centre.alignment = .center
-        centre.spacing = 28
-        centre.setCustomSpacing(32, after: elapsedBlock)
-        centre.translatesAutoresizingMaskIntoConstraints = false
-
-        view.addSubview(gpsBanner)
-        view.addSubview(centre)
-        view.addSubview(sportButton)
+        // `headerStack` already arranges `sportButton` + `gpsChip`.
+        view.addSubview(headerStack)
+        view.addSubview(statePill)
+        view.addSubview(centreStack)
         view.addSubview(startButton)
         view.addSubview(activeControls)
         view.addSubview(uploadingStack)
 
         NSLayoutConstraint.activate([
-            // Slim GPS banner pinned at the very top, low emphasis.
-            gpsBanner.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
-            gpsBanner.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            gpsBanner.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
+            // Header pinned across the top.
+            headerStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            headerStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+            headerStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
 
-            // Stats block owns the centre of the screen.
-            centre.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            centre.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            centre.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            centre.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
-            statsRow.leadingAnchor.constraint(equalTo: centre.leadingAnchor),
-            statsRow.trailingAnchor.constraint(equalTo: centre.trailingAnchor),
+            // State pill sits just under the header, centred.
+            statePill.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 14),
+            statePill.centerXAnchor.constraint(equalTo: view.centerXAnchor),
 
-            // Sport picker sits just above Démarrer (both visible only while idle).
-            sportButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            sportButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
-            sportButton.bottomAnchor.constraint(equalTo: startButton.topAnchor, constant: -12),
-            sportButton.heightAnchor.constraint(equalToConstant: 50),
+            // Hero + card own the middle, full width, vertically centred.
+            centreStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+            centreStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            centreStack.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 12),
+            centreStack.topAnchor.constraint(greaterThanOrEqualTo: statePill.bottomAnchor, constant: 16),
 
             uploadingStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            uploadingStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -40),
+            uploadingStack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
 
             startButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             startButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
             startButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -24),
             startButton.heightAnchor.constraint(equalToConstant: 54),
+            startButton.topAnchor.constraint(greaterThanOrEqualTo: centreStack.bottomAnchor, constant: 16),
 
             activeControls.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             activeControls.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
@@ -194,16 +215,74 @@ final class RecordingViewController: UIViewController {
         ])
     }
 
+    /// A filled, rounded card holding the 2×2 metric grid with hairline dividers —
+    /// the structure that gives the body weight (the screen's main payload).
+    private func makeMetricCard() -> UIView {
+        let card = UIView()
+        card.backgroundColor = .secondarySystemBackground
+        card.layer.cornerRadius = 20
+        card.layer.cornerCurve = .continuous
+        card.translatesAutoresizingMaskIntoConstraints = false
+
+        let row1 = makeMetricRow(left: elapsedStat, right: speedStat)
+        let row2 = makeMetricRow(left: avgStat, right: lapStat)
+        let hSeparator = makeSeparator()
+
+        let content = UIStackView(arrangedSubviews: [row1, hSeparator, row2])
+        content.axis = .vertical
+        content.alignment = .fill
+        content.spacing = 0
+        content.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(content)
+
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: card.topAnchor),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            hSeparator.heightAnchor.constraint(equalToConstant: 0.5),
+            row1.widthAnchor.constraint(equalTo: row2.widthAnchor),
+        ])
+        return card
+    }
+
+    /// One grid row: two equal stat cells split by a vertical hairline, with
+    /// generous vertical padding so the card reads as substantial.
+    private func makeMetricRow(left: StatView, right: StatView) -> UIStackView {
+        let vSeparator = makeSeparator()
+        let row = UIStackView(arrangedSubviews: [left, vSeparator, right])
+        row.axis = .horizontal
+        row.alignment = .fill
+        row.distribution = .fill
+        row.spacing = 0
+        row.isLayoutMarginsRelativeArrangement = true
+        row.directionalLayoutMargins = .init(top: 22, leading: 0, bottom: 22, trailing: 0)
+        NSLayoutConstraint.activate([
+            vSeparator.widthAnchor.constraint(equalToConstant: 0.5),
+            left.widthAnchor.constraint(equalTo: right.widthAnchor),
+        ])
+        return row
+    }
+
+    private func makeSeparator() -> UIView {
+        let view = UIView()
+        view.backgroundColor = .separator
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }
+
     // MARK: - Buttons
 
-    /// A pull-down sport picker (UIMenu). The chosen sport lives on the
-    /// controller; `updateSportButton()` keeps the title/glyph and the menu's
-    /// checkmark in sync.
+    /// A pull-down sport picker (UIMenu) shown as a compact chip in the header. The
+    /// chosen sport lives on the controller; `updateSportButton()` keeps the
+    /// title/glyph and the menu's checkmark in sync.
     private func makeSportButton() -> UIButton {
         let button = glassButton(prominent: false)
-        button.configuration?.imagePadding = 8
+        button.configuration?.imagePadding = 6
+        button.configuration?.contentInsets = .init(top: 8, leading: 14, bottom: 8, trailing: 14)
         button.showsMenuAsPrimaryAction = true
         button.accessibilityIdentifier = "sportPicker"
+        button.setContentHuggingPriority(.required, for: .horizontal)
         return button
     }
 
@@ -286,6 +365,7 @@ final class RecordingViewController: UIViewController {
 
     private func markLap() {
         controller.markLap()
+        render(stats: controller.currentStats)
     }
 
     /// Leave the screen; recording continues in the background.
@@ -358,7 +438,9 @@ final class RecordingViewController: UIViewController {
 
     private func enterUploadingState() {
         isUploading = true
-        sportButton.isHidden = true
+        headerStack.isHidden = true
+        statePill.isHidden = true
+        centreStack.isHidden = true
         startButton.isHidden = true
         activeControls.isHidden = true
         uploadingStack.isHidden = false
@@ -371,6 +453,8 @@ final class RecordingViewController: UIViewController {
         isUploading = false
         uploadingSpinner.stopAnimating()
         uploadingStack.isHidden = true
+        headerStack.isHidden = false
+        centreStack.isHidden = false
         navigationItem.leftBarButtonItem?.isEnabled = true
         // The controller is idle after stop(); restore the idle controls.
         render(state: controller.state)
@@ -379,27 +463,27 @@ final class RecordingViewController: UIViewController {
     // MARK: - Rendering
 
     private func render(state: RecordingController.State) {
-        // While uploading, the uploading UI owns the control area — don't let a
-        // state callback (the `.idle` transition stop() fires) unhide the buttons.
+        // While uploading, the uploading UI owns the screen — don't let a state
+        // callback (the `.idle` transition stop() fires) unhide the dashboard.
         guard !isUploading else { return }
 
-        // The sport picker only makes sense before a recording starts; state reads
-        // from the pill above the stats.
+        // The sport picker can only change the sport before a recording starts;
+        // while active it stays visible (a label) but isn't tappable.
         switch state {
         case .idle:
             statePill.set(.idle)
-            sportButton.isHidden = false
+            sportButton.isUserInteractionEnabled = true
             startButton.isHidden = false
             activeControls.isHidden = true
         case .recording:
             statePill.set(.recording)
-            sportButton.isHidden = true
+            sportButton.isUserInteractionEnabled = false
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Pause"
         case .paused:
             statePill.set(.paused)
-            sportButton.isHidden = true
+            sportButton.isUserInteractionEnabled = false
             startButton.isHidden = true
             activeControls.isHidden = false
             pauseResumeButton.configuration?.title = "Reprendre"
@@ -408,10 +492,11 @@ final class RecordingViewController: UIViewController {
 
     private func render(stats: RecordingStats) {
         let usesPace = controller.sport.usesPace
-        elapsedLabel.text = Self.elapsedFormatter.string(from: stats.elapsed) ?? "00:00"
-        distanceStat.value = String(format: "%.2f km", stats.distance / 1000)
+        heroValueLabel.text = String(format: "%.2f", stats.distance / 1000)
+        elapsedStat.value = Self.elapsedFormatter.string(from: stats.elapsed) ?? "00:00"
         speedStat.value = usesPace ? Self.paceString(stats.currentSpeed) : Self.speedString(stats.currentSpeed)
         avgStat.value = usesPace ? Self.paceString(stats.averageSpeed) : Self.speedString(stats.averageSpeed)
+        lapStat.value = "\(max(controller.currentLap, 0))"
     }
 
     private static func speedString(_ metersPerSecond: CLLocationSpeed) -> String {
@@ -443,12 +528,12 @@ extension RecordingViewController: RecordingControllerDelegate {
     func recordingController(_ controller: RecordingController, didChangeAuthorization status: LocationRecorder.Status) {
         switch status {
         case .denied:
-            gpsBanner.setDenied()
+            gpsChip.setDenied()
             startButton.isEnabled = false
         case .authorized:
             // start() re-fires `.authorized` on every recording start — only
-            // recover from a denied banner, never clobber an acquired signal.
-            gpsBanner.clearDenied()
+            // recover from a denied chip, never clobber an acquired signal.
+            gpsChip.clearDenied()
             startButton.isEnabled = true
         case .notDetermined:
             break
@@ -464,14 +549,14 @@ extension RecordingViewController: RecordingControllerDelegate {
     }
 
     func recordingController(_ controller: RecordingController, didReceiveFix location: CLLocation, pointCount: Int) {
-        gpsBanner.update(horizontalAccuracy: location.horizontalAccuracy)
+        gpsChip.update(horizontalAccuracy: location.horizontalAccuracy)
     }
 }
 
 // MARK: - StatView
 
-/// A value-over-caption stat cell used in the live stats grid — the screen's
-/// main payload, so the value is large.
+/// A value-over-caption stat cell used in the metric card. The caption is
+/// upper-cased for a tidy dashboard feel; the value is large (the payload).
 private final class StatView: UIView {
     private let valueLabel = UILabel()
     private let captionLabel = UILabel()
@@ -483,7 +568,7 @@ private final class StatView: UIView {
 
     var caption: String {
         get { captionLabel.text ?? "" }
-        set { captionLabel.text = newValue }
+        set { captionLabel.text = newValue.uppercased() }
     }
 
     init(caption: String) {
@@ -495,21 +580,21 @@ private final class StatView: UIView {
         valueLabel.adjustsFontSizeToFitWidth = true
         valueLabel.minimumScaleFactor = 0.6
 
-        captionLabel.font = .preferredFont(forTextStyle: .caption1)
+        captionLabel.font = .preferredFont(forTextStyle: .caption2)
         captionLabel.textColor = .secondaryLabel
         captionLabel.textAlignment = .center
-        captionLabel.text = caption
+        captionLabel.text = caption.uppercased()
 
         let stack = UIStackView(arrangedSubviews: [valueLabel, captionLabel])
         stack.axis = .vertical
-        stack.spacing = 2
+        stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: topAnchor),
             stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
         ])
     }
 
@@ -589,32 +674,45 @@ private final class StatusPillView: UIView {
     }
 }
 
-// MARK: - GPSBannerView
+// MARK: - GPSChipView
 
-/// A slim, colour-coded GPS-signal banner pinned at the top. Deliberately minor —
-/// the stats are the screen's focus — but it surfaces signal quality and the
-/// access-denied state (tap to open Settings).
-private final class GPSBannerView: UIView {
-    /// Invoked when the banner is tapped while access is denied.
+/// A compact, colour-coded GPS-signal chip pinned top-right in the header.
+/// Deliberately minor — the stats are the screen's focus — but it surfaces signal
+/// quality and the access-denied state (tap to open Settings).
+private final class GPSChipView: UIView {
+    /// Invoked when the chip is tapped while access is denied.
     var onTapWhenDenied: (() -> Void)?
     private var isDenied = false
 
+    private let dot = UIView()
     private let label = UILabel()
 
     init() {
         super.init(frame: .zero)
-        layer.cornerRadius = 8
+        translatesAutoresizingMaskIntoConstraints = false
+        layer.cornerRadius = 14
         layer.cornerCurve = .continuous
 
+        dot.translatesAutoresizingMaskIntoConstraints = false
+        dot.layer.cornerRadius = 4
+
         label.font = .preferredFont(forTextStyle: .footnote)
-        label.textAlignment = .center
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.8
+
+        let stack = UIStackView(arrangedSubviews: [dot, label])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 30),
-            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            heightAnchor.constraint(equalToConstant: 28),
+            dot.widthAnchor.constraint(equalToConstant: 8),
+            dot.heightAnchor.constraint(equalToConstant: 8),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
 
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
@@ -661,6 +759,7 @@ private final class GPSBannerView: UIView {
     private func apply(text: String, color: UIColor) {
         label.text = text
         label.textColor = color
+        dot.backgroundColor = color
         backgroundColor = color.withAlphaComponent(0.15)
     }
 }
