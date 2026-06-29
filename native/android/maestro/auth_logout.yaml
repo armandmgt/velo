@@ -1,0 +1,33 @@
+appId: fr.armandmgt.velo
+name: Logout returns to the unauthenticated root
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/auth_logout.yaml. Sign in, then sign out
+# via the toolbar overflow menu. After logout the bottom nav must be gone and
+# the login form back. The pivot is the `is_after_sign_out_path: true`
+# path-property on /session/new: when a MainActivity navigator proposes a visit
+# there, SignOutRouteDecisionHandler cancels the in-app navigation and swaps the
+# task root back to LoginActivity.
+- launchApp:
+    clearState: true
+    stopApp: true
+
+- assertVisible: "Connexion"
+- tapOn: "Se connecter"
+- assertVisible: "Résumé par période"
+
+# The web navbar's hidden items are forwarded by `bridge--navbar-buttons` and
+# rendered natively by NavbarButtonsComponent: multiple items collapse into a
+# toolbar overflow button (ic_person, title "Menu") that opens a PopupMenu.
+- tapOn: "Menu"
+- tapOn: "Se déconnecter"
+
+# Back at the unauthenticated root: login form is visible and the bottom nav +
+# toolbar menu are gone (the navbar partial only renders for authenticated
+# users, so bridge--navbar-buttons never connects here).
+- assertVisible: "Connexion"
+- assertNotVisible: "Tableau de bord"
+- assertNotVisible: "Activités"
+- assertNotVisible: "Résumé par période"
+- assertNotVisible: "Menu"
