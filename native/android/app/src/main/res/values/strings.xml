@@ -19,6 +19,10 @@
     <string name="recording_speed">Vitesse</string>
     <string name="recording_average_speed">Moy.</string>
     <string name="recording_lap">Tour %1$d</string>
+    <string name="recording_laps">Tours</string>
+    <string name="recording_pace">Allure</string>
+    <string name="recording_state_recording">Enregistrement</string>
+    <string name="recording_state_paused">En pause</string>
     <string name="recording_gps_signal">Signal GPS : %1$s</string>
     <string name="recording_gps_searching">recherche…</string>
     <string name="recording_pause">Pause</string>
