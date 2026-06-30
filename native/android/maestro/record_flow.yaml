@@ -68,12 +68,20 @@ tags:
 - tapOn: "Reprendre"
 - takeScreenshot: record-active
 
-# Arrêter finalizes the recording, serializes it to GPX, and uploads it via
-# POST /activities (#57): the screen shows "Envoi en cours…", then on 201 the
-# app routes the Activités tab to the new activity's show page and finishes.
-# The dev server (logged in above) handles the upload — the CSRF JSON exemption
-# lets the out-of-webview POST through.
+# Arrêter finalizes the recording and shows the native review/confirm screen
+# (#67) instead of uploading immediately: a summary, an editable sport, an
+# optional name, and a visibility picker, with Enregistrer / Supprimer.
 - tapOn: "Arrêter"
+- assertVisible: "Vérifier la sortie"
+- assertVisible: "Supprimer"
+- takeScreenshot: record-review
+
+# Enregistrer serializes the recording to GPX and uploads it via POST /activities
+# (#57): the screen shows "Envoi en cours…", then on 201 the app routes the
+# Activités tab to the new activity's show page and finishes. The dev server
+# (logged in above) handles the upload — the CSRF JSON exemption lets the
+# out-of-webview POST through.
+- tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the bottom-nav shell. The
 # device names recordings "Sortie enregistrée sur le téléphone" (the <trk><name>

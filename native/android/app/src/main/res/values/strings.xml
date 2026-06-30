@@ -36,6 +36,22 @@
     <string name="recording_retry">Réessayer</string>
     <string name="recording_later">Plus tard</string>
 
+    <!-- Review/confirm screen before upload (#67). -->
+    <string name="recording_review_title">Vérifier la sortie</string>
+    <string name="recording_sport">Sport</string>
+    <string name="recording_visibility">Visibilité</string>
+    <string name="recording_name_hint">Nom (facultatif)</string>
+    <string name="recording_save">Enregistrer</string>
+    <string name="recording_discard">Supprimer</string>
+    <string name="recording_discard_confirm_title">Supprimer cet enregistrement ?</string>
+    <string name="recording_discard_confirm_message">Cette action est définitive. L\'enregistrement ne sera pas envoyé.</string>
+    <string name="recording_discard_cancel">Annuler</string>
+
+    <!-- Visibility — match the web app's fr.yml activity.visibility.* labels (#67). -->
+    <string name="visibility_private">Privée</string>
+    <string name="visibility_shareable">Lien partageable</string>
+    <string name="visibility_public">Publique</string>
+
     <!-- Sport names — match the web app's fr.yml activity.sport.* labels (#57). -->
     <string name="sport_bike">Vélo de route</string>
     <string name="sport_mountain_bike_ride">VTT</string>

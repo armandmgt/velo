@@ -18,8 +18,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -29,6 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -62,7 +65,10 @@ sealed interface RecordingScreenState {
     /** Recording (or armed, per [RecordingUiState.armed]): mirror the live stats from the service. */
     data class Streaming(val state: RecordingUiState) : RecordingScreenState
 
-    /** Serializing + uploading the finished recording after Arrêter (#57). */
+    /** Reviewing the finished recording before upload (#67): the captured final stats. */
+    data class Reviewing(val stats: RecordingUiState) : RecordingScreenState
+
+    /** Serializing + uploading the finished recording after Enregistrer (#57). */
     data object Uploading : RecordingScreenState
 }
 
@@ -86,6 +92,12 @@ fun RecordingScreen(
     onResume: () -> Unit,
     onLap: () -> Unit,
     onOpenSettings: () -> Unit,
+    reviewName: String,
+    onReviewNameChange: (String) -> Unit,
+    selectedVisibility: Visibility,
+    onSelectVisibility: (Visibility) -> Unit,
+    onSave: () -> Unit,
+    onDiscard: () -> Unit,
 ) {
     Scaffold { innerPadding ->
         Column(
@@ -112,18 +124,35 @@ fun RecordingScreen(
 
                 is RecordingScreenState.Streaming ->
                     DashboardBody(bodyModifier, state.state, selectedSport, onSelectSport)
+
+                is RecordingScreenState.Reviewing ->
+                    ReviewBody(
+                        bodyModifier,
+                        state.stats,
+                        selectedSport,
+                        onSelectSport,
+                        reviewName,
+                        onReviewNameChange,
+                        selectedVisibility,
+                        onSelectVisibility,
+                    )
             }
 
             // Bottom action area: Démarrer while armed; Tour/Pause + Arrêter while
-            // recording; nothing during the permission/upload states.
-            if (state is RecordingScreenState.Streaming) {
-                Controls(
+            // recording; Enregistrer/Supprimer while reviewing; nothing during the
+            // permission/upload states.
+            when (state) {
+                is RecordingScreenState.Streaming -> Controls(
                     ui = state.state,
                     onStartStop = onStartStop,
                     onPause = onPause,
                     onResume = onResume,
                     onLap = onLap,
                 )
+
+                is RecordingScreenState.Reviewing -> ReviewControls(onSave = onSave, onDiscard = onDiscard)
+
+                else -> Unit
             }
         }
     }
@@ -438,7 +467,142 @@ private fun Controls(
     }
 }
 
-/** Shown while the finished recording is serialized + uploaded after Arrêter (#57). */
+/**
+ * The review/confirm screen body (#67): a read-only distance hero + summary
+ * (Temps · Moyenne), then the editable sport, name, and visibility fields.
+ * Mirrors [DashboardBody]'s visual language; scrolls so the form stays reachable
+ * above the keyboard on short screens.
+ */
+@Composable
+private fun ReviewBody(
+    modifier: Modifier,
+    stats: RecordingUiState,
+    selectedSport: Sport,
+    onSelectSport: (Sport) -> Unit,
+    name: String,
+    onNameChange: (String) -> Unit,
+    selectedVisibility: Visibility,
+    onSelectVisibility: (Visibility) -> Unit,
+) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(R.string.recording_review_title),
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Spacer(Modifier.size(20.dp))
+        Hero(stats.distanceMeters)
+        Spacer(Modifier.size(24.dp))
+        SummaryCard(stats, selectedSport.usesPace)
+        Spacer(Modifier.size(24.dp))
+
+        ReviewField(stringResource(R.string.recording_sport)) {
+            SportChip(selectedSport, onSelectSport, enabled = true)
+        }
+        Spacer(Modifier.size(16.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = onNameChange,
+            label = { Text(stringResource(R.string.recording_name_hint)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.size(16.dp))
+        ReviewField(stringResource(R.string.recording_visibility)) {
+            VisibilityPicker(selectedVisibility, onSelectVisibility)
+        }
+    }
+}
+
+/** Filled summary card with the two read-only stats: temps · moyenne/allure. */
+@Composable
+private fun SummaryCard(ui: RecordingUiState, usesPace: Boolean) {
+    val average = if (usesPace) formatPace(ui.averageSpeedMps) else formatSpeedKmh(ui.averageSpeedMps)
+    val averageLabel = stringResource(if (usesPace) R.string.recording_pace else R.string.recording_average_speed)
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            Stat(formatElapsed(ui.elapsedSeconds), stringResource(R.string.recording_elapsed), Modifier.weight(1f))
+            VerticalDivider(modifier = Modifier.fillMaxHeight())
+            Stat(average, averageLabel, Modifier.weight(1f))
+        }
+    }
+}
+
+/** A captioned form field: an upper-cased label above its control. */
+@Composable
+private fun ReviewField(label: String, content: @Composable () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+        )
+        Spacer(Modifier.size(6.dp))
+        content()
+    }
+}
+
+/** Visibility picker — an outlined button with a pull-down over [Visibility.entries]. */
+@Composable
+private fun VisibilityPicker(selected: Visibility, onSelect: (Visibility) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(
+            onClick = { expanded = true },
+            contentPadding = ButtonDefaults.TextButtonContentPadding,
+        ) {
+            Text(stringResource(selected.nameRes))
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Visibility.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(option.nameRes)) },
+                    onClick = {
+                        onSelect(option)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Bottom controls for the review screen: a full-width Enregistrer over Supprimer. */
+@Composable
+private fun ReviewControls(onSave: () -> Unit, onDiscard: () -> Unit) {
+    Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
+        Button(
+            onClick = onSave,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            Text(stringResource(R.string.recording_save))
+        }
+        Spacer(Modifier.size(12.dp))
+        Button(
+            onClick = onDiscard,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            Text(stringResource(R.string.recording_discard))
+        }
+    }
+}
+
+/** Shown while the finished recording is serialized + uploaded after Enregistrer (#57). */
 @Composable
 private fun UploadingBody(modifier: Modifier) {
     Column(
@@ -541,6 +705,12 @@ private fun RecordingScreenArmedPreview() {
             onResume = {},
             onLap = {},
             onOpenSettings = {},
+            reviewName = "",
+            onReviewNameChange = {},
+            selectedVisibility = Visibility.PRIVATE,
+            onSelectVisibility = {},
+            onSave = {},
+            onDiscard = {},
         )
     }
 }
@@ -570,6 +740,12 @@ private fun RecordingScreenStreamingPreview() {
             onResume = {},
             onLap = {},
             onOpenSettings = {},
+            reviewName = "",
+            onReviewNameChange = {},
+            selectedVisibility = Visibility.PRIVATE,
+            onSelectVisibility = {},
+            onSave = {},
+            onDiscard = {},
         )
     }
 }

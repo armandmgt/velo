@@ -44,12 +44,21 @@ object ActivityUploader {
     private val client by lazy { OkHttpClient() }
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun upload(gpx: String, sport: Sport): UploadResult = withContext(Dispatchers.IO) {
+    suspend fun upload(
+        gpx: String,
+        sport: Sport,
+        name: String?,
+        visibility: Visibility,
+    ): UploadResult = withContext(Dispatchers.IO) {
         val endpoint = "${BuildConfig.BASE_URL}/activities"
 
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("activity[sport]", sport.wire)
+            .addFormDataPart("activity[visibility]", visibility.wire)
+            .apply {
+                if (!name.isNullOrBlank()) addFormDataPart("activity[name]", name)
+            }
             .addFormDataPart(
                 "activity[fit_file]",
                 "recording.gpx",
