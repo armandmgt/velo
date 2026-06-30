@@ -58,12 +58,20 @@ tags:
 - assertVisible: "Reprendre"
 - tapOn: "Reprendre"
 
-# Arrêter finalizes the recording, serializes it to GPX, and uploads it via
-# POST /activities (S4 — #52). With a single static fix the activity is tiny but
-# valid; on success the app routes the Activités tab to the new activity's show
-# page and dismisses the modal. The dev server (already logged in above) handles
-# the upload — the CSRF JSON exemption lets the out-of-webview POST through.
+# Arrêter finalizes the recording and pushes the native review/confirm screen
+# (S13 — #66) instead of uploading immediately: a summary, an editable sport, an
+# optional name, and a visibility picker, with Enregistrer / Supprimer.
 - tapOn: "Arrêter"
+- assertVisible: "Vérifier la sortie"
+- assertVisible: "Supprimer"
+- takeScreenshot: record-review
+
+# Enregistrer serializes the recording to GPX and uploads it via POST /activities.
+# With a single static fix the activity is tiny but valid; on success the app
+# routes the Activités tab to the new activity's show page and dismisses the modal.
+# The dev server (already logged in above) handles the upload — the CSRF JSON
+# exemption lets the out-of-webview POST through.
+- tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the tab bar shell. The
 # device names recordings "Sortie enregistrée sur le téléphone" (the <trk><name>
