@@ -68,6 +68,65 @@ module ApplicationHelper
     "#{h}:#{m.to_s.rjust(2, '0')}:#{s.to_s.rjust(2, '0')}"
   end
 
+  # Compact hours label for the dashboard secondary strip:
+  # "6h20" under a day, "24 h" / "168 h" for longer spans.
+  def format_period_hours(total_seconds)
+    total = total_seconds.to_i
+    return "0h" if total <= 0
+
+    h = total / 3600
+    m = (total % 3600) / 60
+    h < 24 ? "#{h}h#{m.to_s.rjust(2, '0')}" : "#{h} h"
+  end
+
+  # Tiny inline SVG of an activity's GPS track for the recent-activities list.
+  # Falls back to a neutral map-icon tile when the activity has no path.
+  def activity_route_thumbnail(activity, css_class: "")
+    base = "flex items-center justify-center overflow-hidden #{css_class}"
+    points = activity.path&.points
+
+    if points.blank? || points.size < 2
+      return tag.div(icon("map", class: "size-5 opacity-30"),
+                     class: "#{base} bg-base-300 text-base-content")
+    end
+
+    coords = sample_evenly(points.map { |p| [ p.x, p.y ] }, 60)
+    xs = coords.map(&:first)
+    ys = coords.map(&:last)
+    min_x, max_x = xs.minmax
+    min_y, max_y = ys.minmax
+    span = [ max_x - min_x, max_y - min_y, 1e-9 ].max
+    pad = 10.0
+    scale = (100 - 2 * pad) / span
+    off_x = (100 - (max_x - min_x) * scale) / 2.0
+    off_y = (100 - (max_y - min_y) * scale) / 2.0
+
+    polyline_points = coords.map do |x, y|
+      px = off_x + (x - min_x) * scale
+      py = 100 - (off_y + (y - min_y) * scale) # invert Y so north is up
+      "#{px.round(1)},#{py.round(1)}"
+    end.join(" ")
+
+    svg = content_tag(:svg,
+                      content_tag(:polyline, "", {
+                        "points" => polyline_points, "fill" => "none",
+                        "stroke" => "currentColor", "stroke-width" => "4",
+                        "stroke-linejoin" => "round", "stroke-linecap" => "round"
+                      }),
+                      { "viewBox" => "0 0 100 100", "class" => "size-full",
+                        "preserveAspectRatio" => "xMidYMid meet" })
+
+    tag.div(svg, class: "#{base} bg-primary/10 text-primary")
+  end
+
+  # Return at most `max` items, evenly spaced across the array.
+  def sample_evenly(array, max)
+    return array if array.size <= max
+
+    step = array.size / max.to_f
+    (0...max).map { |i| array[(i * step).floor] }
+  end
+
   # Pace formatted as "m:ss /km" from seconds-per-kilometer.
   def pace_display(seconds_per_km)
     minutes = (seconds_per_km / 60).floor

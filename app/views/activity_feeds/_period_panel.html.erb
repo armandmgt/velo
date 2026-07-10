@@ -1,0 +1,56 @@
+<%# locals: (period:) %>
+<div data-dashboard-tabs-target="panel"
+     data-period="<%= period[:key] %>"
+     class="<%= "hidden" unless period[:key] == "week" %>">
+  <%# Hero — régularité chart + headline distance %>
+  <div class="rounded-box p-[18px] sm:p-6 bg-primary/10 border border-primary/30">
+    <div class="flex justify-between items-start gap-3">
+      <div>
+        <div class="text-xs uppercase tracking-wide font-semibold opacity-55"><%= period[:hero_label] %></div>
+        <div class="flex items-baseline gap-2.5 mt-1">
+          <span class="text-[40px] sm:text-[54px] leading-none font-extrabold text-primary">
+            <%= number_with_delimiter(period[:distance_km], delimiter: " ") %><span class="text-[0.42em] font-semibold opacity-55 ml-1">km</span>
+          </span>
+          <% if period[:delta_pct] %>
+            <% up = period[:delta_pct] >= 0 %>
+            <span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full <%= up ? "bg-success/25 text-success-content" : "bg-error/25 text-error-content" %>">
+              <%= icon(up ? "trending-up" : "trending-down", class: "size-3.5") %><%= period[:delta_pct].abs %>%
+            </span>
+          <% end %>
+        </div>
+      </div>
+      <div class="text-right shrink-0">
+        <div class="text-2xl font-extrabold leading-none">
+          <%= number_with_delimiter(period[:active_count], delimiter: " ") %><% unless period[:key] == "all" %><span class="opacity-40"> / <%= period[:total_buckets] %></span><% end %>
+        </div>
+        <div class="text-[11px] opacity-55 mt-1"><%= period[:active_label] %></div>
+      </div>
+    </div>
+
+    <div class="flex items-end gap-[5px] h-[78px] sm:h-24 mt-4">
+      <% period[:bars].each do |bar| %>
+        <div class="flex-1 rounded-t-[3px] min-h-[3px] <%= { "current" => "bg-primary", "active" => "bg-primary/40" }.fetch(bar[:state], "bg-base-300") %>"
+             style="height: <%= bar[:height] %>%"></div>
+      <% end %>
+    </div>
+    <div class="flex justify-between text-[10.5px] opacity-50 mt-1.5">
+      <span><%= period[:range_start] %></span>
+      <span class="hidden sm:inline"><%= period[:chart_label] %></span>
+      <span><%= period[:range_end] %></span>
+    </div>
+  </div>
+
+  <%# Secondary strip — the stats not promoted to the hero %>
+  <div class="grid grid-cols-3 border border-base-300 rounded-box bg-base-100 overflow-hidden mt-3.5">
+    <% [
+      [ number_with_delimiter(period[:count], delimiter: " "), "", period[:count] == 1 ? "Sortie" : "Sorties" ],
+      [ format_period_hours(period[:time_seconds]), "", "Temps" ],
+      [ number_with_delimiter(period[:elevation], delimiter: " "), " m", "D+" ]
+    ].each_with_index do |(value, unit, label), i| %>
+      <div class="px-3.5 py-3 <%= "border-r border-base-300" unless i == 2 %>">
+        <div class="text-[22px] font-extrabold leading-none"><%= value %><span class="text-xs font-semibold opacity-55"><%= unit %></span></div>
+        <div class="text-[11px] opacity-55 mt-1 uppercase tracking-wide font-semibold"><%= label %></div>
+      </div>
+    <% end %>
+  </div>
+</div>

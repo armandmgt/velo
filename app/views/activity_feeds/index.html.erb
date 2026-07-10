@@ -1,111 +1,67 @@
 <% content_for :title, "Tableau de bord" %>
 
-<main class="prose dark:prose-invert md:py-16 p-4 max-w-5xl mx-auto">
-  <h1 class="mt-0 mb-6 hotwire-native:hidden">Tableau de bord</h1>
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <h1 class="sr-only">Tableau de bord</h1>
 
   <%= render "activities/name_prompts_banner",
              activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>
 
-  <%# Period summary %>
-  <section class="not-prose mb-10">
-    <h2 class="text-lg font-semibold mb-4 prose dark:prose-invert">Résumé par période</h2>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <% [
-        ["7 derniers jours", @period_week],
-        ["Ce mois",       @period_month],
-        [Date.current.year.to_s, @period_year]
-      ].each do |label, period| %>
-        <div class="card bg-base-300 shadow">
-          <div class="card-body p-4">
-            <h3 class="card-title text-base font-semibold opacity-70"><%= label %></h3>
-            <div class="stats stats-vertical bg-base-300 shadow-none">
-              <div class="stat px-0">
-                <div class="stat-title">Activités</div>
-                <div class="stat-value text-primary text-2xl"><%= period[:count] %></div>
-              </div>
-              <div class="stat px-0">
-                <div class="stat-title">Distance</div>
-                <div class="stat-value text-primary text-2xl"><%= period[:distance_km] %> km</div>
-              </div>
-              <div class="stat px-0">
-                <div class="stat-title">Temps de déplacement</div>
-                <div class="stat-value text-primary text-2xl">
-                  <%= period[:count] > 0 ? format_duration_hms(period[:total_seconds]) : "—" %>
-                </div>
-              </div>
-              <div class="stat px-0">
-                <div class="stat-title">Dénivelé positif</div>
-                <div class="stat-value text-primary text-2xl"><%= period[:elevation_gain] %> m</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </section>
-
-  <%# Personal records %>
-  <section class="not-prose mb-10">
-    <h2 class="text-lg font-semibold mb-4 prose dark:prose-invert">Records personnels</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <% [
-        ["Cyclisme", @cycling_records, "bike"],
-        ["Course",   @running_records, "sport-shoe"]
-      ].reject { |_, r, _| r.nil? }.each do |category_label, records, icon_name| %>
-        <div class="card bg-base-300 shadow">
-          <div class="card-body p-4">
-            <h3 class="card-title text-base font-semibold opacity-70">
-              <%= icon icon_name, class: "size-5" %>
-              <%= category_label %>
-            </h3>
-            <table class="table table-sm">
-              <tbody>
-                <tr>
-                  <td class="font-medium opacity-60 w-44">Plus longue distance</td>
-                  <% if (pr = records[:longest_distance]) %>
-                    <td><%= link_to pr.name, activity_path(pr), class: "link link-hover" %></td>
-                    <td class="text-right font-semibold text-primary"><%= (pr.distance / 1000.0).round(2) %> km</td>
-                  <% else %>
-                    <td colspan="2" class="opacity-40 italic">Aucune activité</td>
-                  <% end %>
-                </tr>
-                <tr>
-                  <td class="font-medium opacity-60">Dénivelé max</td>
-                  <% if (pr = records[:most_elevation]) %>
-                    <td><%= link_to pr.name, activity_path(pr), class: "link link-hover" %></td>
-                    <td class="text-right font-semibold text-primary"><%= pr.total_elevation_gain.to_i %> m</td>
-                  <% else %>
-                    <td colspan="2" class="opacity-40 italic">Aucune activité</td>
-                  <% end %>
-                </tr>
-                <tr>
-                  <td class="font-medium opacity-60">Vitesse max</td>
-                  <% if (pr = records[:fastest_speed]) %>
-                    <td><%= link_to pr.name, activity_path(pr), class: "link link-hover" %></td>
-                    <td class="text-right font-semibold text-primary"><%= (pr.max_speed * 3.6).round(1) %> km/h</td>
-                  <% else %>
-                    <td colspan="2" class="opacity-40 italic">Aucune activité</td>
-                  <% end %>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      <% end %>
-    </div>
-  </section>
-
-  <%# Recent activities %>
-  <section class="not-prose">
-    <h2 class="text-lg font-semibold mb-4 prose dark:prose-invert">Activités récentes</h2>
-    <% if @recent_activities.none? %>
-      <p class="prose dark:prose-invert opacity-60">Aucune activité pour le moment.</p>
-    <% else %>
-      <div class="flex flex-col gap-4">
-        <% @recent_activities.each do |activity| %>
-          <%= render "activities/activity_recap", activity: activity %>
+  <div data-controller="dashboard-tabs">
+    <%# Greeting + period toggle %>
+    <div class="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
+      <h2 class="group flex items-center gap-2 text-2xl sm:text-[26px] font-extrabold tracking-tight m-0">
+        <span>Bonjour, <%= Current.user.display_name %></span>
+        <%= link_to user_path(anchor: "profile-name"),
+                    class: "opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-base-content/40 hover:text-primary",
+                    title: "Modifier le nom", aria: { label: "Modifier le nom d'affichage" } do %>
+          <%= icon "pencil", class: "size-4" %>
+        <% end %>
+      </h2>
+      <div class="flex w-full sm:w-[340px]">
+        <% @periods.each_with_index do |period, i| %>
+          <button type="button"
+                  data-dashboard-tabs-target="tab"
+                  data-period="<%= period[:key] %>"
+                  data-action="dashboard-tabs#select"
+                  class="flex-1 px-1.5 py-2.5 text-[13px] font-semibold text-center cursor-pointer border border-base-300 <%= "-ml-px" unless i.zero? %> transition-colors <%= period[:key] == "week" ? "bg-neutral text-neutral-content" : "bg-base-100 text-base-content" %>">
+            <%= period[:tab] %>
+          </button>
         <% end %>
       </div>
+    </div>
+
+    <%# One hero + secondary strip per period; the controller shows the active one %>
+    <% @periods.each do |period| %>
+      <%= render "period_panel", period: period %>
     <% end %>
-  </section>
+
+    <%# Personal records — only revealed on the "Tout" tab %>
+    <% if @cycling_records || @running_records %>
+      <section data-dashboard-tabs-target="records" class="hidden mt-6 sm:mt-7">
+        <h3 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Records personnels</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <% if @cycling_records %>
+            <%= render "records", label: "Cyclisme", records: @cycling_records, icon_name: "bike", show_elevation: true %>
+          <% end %>
+          <% if @running_records %>
+            <%= render "records", label: "Course", records: @running_records, icon_name: "sport-shoe", show_elevation: false %>
+          <% end %>
+        </div>
+      </section>
+    <% end %>
+
+    <%# Recent activities %>
+    <section class="mt-6 sm:mt-7">
+      <h3 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Activités récentes</h3>
+      <% if @recent_activities.none? %>
+        <p class="opacity-60">Aucune activité pour le moment.</p>
+      <% else %>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <% @recent_activities.each do |activity| %>
+            <%= render "recent_activity", activity: activity %>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+  </div>
 </main>

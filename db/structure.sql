@@ -363,7 +363,8 @@ CREATE TABLE public.users (
     updated_at timestamp(6) without time zone NOT NULL,
     admin boolean DEFAULT false NOT NULL,
     max_heart_rate integer,
-    email_verified_at timestamp(6) without time zone
+    email_verified_at timestamp(6) without time zone,
+    name character varying
 );
 
 
@@ -678,6 +679,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260710142702'),
 ('20260627124421'),
 ('20260624173312'),
 ('20260616120001'),

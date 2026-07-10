@@ -43,6 +43,6 @@ class UsersController < ApplicationController
   end
 
   def profile_params
-    params.expect(user: [ :max_heart_rate ])
+    params.expect(user: [ :name, :max_heart_rate ])
   end
 end

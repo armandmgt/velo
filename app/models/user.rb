@@ -6,6 +6,7 @@ class User < ApplicationRecord
   has_one :igpsport_connection, dependent: :destroy
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
+  normalizes :name, with: ->(n) { n.strip.presence }
 
   generates_token_for :email_verification, expires_in: 1.day do
     email_address # invalidates the token if the address changes
@@ -15,11 +16,27 @@ class User < ApplicationRecord
             numericality: { only_integer: true, greater_than: 100, less_than_or_equal_to: 240 },
             allow_nil: true
 
+  validates :name, length: { maximum: 50 }, allow_nil: true
+
   def email_verified?
     email_verified_at.present?
   end
 
   def verify_email!
     update!(email_verified_at: Time.current)
+  end
+
+  # Name to greet/display the user with. Falls back to a cleaned,
+  # capitalized version of the email local-part when unset.
+  def display_name
+    name.presence || default_display_name
+  end
+
+  private
+
+  def default_display_name
+    local = email_address.to_s.split("@").first.to_s
+    base = local.split(/[._+-]/).first
+    base.present? ? base.capitalize : "cycliste"
   end
 end

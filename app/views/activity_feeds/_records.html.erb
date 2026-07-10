@@ -1,0 +1,25 @@
+<%# locals: (label:, records:, icon_name:, show_elevation: true) %>
+<% rows = [] %>
+<% if (pr = records[:longest_distance]) %>
+  <% rows << { label: "Plus longue distance", value: "#{(pr.distance / 1000.0).round} km", activity: pr } %>
+<% end %>
+<% if show_elevation && (pr = records[:most_elevation]) %>
+  <% rows << { label: "Dénivelé max", value: "#{pr.total_elevation_gain.to_i} m", activity: pr } %>
+<% end %>
+<% if (pr = records[:fastest_speed]) %>
+  <% rows << { label: "Vitesse max", value: "#{(pr.max_speed * 3.6).round(1)} km/h", activity: pr } %>
+<% end %>
+
+<div class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4">
+  <div class="flex items-center gap-2 font-bold text-sm mb-2">
+    <%= icon icon_name, class: "size-[18px] text-primary" %>
+    <%= label %>
+  </div>
+  <% rows.each do |row| %>
+    <%= link_to activity_path(row[:activity]),
+                class: "flex justify-between items-center gap-3 py-2 border-t border-base-200 hover:opacity-70 transition-opacity" do %>
+      <span class="text-[13px] opacity-60 truncate"><%= row[:label] %></span>
+      <span class="font-bold text-primary whitespace-nowrap"><%= row[:value] %></span>
+    <% end %>
+  <% end %>
+</div>
