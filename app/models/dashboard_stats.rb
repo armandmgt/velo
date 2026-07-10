@@ -38,7 +38,7 @@ class DashboardStats
       hero_label: "Distance · cette semaine",
       hero: buckets.last, buckets: buckets,
       active_count: active_buckets(buckets), active_label: "semaines actives",
-      delta_pct: delta(buckets),
+      delta_pct: delta_to_date(starts.last, 1.week),
       chart_label: "12 dernières semaines",
       range_start: "il y a 12 sem.", range_end: "cette sem."
     )
@@ -52,7 +52,7 @@ class DashboardStats
       hero_label: "Distance · ce mois-ci",
       hero: buckets.last, buckets: buckets,
       active_count: active_buckets(buckets), active_label: "mois actifs",
-      delta_pct: delta(buckets),
+      delta_pct: delta_to_date(starts.last, 1.month),
       chart_label: "12 derniers mois",
       range_start: "il y a 12 mois", range_end: "ce mois"
     )
@@ -66,7 +66,7 @@ class DashboardStats
       hero_label: "Distance · cette année",
       hero: buckets.last, buckets: buckets,
       active_count: active_buckets(buckets), active_label: "années actives",
-      delta_pct: delta(buckets),
+      delta_pct: delta_to_date(starts.last, 1.year),
       chart_label: "5 dernières années",
       range_start: starts.first.year.to_s, range_end: @now.year.to_s
     )
@@ -114,16 +114,16 @@ class DashboardStats
     buckets.count { |b| b[:distance].positive? }
   end
 
-  # Percentage change of the current (last) bucket vs the previous one.
-  # Nil when either side has no activity — a period that just started
-  # shouldn't read as "-100%".
-  def delta(buckets)
-    current = buckets[-1]
-    previous = buckets[-2]
-    return nil if current.nil? || previous.nil?
-    return nil if current[:distance] <= 0 || previous[:distance] <= 0
+  # Like-for-like trend: this period so far vs. the previous period through the
+  # same elapsed point (the current window shifted back by exactly one period).
+  # Comparing against the *full* previous period would read negative all the way
+  # through an in-progress week/month/year. Nil when either side is empty.
+  def delta_to_date(period_start, length)
+    current = bucket(period_start, @now)[:distance]
+    previous = bucket(period_start - length, @now - length)[:distance]
+    return nil if current <= 0 || previous <= 0
 
-    (((current[:distance] - previous[:distance]) / previous[:distance]) * 100).round
+    (((current - previous) / previous) * 100).round
   end
 
   def period(key:, tab:, hero_label:, hero:, buckets:, active_count:, active_label:, delta_pct:, chart_label:, range_start:, range_end:)
