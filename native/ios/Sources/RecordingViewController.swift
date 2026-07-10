@@ -25,9 +25,10 @@ import UIKit
 /// - **Fermer** (close): leaves the screen — recording keeps running in the
 ///   background (the controller outlives this VC) and the tab-bar Record button
 ///   reflects that.
-/// - **Arrêter** (stop): ends and finalizes the recording, then serializes it to
-///   GPX and uploads it (S4 — #52). On success the webview jumps to the new
-///   activity; on failure the recording is kept and a retry is offered.
+/// - **Arrêter** (stop): ends and finalizes the recording, then pushes the
+///   native review/confirm screen (`RecordingReviewViewController`, S13 — #66)
+///   where the user names it, picks sport/visibility, and chooses Enregistrer
+///   (upload + jump to the new activity) or Supprimer (discard).
 final class RecordingViewController: UIViewController {
     private var controller: RecordingController { .shared }
 
@@ -122,23 +123,6 @@ final class RecordingViewController: UIViewController {
 
     private lazy var metricCard = makeMetricCard()
 
-    /// Shown while the recording is being serialized + uploaded after Arrêter.
-    private let uploadingSpinner = UIActivityIndicatorView(style: .medium)
-    private lazy var uploadingStack: UIStackView = {
-        let label = UILabel()
-        label.text = "Envoi en cours…"
-        label.font = .preferredFont(forTextStyle: .body)
-        label.textColor = .secondaryLabel
-        let stack = UIStackView(arrangedSubviews: [uploadingSpinner, label])
-        stack.axis = .horizontal
-        stack.spacing = 8
-        stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        stack.isHidden = true
-        return stack
-    }()
-    private var isUploading = false
-
     private lazy var activeControls: UIStackView = {
         let row = UIStackView(arrangedSubviews: [lapButton, pauseResumeButton])
         row.axis = .horizontal
@@ -179,7 +163,6 @@ final class RecordingViewController: UIViewController {
         view.addSubview(centreStack)
         view.addSubview(startButton)
         view.addSubview(activeControls)
-        view.addSubview(uploadingStack)
 
         NSLayoutConstraint.activate([
             // Header pinned across the top.
@@ -196,9 +179,6 @@ final class RecordingViewController: UIViewController {
             centreStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
             centreStack.centerYAnchor.constraint(equalTo: view.centerYAnchor, constant: 12),
             centreStack.topAnchor.constraint(greaterThanOrEqualTo: statePill.bottomAnchor, constant: 16),
-
-            uploadingStack.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            uploadingStack.centerYAnchor.constraint(equalTo: view.centerYAnchor),
 
             startButton.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             startButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
@@ -277,7 +257,7 @@ final class RecordingViewController: UIViewController {
     /// chosen sport lives on the controller; `updateSportButton()` keeps the
     /// title/glyph and the menu's checkmark in sync.
     private func makeSportButton() -> UIButton {
-        let button = glassButton(prominent: false)
+        let button = GlassButton.make(prominent: false)
         button.configuration?.imagePadding = 6
         button.configuration?.contentInsets = .init(top: 8, leading: 14, bottom: 8, trailing: 14)
         button.showsMenuAsPrimaryAction = true
@@ -316,44 +296,23 @@ final class RecordingViewController: UIViewController {
     }
 
     private func makeStartButton() -> UIButton {
-        let button = glassButton(prominent: true, tint: .systemGreen)
+        let button = GlassButton.make(prominent: true, tint: .systemGreen)
         button.configuration?.title = "Démarrer"
         button.addAction(UIAction { [weak self] _ in self?.controller.start() }, for: .primaryActionTriggered)
         return button
     }
 
     private func makeStopButton() -> UIButton {
-        let button = glassButton(prominent: true, tint: .systemRed)
+        let button = GlassButton.make(prominent: true, tint: .systemRed)
         button.configuration?.title = "Arrêter"
         button.addAction(UIAction { [weak self] _ in self?.stop() }, for: .primaryActionTriggered)
         return button
     }
 
     private func makeSecondaryButton(title: String, action: @escaping () -> Void) -> UIButton {
-        let button = glassButton(prominent: false)
+        let button = GlassButton.make(prominent: false)
         button.configuration?.title = title
         button.addAction(UIAction { _ in action() }, for: .primaryActionTriggered)
-        return button
-    }
-
-    /// A Liquid Glass button, matching the tab-bar Record button's treatment
-    /// (`RecordTabBarController.makeRecordButton`): `prominentGlass` (tinted,
-    /// reads against content) for primary colour actions, plain `glass` for
-    /// secondary ones, with a filled/tinted fallback below iOS 26.
-    private func glassButton(prominent: Bool, tint: UIColor? = nil) -> UIButton {
-        var config: UIButton.Configuration
-        if #available(iOS 26.0, *) {
-            config = prominent ? .prominentGlass() : .glass()
-        } else {
-            config = prominent ? .filled() : .tinted()
-        }
-        if let tint {
-            config.baseBackgroundColor = tint
-            config.baseForegroundColor = .white
-        }
-        config.cornerStyle = .large
-        let button = UIButton(configuration: config)
-        button.translatesAutoresizingMaskIntoConstraints = false
         return button
     }
 
@@ -373,100 +332,30 @@ final class RecordingViewController: UIViewController {
         dismiss(animated: true)
     }
 
-    /// End the recording, then serialize + upload it (S4 — #52).
+    /// End the recording, then push the native review/confirm screen (S13 — #66)
+    /// where the user names it, picks sport/visibility, and chooses Enregistrer
+    /// (upload) or Supprimer (discard).
     private func stop() {
+        // Capture the live stats before stop() resets the controller's elapsed
+        // clock — the review screen shows this snapshot, not the live controller.
+        let stats = controller.currentStats
         guard let session = controller.stop() else {
             dismiss(animated: true)
             return
         }
-        // A stop with no fixes recorded has nothing to upload — drop it and leave.
+        // A stop with no fixes recorded has nothing to review — drop it and leave.
         guard !session.orderedPoints.isEmpty else {
             controller.discard(session)
             dismiss(animated: true)
             return
         }
-        upload(session)
-    }
-
-    /// Serialize the finalized session to GPX and POST it. On success the local
-    /// session is cleared and the webview jumps to the new activity; on failure
-    /// the recording is kept (still in Core Data) and a retry is offered.
-    private func upload(_ session: RecordingSession) {
-        enterUploadingState()
-        let sport = controller.sport
-        let gpx = RecordingGPXEncoder.gpx(for: session, sport: sport)
-        ActivityUploader.upload(gpx: gpx, sport: sport, name: nil) { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let url):
-                self.controller.discard(session)
-                self.navigateToActivity(url)
-            case .failure(let error):
-                self.exitUploadingState()
-                self.presentUploadFailure(error, session: session)
-            }
-        }
-    }
-
-    /// Push the created activity onto the Activités tab, then dismiss the modal
-    /// to reveal it. Mirrors `NotificationCountComponent`'s tab-bar reach.
-    private func navigateToActivity(_ url: URL) {
-        if let tabBar = view.window?.rootViewController as? HotwireTabBarController {
-            tabBar.selectedIndex = 1 // Activités
-            tabBar.activeNavigator.route(url)
-        }
-        dismiss(animated: true)
-    }
-
-    private func presentUploadFailure(_ error: ActivityUploader.UploadError, session: RecordingSession) {
-        let message: String
-        switch error {
-        case .validation(let errors):
-            message = errors.joined(separator: "\n")
-        case .network:
-            message = "L'enregistrement a été conservé. Vérifiez votre connexion, puis réessayez."
-        }
-        let alert = UIAlertController(title: "Envoi échoué", message: message, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Réessayer", style: .default) { [weak self] _ in
-            self?.upload(session)
-        })
-        alert.addAction(UIAlertAction(title: "Plus tard", style: .cancel) { [weak self] _ in
-            self?.dismiss(animated: true)
-        })
-        present(alert, animated: true)
-    }
-
-    private func enterUploadingState() {
-        isUploading = true
-        headerStack.isHidden = true
-        statePill.isHidden = true
-        centreStack.isHidden = true
-        startButton.isHidden = true
-        activeControls.isHidden = true
-        uploadingStack.isHidden = false
-        uploadingSpinner.startAnimating()
-        // Block Fermer mid-upload so the modal can't be torn down under the request.
-        navigationItem.leftBarButtonItem?.isEnabled = false
-    }
-
-    private func exitUploadingState() {
-        isUploading = false
-        uploadingSpinner.stopAnimating()
-        uploadingStack.isHidden = true
-        headerStack.isHidden = false
-        centreStack.isHidden = false
-        navigationItem.leftBarButtonItem?.isEnabled = true
-        // The controller is idle after stop(); restore the idle controls.
-        render(state: controller.state)
+        let review = RecordingReviewViewController(session: session, stats: stats)
+        navigationController?.pushViewController(review, animated: true)
     }
 
     // MARK: - Rendering
 
     private func render(state: RecordingController.State) {
-        // While uploading, the uploading UI owns the screen — don't let a state
-        // callback (the `.idle` transition stop() fires) unhide the dashboard.
-        guard !isUploading else { return }
-
         // The sport picker can only change the sport before a recording starts;
         // while active it stays visible (a label) but isn't tappable.
         switch state {
@@ -492,34 +381,12 @@ final class RecordingViewController: UIViewController {
 
     private func render(stats: RecordingStats) {
         let usesPace = controller.sport.usesPace
-        heroValueLabel.text = String(format: "%.2f", stats.distance / 1000)
-        elapsedStat.value = Self.elapsedFormatter.string(from: stats.elapsed) ?? "00:00"
-        speedStat.value = usesPace ? Self.paceString(stats.currentSpeed) : Self.speedString(stats.currentSpeed)
-        avgStat.value = usesPace ? Self.paceString(stats.averageSpeed) : Self.speedString(stats.averageSpeed)
+        heroValueLabel.text = RecordingFormatters.distanceKilometers(stats.distance)
+        elapsedStat.value = RecordingFormatters.elapsedString(stats.elapsed)
+        speedStat.value = RecordingFormatters.speedOrPace(stats.currentSpeed, usesPace: usesPace)
+        avgStat.value = RecordingFormatters.speedOrPace(stats.averageSpeed, usesPace: usesPace)
         lapStat.value = "\(max(controller.currentLap, 0))"
     }
-
-    private static func speedString(_ metersPerSecond: CLLocationSpeed) -> String {
-        String(format: "%.1f km/h", max(metersPerSecond, 0) * 3.6)
-    }
-
-    /// `m:ss/km`. Instantaneous pace is inherently jumpy; near-zero speed reads as
-    /// `—` rather than an absurd figure (smoothing is a later refinement).
-    private static func paceString(_ metersPerSecond: CLLocationSpeed) -> String {
-        guard metersPerSecond > 0.3 else { return "—" }
-        let secondsPerKm = 1000 / metersPerSecond
-        let minutes = Int(secondsPerKm) / 60
-        let seconds = Int(secondsPerKm.rounded()) % 60
-        return String(format: "%d:%02d/km", minutes, seconds)
-    }
-
-    /// `H:MM:SS` once past an hour, else `MM:SS`.
-    private static let elapsedFormatter: DateComponentsFormatter = {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.hour, .minute, .second]
-        formatter.zeroFormattingBehavior = [.pad]
-        return formatter
-    }()
 }
 
 // MARK: - RecordingControllerDelegate
@@ -551,54 +418,6 @@ extension RecordingViewController: RecordingControllerDelegate {
     func recordingController(_ controller: RecordingController, didReceiveFix location: CLLocation, pointCount: Int) {
         gpsChip.update(horizontalAccuracy: location.horizontalAccuracy)
     }
-}
-
-// MARK: - StatView
-
-/// A value-over-caption stat cell used in the metric card. The caption is
-/// upper-cased for a tidy dashboard feel; the value is large (the payload).
-private final class StatView: UIView {
-    private let valueLabel = UILabel()
-    private let captionLabel = UILabel()
-
-    var value: String {
-        get { valueLabel.text ?? "" }
-        set { valueLabel.text = newValue }
-    }
-
-    var caption: String {
-        get { captionLabel.text ?? "" }
-        set { captionLabel.text = newValue.uppercased() }
-    }
-
-    init(caption: String) {
-        super.init(frame: .zero)
-        valueLabel.font = .monospacedDigitSystemFont(ofSize: 30, weight: .semibold)
-        valueLabel.textColor = .label
-        valueLabel.textAlignment = .center
-        valueLabel.text = "—"
-        valueLabel.adjustsFontSizeToFitWidth = true
-        valueLabel.minimumScaleFactor = 0.6
-
-        captionLabel.font = .preferredFont(forTextStyle: .caption2)
-        captionLabel.textColor = .secondaryLabel
-        captionLabel.textAlignment = .center
-        captionLabel.text = caption.uppercased()
-
-        let stack = UIStackView(arrangedSubviews: [valueLabel, captionLabel])
-        stack.axis = .vertical
-        stack.spacing = 4
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: topAnchor),
-            stack.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
-        ])
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }
 
 // MARK: - StatusPillView

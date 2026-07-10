@@ -46,6 +46,13 @@ class RecordingActivity : ComponentActivity() {
     /** The sport this recording uploads as; defaults to the last-used sport (#57). */
     private var selectedSport by mutableStateOf(Sport.BIKE)
 
+    /** Optional name + visibility chosen on the review screen before upload (#67). */
+    private var reviewName by mutableStateOf("")
+    private var selectedVisibility by mutableStateOf(Visibility.DEFAULT)
+
+    /** The finalized session under review, carried to its Enregistrer/Supprimer action (#67). */
+    private var pendingSessionId: String? = null
+
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
 
     private var isBound = false
@@ -102,6 +109,12 @@ class RecordingActivity : ComponentActivity() {
                     onResume = { binder?.resume() },
                     onLap = { binder?.markLap() },
                     onOpenSettings = ::openAppSettings,
+                    reviewName = reviewName,
+                    onReviewNameChange = { reviewName = it },
+                    selectedVisibility = selectedVisibility,
+                    onSelectVisibility = { selectedVisibility = it },
+                    onSave = { pendingSessionId?.let(::uploadSession) },
+                    onDiscard = { pendingSessionId?.let(::confirmDiscard) },
                 )
             }
         }
@@ -139,24 +152,44 @@ class RecordingActivity : ComponentActivity() {
 
     /**
      * Arrêter: finalize the session (the service flips it to STOPPED and tears
-     * down), then serialize its points to GPX and upload. On success the local
-     * session is cleared and we hand the new activity URL back to [MainActivity]
-     * to navigate the webview; on failure the recording is kept for a retry (#57).
+     * down), then show the native review/confirm screen (#67) instead of uploading
+     * immediately. The captured final stats feed the review summary; the upload only
+     * runs on Enregistrer.
      */
     private fun stopRecording() {
         val id = binder?.sessionId()
+        // Capture the live stats before the service is torn down — the review screen
+        // shows this snapshot, not the (now stopped) service.
+        val finalStats = (screenState as? RecordingScreenState.Streaming)?.state
         binder?.stop() ?: RecordingService.stop(this)
         unbindIfNeeded()
         if (id == null) {
             finish()
             return
         }
-        uploadSession(id)
+        // A stop with no fixes recorded has nothing to review — drop it and leave.
+        if (finalStats != null && finalStats.pointCount == 0) {
+            lifecycleScope.launch {
+                dao.deleteSession(id)
+                finish()
+            }
+            return
+        }
+        pendingSessionId = id
+        screenState = RecordingScreenState.Reviewing(finalStats ?: RecordingUiState())
     }
 
+    /**
+     * Enregistrer: serialize the reviewed session to GPX and upload it with the
+     * chosen sport/name/visibility. On success the local session is cleared and we
+     * hand the new activity URL back to [MainActivity] to navigate the webview; on
+     * failure the recording is kept for a retry (#57).
+     */
     private fun uploadSession(id: String) {
         screenState = RecordingScreenState.Uploading
         val sport = selectedSport
+        val name = reviewName
+        val visibility = selectedVisibility
         lifecycleScope.launch {
             val points = dao.pointsFor(id)
             if (points.isEmpty()) {
@@ -167,7 +200,7 @@ class RecordingActivity : ComponentActivity() {
             }
 
             val gpx = RecordingGpxEncoder.gpx(points.first().timestamp, points, sport)
-            when (val result = ActivityUploader.upload(gpx, sport)) {
+            when (val result = ActivityUploader.upload(gpx, sport, name, visibility)) {
                 is ActivityUploader.UploadResult.Success -> {
                     dao.deleteSession(id)
                     setResult(RESULT_OK, Intent().putExtra(EXTRA_ACTIVITY_URL, result.url))
@@ -190,6 +223,24 @@ class RecordingActivity : ComponentActivity() {
             .setCancelable(false)
             .setPositiveButton(R.string.recording_retry) { _, _ -> uploadSession(id) }
             .setNegativeButton(R.string.recording_later) { _, _ -> finish() }
+            .show()
+    }
+
+    /**
+     * Supprimer: confirm, then discard the local session — no activity is created
+     * server-side (#67).
+     */
+    private fun confirmDiscard(id: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.recording_discard_confirm_title)
+            .setMessage(R.string.recording_discard_confirm_message)
+            .setPositiveButton(R.string.recording_discard) { _, _ ->
+                lifecycleScope.launch {
+                    dao.deleteSession(id)
+                    finish()
+                }
+            }
+            .setNegativeButton(R.string.recording_discard_cancel, null)
             .show()
     }
 

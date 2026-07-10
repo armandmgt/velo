@@ -31,6 +31,7 @@ enum ActivityUploader {
         gpx: String,
         sport: Sport,
         name: String?,
+        visibility: Visibility,
         completion: @escaping (Result<URL, UploadError>) -> Void
     ) {
         let endpoint = AppConfig.baseURL.appending(path: "activities")
@@ -45,7 +46,7 @@ enum ActivityUploader {
             for (field, value) in cookieHeaders {
                 request.setValue(value, forHTTPHeaderField: field)
             }
-            request.httpBody = body(gpx: gpx, sport: sport, name: name, boundary: boundary)
+            request.httpBody = body(gpx: gpx, sport: sport, name: name, visibility: visibility, boundary: boundary)
 
             let configuration = URLSessionConfiguration.ephemeral
             configuration.httpShouldSetCookies = false
@@ -96,9 +97,10 @@ enum ActivityUploader {
 
     // MARK: - Multipart body
 
-    private static func body(gpx: String, sport: Sport, name: String?, boundary: String) -> Data {
+    private static func body(gpx: String, sport: Sport, name: String?, visibility: Visibility, boundary: String) -> Data {
         var body = Data()
         appendField("activity[sport]", value: sport.rawValue, to: &body, boundary: boundary)
+        appendField("activity[visibility]", value: visibility.rawValue, to: &body, boundary: boundary)
         if let name, !name.isEmpty {
             appendField("activity[name]", value: name, to: &body, boundary: boundary)
         }
