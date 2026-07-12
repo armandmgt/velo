@@ -27,6 +27,19 @@ class Activity < ApplicationRecord
 
   scope :awaiting_name, -> { where(name_pending: true) }
 
+  # Keep every page the owner has open (dashboard + activities list, including
+  # the native tabs) in sync without a manual reload. On any create / update /
+  # destroy — direct upload, edit, or a background iGPSport/Strava import — push
+  # a Turbo morph page-refresh to the owner's stream. Because the layout sets
+  # `turbo-refresh-method: morph`, the subscribed page re-renders server-side and
+  # morphs in place, so stats, records and lists all refresh together. The
+  # `_later` variant coalesces the burst of broadcasts a bulk sync emits.
+  after_commit :broadcast_activity_refresh
+
+  def broadcast_activity_refresh
+    broadcast_refresh_later_to(user, :activities)
+  end
+
   def path_geojson
     return unless path
     {
