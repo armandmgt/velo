@@ -1,10 +1,14 @@
-<%# locals: (elevation_data:) %>
+<%# locals: (elevation_data:, map_target: nil) %>
 
 <div class="my-3">
   <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Profil altimétrique</h3>
   <canvas
     data-controller="elevation-profile"
-    data-elevation-profile-data-value="<%= elevation_data.to_json %>"
+    data-elevation-profile-data-value="<%= elevation_data.except(:coordinates).to_json %>"
+    <% if map_target.present? && elevation_data[:coordinates].present? %>
+      data-elevation-profile-coordinates-value="<%= elevation_data[:coordinates].to_json %>"
+      data-elevation-profile-map-outlet="<%= map_target %>"
+    <% end %>
     class="max-h-[200px]"
   ></canvas>
 </div>

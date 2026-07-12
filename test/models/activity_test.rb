@@ -45,4 +45,27 @@ class ActivityTest < ActiveSupport::TestCase
       Activity.find_signed!(token, purpose: :something_else)
     end
   end
+
+  test "an update broadcasts a refresh to the owner's activities stream" do
+    activity = activities(:one)
+    recorded = capture_refresh_streams(activity) { activity.update!(name: "Nouveau nom") }
+    assert_equal [ [ activity.user, :activities ] ], recorded
+  end
+
+  test "a destroy broadcasts a refresh to the owner's activities stream" do
+    activity = activities(:one)
+    recorded = capture_refresh_streams(activity) { activity.destroy! }
+    assert_equal [ [ activity.user, :activities ] ], recorded
+  end
+
+  private
+
+  # Records the streamables passed to broadcast_refresh_later_to so we can assert
+  # the target stream without exercising Turbo's async debouncer/job machinery.
+  def capture_refresh_streams(activity)
+    recorded = []
+    activity.define_singleton_method(:broadcast_refresh_later_to) { |*args| recorded << args }
+    yield
+    recorded
+  end
 end

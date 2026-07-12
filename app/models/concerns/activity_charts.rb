@@ -9,7 +9,11 @@ module ActivityCharts
 
       {
         labels: data_points.pluck(:recorded_at),
-        data: altitudes
+        data: altitudes,
+        # Parallel to labels/data: GPS coordinate per data point ([lng, lat] or
+        # nil), so the chart can map a hovered index back to a map marker — same
+        # contract as `chart_data` below.
+        coordinates: data_points.map { |p| p.location ? [ p.location.x, p.location.y ] : nil }
       }
     end
 
