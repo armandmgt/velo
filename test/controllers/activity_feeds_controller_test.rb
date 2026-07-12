@@ -16,30 +16,38 @@ class ActivityFeedsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
-  test "this year section shows all the user activities" do
+  test "year period shows the count of this year's activities" do
     get root_url
-    assert_select "div.stat-value", text: "4"
+    # this_week_ride + this_month_run + older_ride + awaiting_name = 4
+    # (the 2019 "one" ride is not in the current year)
+    assert_select "[data-period=?]", "year" do
+      assert_select "div", text: "4"
+    end
   end
 
-  test "this year total distance includes all activities" do
+  test "year period total distance includes all this year's activities" do
     get root_url
-    # 30km + 10km + 120km + 25km = 185.0 km
-    assert_select "div.stat-value", text: "185.0 km"
+    # 30km + 10km + 120km + 25km = 185 km (distance_km is rounded to an integer)
+    assert_select "[data-period=?]", "year" do
+      assert_select "span", text: "185km"
+    end
   end
 
-  test "cycling personal record shows the longest bike ride name" do
+  test "cycling personal record links to the longest bike ride" do
     get root_url
-    assert_select "a", text: activities(:older_ride).name
+    assert_select "[data-dashboard-tabs-target=records] a[href=?]",
+                  activity_path(activities(:older_ride))
   end
 
-  test "running personal record shows the run name" do
+  test "running personal record links to the run" do
     get root_url
-    assert_select "a", text: activities(:this_month_run).name
+    assert_select "[data-dashboard-tabs-target=records] a[href=?]",
+                  activity_path(activities(:this_month_run))
   end
 
   test "recent activities section is present" do
     get root_url
-    assert_select "h2", text: "Activités récentes"
+    assert_select "h3", text: "Activités récentes"
   end
 
   test "does not show other users activities" do
