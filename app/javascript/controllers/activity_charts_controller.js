@@ -37,6 +37,18 @@ function zoneColorFor(value, boundaries, colors) {
   return colors[index === -1 ? colors.length - 1 : index]
 }
 
+// Formats elapsed time between two data-point timestamps as a narrow duration
+// (e.g. "1h 5m 3s"). Shared by the x-axis ticks and the tooltip title so both
+// read the same as the elevation profile's time axis.
+function formatElapsed(startLabel, currentLabel) {
+  const elapsed = new Date(currentLabel) - new Date(startLabel)
+  if (!Number.isFinite(elapsed)) return ""
+  const hours = Math.floor(elapsed / 3_600_000)
+  const minutes = Math.floor((elapsed % 3_600_000) / 60_000)
+  const seconds = Math.floor((elapsed % 60_000) / 1_000)
+  return new Intl.DurationFormat(undefined, { style: "narrow" }).format({ hours, minutes, seconds })
+}
+
 function valueFormatter(unit) {
   return function (context) {
     let label = context.dataset.label || ""
@@ -140,20 +152,20 @@ export default class extends Controller {
         },
         tooltip: {
           position: "atCursor",
+          callbacks: {
+            title: (items) => {
+              const labels = this.dataValue.labels
+              const index = items[0]?.dataIndex ?? 0
+              return formatElapsed(labels[0], labels[index])
+            },
+          },
         },
       },
       scales: {
         x: {
           ticks: {
             callback: function (_value, index, _ticks) {
-              const startTime = new Date(this.getLabelForValue(0))
-              const endTime = new Date(this.getLabelForValue(index))
-              const hours = Math.floor((endTime - startTime) / (1000 * 60 * 60))
-              const minutes = Math.floor((endTime - startTime) / (1000 * 60)) % 60
-              const seconds = Math.floor((endTime - startTime) / 1000) % 60
-              return new Intl.DurationFormat(undefined, {
-                style: "narrow",
-              }).format({ hours, minutes, seconds })
+              return formatElapsed(this.getLabelForValue(0), this.getLabelForValue(index))
             },
           },
         },

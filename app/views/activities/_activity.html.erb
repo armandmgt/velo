@@ -42,7 +42,7 @@
   <% end %>
 
   <% if (elevation_data = activity.elevation_chart_data) %>
-    <%= render "activities/elevation_profile", elevation_data: elevation_data %>
+    <%= render "activities/elevation_profile", elevation_data: elevation_data, map_target: (activity.path.present? ? "##{map_id}" : nil) %>
   <% end %>
 
   <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>
