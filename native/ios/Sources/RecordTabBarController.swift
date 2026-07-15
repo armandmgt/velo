@@ -16,10 +16,41 @@ import UIKit
 final class RecordTabBarController: HotwireTabBarController {
     private static let buttonSize: CGFloat = 56
 
-    /// The floating Record entry point. While a recording is in progress (S3, #51)
-    /// the `record.circle` glass capsule turns from accent-tinted to red and pulses,
-    /// so the recording reads as active from anywhere in the tab bar.
+    /// What the floating action button does, decided by the selected tab (and the
+    /// live recording state). On the dashboard it records; on the other tabs it
+    /// becomes a `+` that opens the matching web "new" form. A recording in
+    /// progress overrides everything — the record button stays reachable (and
+    /// pulsing) from every tab so an active recording still "reads as active from
+    /// anywhere in the tab bar".
+    private enum FabMode {
+        case record
+        case newActivity
+        case newRoute
+    }
+
+    /// The floating action button. In record mode the `record.circle` glass capsule
+    /// turns from accent-tinted to red and pulses while a recording is in progress
+    /// (S3, #51); in the `+` modes it opens `/activities/new` or `/planned_routes/new`.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
+
+    /// Tab indices, matching `HotwireTab.all` (dashboard, activities, plannedRoutes).
+    private static let activitiesTabIndex = 1
+    private static let plannedRoutesTabIndex = 2
+
+    /// The FAB action resolved for the current tab + recording state.
+    private var fabMode: FabMode = .record
+
+    /// Re-resolve the FAB whenever the selected tab changes programmatically
+    /// (e.g. the recording-review screen jumps to the Activités tab). Tab *taps*
+    /// don't route through this setter — `tabBar(_:didSelect:)` covers those.
+    override var selectedIndex: Int {
+        didSet { updateFab() }
+    }
+
+    override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        super.tabBar(tabBar, didSelect: item)
+        updateFab()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -49,12 +80,12 @@ final class RecordTabBarController: HotwireTabBarController {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        applyRecordButtonState()
+        updateFab()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        applyRecordButtonState()
+        updateFab()
     }
 
     /// Accent matching the web app's `--color-primary` (see AccentColor asset).
@@ -81,19 +112,55 @@ final class RecordTabBarController: HotwireTabBarController {
     }
 
     @objc private func syncRecordButton() {
-        applyRecordButtonState()
+        updateFab()
     }
 
-    /// Mirror the controller's active/idle state onto the button: a red, pulsing
-    /// glass capsule while recording; the accent-tinted capsule when idle. The
-    /// `record.circle` symbol is unchanged between states.
-    private func applyRecordButtonState() {
-        let isActive = RecordingController.shared.isActive
-        recordButton.configuration?.baseBackgroundColor = isActive ? .systemRed : .tintColor
+    /// Decide what the FAB should be right now: a live recording always wins (keep
+    /// the record button reachable from every tab); otherwise the selected tab
+    /// picks the mode.
+    private func resolvedFabMode() -> FabMode {
+        if RecordingController.shared.isActive { return .record }
+        switch selectedIndex {
+        case Self.activitiesTabIndex: return .newActivity
+        case Self.plannedRoutesTabIndex: return .newRoute
+        default: return .record
+        }
+    }
+
+    /// Sync the FAB's glyph, colour, label and pulse to the resolved mode: a red,
+    /// pulsing `record.circle` while recording; the accent-tinted `record.circle`
+    /// on the dashboard; an accent-tinted `plus` on the other tabs.
+    private func updateFab() {
+        let mode = resolvedFabMode()
+        fabMode = mode
+
+        let isRecording = RecordingController.shared.isActive
+        switch mode {
+        case .record:
+            recordButton.configuration?.image = fabImage("record.circle")
+            recordButton.configuration?.baseBackgroundColor = isRecording ? .systemRed : .tintColor
+            recordButton.accessibilityLabel = "Enregistrer"
+        case .newActivity:
+            recordButton.configuration?.image = fabImage("plus")
+            recordButton.configuration?.baseBackgroundColor = .tintColor
+            recordButton.accessibilityLabel = "Nouvelle activité"
+        case .newRoute:
+            recordButton.configuration?.image = fabImage("plus")
+            recordButton.configuration?.baseBackgroundColor = .tintColor
+            recordButton.accessibilityLabel = "Nouveau parcours"
+        }
+
         // Only manage the pulse while on-window (see viewDidLoad). When off-window,
         // skip it — `viewDidAppear` re-applies once the button is visible again.
         guard view.window != nil else { return }
-        isActive ? startPulsing() : stopPulsing()
+        (mode == .record && isRecording) ? startPulsing() : stopPulsing()
+    }
+
+    private func fabImage(_ systemName: String) -> UIImage? {
+        UIImage(
+            systemName: systemName,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
+        )
     }
 
     private static let pulseKey = "recordingPulse"
@@ -147,21 +214,34 @@ final class RecordTabBarController: HotwireTabBarController {
         }
         config.baseBackgroundColor = .tintColor
         config.baseForegroundColor = .white
-        // A small `record.circle` outline in both states; `updateRecordButton()`
-        // turns the capsule red (and pulses) while recording (S3).
-        config.image = UIImage(
-            systemName: "record.circle",
-            withConfiguration: UIImage.SymbolConfiguration(pointSize: 22, weight: .regular)
-        )
+        // Starts as the `record.circle` outline; `updateFab()` swaps it to `plus`
+        // on the non-dashboard tabs and turns the capsule red (and pulses) while
+        // recording (S3).
+        config.image = fabImage("record.circle")
         config.cornerStyle = .capsule
 
         let button = UIButton(
             configuration: config,
-            primaryAction: UIAction { [weak self] _ in self?.presentRecording() }
+            primaryAction: UIAction { [weak self] _ in self?.handleFabTap() }
         )
         button.translatesAutoresizingMaskIntoConstraints = false
         button.accessibilityLabel = "Enregistrer"
         return button
+    }
+
+    /// Route the tap to whatever the FAB currently is: present recording, or open
+    /// the matching web "new" form in the active tab's navigator. `/activities/new`
+    /// and `/planned_routes/new` end in `/new`, so the path config presents them
+    /// modally (MODAL_PATTERNS).
+    private func handleFabTap() {
+        switch fabMode {
+        case .record:
+            presentRecording()
+        case .newActivity:
+            activeNavigator.route(AppConfig.baseURL.appendingPathComponent("activities/new"))
+        case .newRoute:
+            activeNavigator.route(AppConfig.baseURL.appendingPathComponent("planned_routes/new"))
+        }
     }
 
     /// Present the recording screen full-screen. `.fullScreen` has no pull-down

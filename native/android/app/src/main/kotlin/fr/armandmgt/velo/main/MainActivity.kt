@@ -11,11 +11,13 @@ import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.tabs.HotwireBottomNavigationController
 import dev.hotwire.navigation.tabs.navigatorConfigurations
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
+import fr.armandmgt.velo.BuildConfig
 import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.RecordingActivity
 
 class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
+    private lateinit var recordFab: FloatingActionButton
 
     // A finished recording uploads out-of-band and returns the new activity's URL;
     // open it in the Activités tab's webview (#57).
@@ -35,9 +37,11 @@ class MainActivity : HotwireActivity() {
 
         initializeBottomTabs()
 
-        findViewById<FloatingActionButton>(R.id.record_fab).setOnClickListener {
-            recordLauncher.launch(Intent(this, RecordingActivity::class.java))
-        }
+        // The FAB is contextual to the selected tab: Record on the dashboard,
+        // a "+" that opens the web "new" form on the Activités / Parcours tabs.
+        recordFab = findViewById(R.id.record_fab)
+        updateFab(DASHBOARD_TAB_INDEX)
+        bottomNavigationController.setOnTabSelectedListener { index, _ -> updateFab(index) }
     }
 
     override fun navigatorConfigurations() = mainTabs.navigatorConfigurations
@@ -46,6 +50,27 @@ class MainActivity : HotwireActivity() {
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav)
         bottomNavigationController = HotwireBottomNavigationController(this, bottomNavigationView)
         bottomNavigationController.load(mainTabs, selectedTabIndex = 0)
+    }
+
+    /** Point the FAB's icon, label and tap action at whatever the selected tab needs. */
+    private fun updateFab(tabIndex: Int) {
+        when (tabIndex) {
+            ACTIVITIES_TAB_INDEX -> configureFab(R.drawable.ic_add, R.string.new_activity) {
+                bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
+            }
+            PLANNED_ROUTES_TAB_INDEX -> configureFab(R.drawable.ic_add, R.string.new_route) {
+                bottomNavigationController.route("${BuildConfig.BASE_URL}/planned_routes/new")
+            }
+            else -> configureFab(R.drawable.ic_record, R.string.record) {
+                recordLauncher.launch(Intent(this, RecordingActivity::class.java))
+            }
+        }
+    }
+
+    private fun configureFab(iconResId: Int, contentDescriptionResId: Int, onClick: () -> Unit) {
+        recordFab.setImageResource(iconResId)
+        recordFab.contentDescription = getString(contentDescriptionResId)
+        recordFab.setOnClickListener { onClick() }
     }
 
     fun showDashboard() {
@@ -65,5 +90,6 @@ class MainActivity : HotwireActivity() {
     private companion object {
         const val DASHBOARD_TAB_INDEX = 0
         const val ACTIVITIES_TAB_INDEX = 1
+        const val PLANNED_ROUTES_TAB_INDEX = 2
     }
 }

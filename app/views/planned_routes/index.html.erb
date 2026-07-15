@@ -4,7 +4,8 @@
   <header class="flex justify-between items-center mb-4 gap-3">
     <h1 class="mt-0 mb-0 hotwire-native:hidden"><%= t("planned_route.index.title") %></h1>
 
-    <%= link_to new_planned_route_path, class: "btn btn-primary btn-lg" do %>
+    <%# Hidden in the native shells — the tab-bar FAB opens this form there. %>
+    <%= link_to new_planned_route_path, class: "btn btn-primary btn-lg hotwire-native:hidden" do %>
       <%= icon "plus", class: "size-[1.4em]" %>
       <span class="hidden sm:block"><%= t("planned_route.index.new") %></span>
     <% end %>

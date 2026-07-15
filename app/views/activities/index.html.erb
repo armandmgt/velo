@@ -6,7 +6,8 @@
   <header class="flex items-center justify-between gap-3 mb-5 sm:mb-6">
     <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0 hotwire-native:hidden">Activités</h1>
 
-    <%= link_to new_activity_path, class: "btn btn-primary" do %>
+    <%# Hidden in the native shells — the tab-bar FAB opens this form there. %>
+    <%= link_to new_activity_path, class: "btn btn-primary hotwire-native:hidden" do %>
       <%= icon "plus", class: "size-[1.4em]" %>
       <span class="hidden sm:block">Nouvelle activité</span>
     <% end %>
