@@ -62,6 +62,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
             didSignOut()
             return .reject
         }
+
+        // Cross-tab routing. Each bottom tab owns a section of the app, but by
+        // default a tapped link pushes onto whatever tab's stack it came from —
+        // so an activity opened from the dashboard feed would land in the
+        // dashboard stack, duplicating what the Activités tab owns. The server's
+        // path-configuration tags each section with the tab that owns it; when a
+        // proposal names a *different* tab than the one showing, switch to it and
+        // route there, then reject so the originating navigator doesn't also
+        // push it. Modals present over the current tab, so they're left alone.
+        if fromTabBar,
+           proposal.properties["context"] as? String != "modal",
+           let tabName = proposal.properties["tab"] as? String,
+           let targetIndex = HotwireTab.index(named: tabName),
+           targetIndex != tabBarController.selectedIndex {
+            tabBarController.selectedIndex = targetIndex
+            tabBarController.activeNavigator.route(proposal.url)
+            return .reject
+        }
+
         return .accept
     }
 

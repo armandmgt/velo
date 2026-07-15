@@ -18,6 +18,7 @@ import fr.armandmgt.velo.bridge.NotificationCountComponent
 import fr.armandmgt.velo.features.web.WebFragment
 import fr.armandmgt.velo.main.FileDownloadRouteDecisionHandler
 import fr.armandmgt.velo.main.SignOutRouteDecisionHandler
+import fr.armandmgt.velo.main.TabRouteDecisionHandler
 
 class VeloApplication : Application() {
     override fun onCreate() {
@@ -49,12 +50,14 @@ class VeloApplication : Application() {
 
         // Replaces the library defaults; the custom handlers run first so they
         // intercept before AppNavigation hands a location to in-app routing:
-        // SignOut swaps back to LoginActivity on /session/new, and FileDownload
+        // SignOut swaps back to LoginActivity on /session/new, FileDownload
         // diverts file exports (e.g. GPX) to the system DownloadManager instead
-        // of a web destination that can't render the attachment.
+        // of a web destination that can't render the attachment, and TabRouting
+        // switches to the tab that owns a section before routing there.
         Hotwire.registerRouteDecisionHandlers(
             SignOutRouteDecisionHandler(),
             FileDownloadRouteDecisionHandler(),
+            TabRouteDecisionHandler(),
             AppNavigationRouteDecisionHandler(),
             BrowserTabRouteDecisionHandler(),
             SystemNavigationRouteDecisionHandler(),
