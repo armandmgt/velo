@@ -1,0 +1,9 @@
+<%# Subscribe the page to the owner's activity stream so create/update/destroy
+    (uploads, edits, background iGPSport/Strava syncs) morph it live. In the
+    native shell also mount native-refresh, which catches up a backgrounded tab
+    the moment it becomes visible again — its web view is suspended while hidden
+    and misses broadcasts sent in the meantime. %>
+<%= turbo_stream_from Current.user, :activities %>
+<% if hotwire_native_app? %>
+  <div data-controller="native-refresh" hidden></div>
+<% end %>

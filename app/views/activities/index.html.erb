@@ -1,6 +1,6 @@
 <% content_for :title, "Activités" %>
 
-<%= turbo_stream_from Current.user, :activities %>
+<%= render "shared/activity_stream" %>
 
 <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
   <header class="flex items-center justify-between gap-3 mb-5 sm:mb-6">
