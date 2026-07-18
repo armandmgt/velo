@@ -1,0 +1,50 @@
+appId: fr.armandmgt.velo
+name: Activities list (redesigned cards, dashboard ⇄ Activités share one design)
+tags:
+  - regression
+---
+# The activities index was rebuilt to reuse the dashboard's recent-activity card
+# (`activities/_activity_card`, rendered by both `activity_feeds#index` and
+# `activities#index`). Both pages also `turbo_stream_from Current.user,
+# :activities` via `shared/_activity_stream`, so a create/edit/sync morphs them
+# live. This flow guards that redesign: the same card (date · location, sport,
+# distance, D+) shows up under "Activités récentes" on the dashboard *and* in the
+# Activités tab grid — the visible surface of the shared partial + shared stream.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+
+- assertVisible: "Se connecter"
+- hideKeyboard
+- tapOn: "Se connecter"
+
+# Webview content is only queryable once the post-login tab-bar swap animation
+# settles; without this the first webview assertion races the transition.
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Dashboard recent-activity card. "Activités récentes" is the section header,
+# dashboard-only (it is absent from the Activités index), so it doubles as the
+# "we're on the dashboard" marker. It renders CSS-uppercased, which iOS exposes
+# as "ACTIVITÉS RÉCENTES"; the alternation tolerates either casing (Android
+# WebViews expose the DOM's original case). The card exposes its date · location
+# line as one accessibility string.
+- extendedWaitUntil:
+    visible: "ACTIVITÉS RÉCENTES|Activités récentes"
+    timeout: 20000
+- assertVisible: "MARDI 30 JUIN 2026 20H53"
+- assertVisible: "QUARTIER SAINT-MERRI"
+
+# Same card design on the Activités tab. "Activités" now matches only the tab-bar
+# item (the redesign dropped the old dashboard stat cards whose labels also read
+# "Activités", so the previous `index: 2` disambiguation is no longer needed).
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "MARDI 30 JUIN 2026 20H53"
+    timeout: 12000
+- assertVisible: "QUARTIER SAINT-MERRI"
+# A second card proves the grid renders the whole list, not just one entry.
+- assertVisible: "MOUNTAIN VIEW"

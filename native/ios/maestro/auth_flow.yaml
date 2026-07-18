@@ -25,22 +25,26 @@ tags:
 - hideKeyboard
 - tapOn: "Se connecter"
 
-# After login the dashboard renders inside the tab bar shell. The
-# "Résumé par période" h2 is a dashboard-only string (the words "Tableau
-# de bord" appear in both the page title and the tab label).
-- assertVisible: "Résumé par période"
+# After login the dashboard renders inside the tab bar shell. Wait for the
+# tab-bar swap animation to settle before querying webview content, then assert
+# "Activités récentes" — the recent-activity section header, which is
+# dashboard-only. ("Tableau de bord" and "Activités" both surface as tab-bar
+# labels on every tab, so neither proves which page is on screen.)
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "ACTIVITÉS RÉCENTES|Activités récentes"
 - assertVisible: "Tableau de bord"
 - assertVisible: "Activités"
 
-# Tap the Activités tab. "Activités" appears three times: the "7 derniers jours"
-# and "Ce mois" dashboard stat labels, then the native tab-bar item (exposed via
-# its accessibilityText) last — so the tab is index 2. (The old `index: 1`
-# stopped at the second stat card, which is why it silently stayed put.)
-- tapOn:
-    text: "Activités"
-    index: 2
-# The tab switched: the activities index renders, so the dashboard's "Résumé par
-# période" is gone. (Its h1 is `hotwire-native:hidden` and "Nouvelle activité" is
-# sm-only, leaving no stable activities-only visible string — the old "Importer
-# Strava ZIP" assertion referred to UI that no longer exists.)
-- assertNotVisible: "Résumé par période"
+# Tap the Activités tab. After the dashboard redesign "Activités" matches only
+# the native tab-bar item (the old dashboard stat cards whose labels also read
+# "Activités" are gone), so a plain tap is unambiguous — the previous `index: 2`
+# now points past the single match.
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+# The tab switched: the activities index renders, so the dashboard-only
+# "Activités récentes" recent-activity header is gone. (The activities h1 is
+# `hotwire-native:hidden` and "Nouvelle activité" is sm-only, leaving no stable
+# activities-only visible string to assert positively.)
+- assertNotVisible: "ACTIVITÉS RÉCENTES|Activités récentes"
