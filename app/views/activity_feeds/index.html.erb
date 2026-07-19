@@ -1,6 +1,6 @@
 <% content_for :title, "Tableau de bord" %>
 
-<%= turbo_stream_from Current.user, :activities %>
+<%= render "shared/activity_stream" %>
 
 <main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
   <h1 class="sr-only">Tableau de bord</h1>

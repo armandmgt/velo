@@ -23,7 +23,11 @@ tags:
 - hideKeyboard
 - tapOn: "Se connecter"
 
-- assertVisible: "Résumé par période"
+# Settle the post-login tab-bar swap, then assert the dashboard-only recent-
+# activity header ("Résumé par période" was removed in the dashboard redesign).
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "ACTIVITÉS RÉCENTES|Activités récentes"
 
 # The native Record button is a floating UIButton (accessibilityLabel), not a
 # tab — owned by RecordTabBarController so it can animate while recording.
