@@ -84,6 +84,26 @@ identifier `fr.armandmgt.velo`.
   - `cd native/android && mise run debug` — boots an emulator (first available
     AVD) if none is attached, then `./gradlew :app:installDebug` and starts
     `fr.armandmgt.velo/.main.MainActivity`. The `emulator` task boots alone.
+- **Verifying native changes — use Maestro, not `simctl` screenshots.** To debug
+  or verify a native change, drive the running app with Maestro and read state
+  from the accessibility tree; don't eyeball `xcrun simctl io … screenshot` PNGs.
+  The Maestro binary is at `~/.maestro/bin/maestro` (not on `PATH`).
+  - `maestro hierarchy` dumps the on-screen tree as JSON. It **exposes WebView
+    content** (activity names, section headers, tab labels appear as
+    `accessibilityText`/`text`), so use it to discover and confirm locators
+    instead of reading pixels.
+  - Flows live in `native/{ios,android}/maestro/*.yaml` (tag `regression`). Run
+    one with `maestro test native/ios/maestro/<flow>.yaml`, or the whole suite
+    with `maestro test native/ios/maestro/`. Keep the iOS and Android flows as
+    mirrors. **Commit a flow when it guards a feature; discard throwaway
+    debugging flows.**
+  - Gotchas: after a login or tab-switch transition, insert
+    `waitForAnimationToEnd` before asserting WebView text — the first query
+    otherwise races the transition and the element reads as not-visible. A
+    CSS-uppercased string (e.g. `text-transform` headings) surfaces uppercased on
+    iOS but DOM-cased on Android, so match it with a tolerant alternation like
+    `"ACTIVITÉS RÉCENTES|Activités récentes"`. `record_flow` drops a
+    `record-review.png` in the CWD (a `takeScreenshot` artifact) — don't commit it.
 - **Path configuration:** native apps fetch routing rules pre-login from
   `ConfigurationsController` (`/configurations/ios_v1`, `/configurations/android_v1`,
   both `allow_unauthenticated_access`). `MODAL_PATTERNS` (routes ending in
