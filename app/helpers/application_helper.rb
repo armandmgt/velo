@@ -79,11 +79,12 @@ module ApplicationHelper
     h < 24 ? "#{h}h#{m.to_s.rjust(2, '0')}" : "#{h} h"
   end
 
-  # Tiny inline SVG of an activity's GPS track for the recent-activities list.
-  # Falls back to a neutral map-icon tile when the activity has no path.
-  def activity_route_thumbnail(activity, css_class: "")
+  # Tiny inline SVG of a record's GPS track for the activities / planned-routes
+  # lists. Works for anything responding to `path` (Activity, PlannedRoute).
+  # Falls back to a neutral map-icon tile when the record has no path.
+  def route_thumbnail(record, css_class: "")
     base = "flex items-center justify-center overflow-hidden #{css_class}"
-    points = activity.path&.points
+    points = record.path&.points
 
     if points.blank? || points.size < 2
       return tag.div(icon("map", class: "size-5 opacity-30"),

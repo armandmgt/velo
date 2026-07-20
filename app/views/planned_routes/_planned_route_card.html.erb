@@ -1,0 +1,26 @@
+<%# locals: (planned_route:) %>
+<%= link_to planned_route_path(planned_route), id: dom_id(planned_route),
+            class: "flex items-center gap-3.5 bg-base-100 border border-base-300 rounded-box p-3 sm:p-3.5 hover:bg-base-200 transition-colors" do %>
+  <%= route_thumbnail(planned_route, css_class: "size-15 shrink-0 rounded-box") %>
+
+  <div class="flex-1 min-w-0">
+    <div class="text-[10.5px] uppercase tracking-wide font-semibold opacity-55 truncate">
+      <%= t("activity.sport.#{planned_route.sport}") %>
+    </div>
+    <div class="flex items-center gap-1.5 text-[15px] font-bold mt-0.5">
+      <%= icon planned_route.sport_icon_name, class: "size-4 shrink-0 text-primary" %>
+      <span class="truncate"><%= planned_route.name %></span>
+    </div>
+    <div class="flex gap-3.5 mt-1.5 text-xs opacity-70">
+      <% if planned_route.distance_meters %>
+        <span><b class="text-primary"><%= (planned_route.distance_meters / 1000.0).round(1) %></b> km</span>
+      <% end %>
+      <% if planned_route.elevation_gain_meters %>
+        <span><%= planned_route.elevation_gain_meters %> m D+</span>
+      <% end %>
+      <span><%= planned_route.waypoints.length %> <%= t("planned_route.show.waypoints").downcase %></span>
+    </div>
+  </div>
+
+  <%= icon "chevron-right", class: "size-5 opacity-40 shrink-0" %>
+<% end %>
