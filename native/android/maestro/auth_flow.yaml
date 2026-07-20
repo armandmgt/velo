@@ -24,20 +24,27 @@ tags:
 # LoginActivity. The dev form is pre-filled (test@example.com / dev), so submit.
 - tapOn: "Se connecter"
 
-# After login the dashboard renders inside the bottom-nav shell. "Résumé par
-# période" is a dashboard-only heading (the words "Tableau de bord" also appear
-# as the bottom-nav tab label).
-- assertVisible: "Résumé par période"
+# After login the dashboard renders inside the bottom-nav shell. Settle the
+# swap, then assert "Activités récentes" — the recent-activity section header,
+# dashboard-only. (It renders CSS-uppercased; the alternation tolerates iOS's
+# uppercased exposure and Android's DOM-cased one. "Tableau de bord" and
+# "Activités" surface as bottom-nav labels on every tab, so neither proves which
+# page is on screen.)
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "ACTIVITÉS RÉCENTES|Activités récentes"
 - assertVisible: "Tableau de bord"
 - assertVisible: "Activités"
 
-# Tap the Activités bottom tab. "Activités" appears three times: the "7 derniers
-# jours" and "Ce mois" dashboard stat labels, then the bottom-nav item last — so
-# the tab is index 2. (index 1 stops at the second stat card and stays put.)
-- tapOn:
-    text: "Activités"
-    index: 2
-# The tab switched: the activities index renders, so the dashboard's "Résumé par
-# période" is gone. (Its own h1 is `hotwire-native:hidden` and "Nouvelle activité"
-# is sm-only, leaving no stable activities-only *visible* string to match on.)
-- assertNotVisible: "Résumé par période"
+# Tap the Activités bottom tab. After the dashboard redesign "Activités" matches
+# only the bottom-nav item (the old dashboard stat cards whose labels also read
+# "Activités" are gone), so a plain tap is unambiguous — the previous `index: 2`
+# now points past the single match.
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+# The tab switched: the activities index renders, so the dashboard-only
+# "Activités récentes" recent-activity header is gone. (Its own h1 is
+# `hotwire-native:hidden` and "Nouvelle activité" is sm-only, leaving no stable
+# activities-only *visible* string to match on.)
+- assertNotVisible: "ACTIVITÉS RÉCENTES|Activités récentes"

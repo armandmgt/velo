@@ -56,14 +56,24 @@ class MainActivity : HotwireActivity() {
 
     /** Switch to the Activités tab and route its navigator to the freshly created activity (#57). */
     private fun openActivity(url: String) {
-        bottomNavigationController.selectTab(ACTIVITIES_TAB_INDEX)
-        val host = delegate.findNavigatorHost(R.id.activities_navigator_host) ?: return
+        routeInTab("activities", url)
+    }
+
+    /**
+     * Switch to the [tabName] tab and route its navigator to [url]. Backs
+     * cross-tab routing ([TabRouteDecisionHandler]): a link whose section is
+     * owned by another tab lands in that tab's stack instead of the current one.
+     */
+    fun routeInTab(tabName: String, url: String) {
+        val index = tabIndex(tabName) ?: return
+        val hostId = tabNavigatorHostId(tabName) ?: return
+        bottomNavigationController.selectTab(index)
+        val host = delegate.findNavigatorHost(hostId) ?: return
         // Post so the tab's navigator is ready when it was never opened before.
         host.view?.post { host.navigator?.route(url) }
     }
 
     private companion object {
         const val DASHBOARD_TAB_INDEX = 0
-        const val ACTIVITIES_TAB_INDEX = 1
     }
 }

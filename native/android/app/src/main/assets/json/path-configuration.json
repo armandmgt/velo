@@ -10,6 +10,18 @@
       }
     },
     {
+      "patterns": ["^/$"],
+      "properties": { "tab": "dashboard" }
+    },
+    {
+      "patterns": ["^/activities(/|$)"],
+      "properties": { "tab": "activities" }
+    },
+    {
+      "patterns": ["^/planned_routes(/|$)"],
+      "properties": { "tab": "planned_routes" }
+    },
+    {
       "patterns": ["/new$", "/edit$"],
       "properties": { "context": "modal", "pull_to_refresh_enabled": false }
     },

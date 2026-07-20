@@ -36,3 +36,15 @@ private val plannedRoutes = HotwireBottomTab(
 )
 
 val mainTabs = listOf(dashboard, activities, plannedRoutes)
+
+/**
+ * Cross-tab routing lookups. The server's path-configuration tags each section
+ * with the `tab` that owns it (see `ConfigurationsController::TAB_RULES`); those
+ * identifiers match each tab's [NavigatorConfiguration.name] above, so a tab can
+ * be resolved from a `tab` property by name.
+ */
+fun tabIndex(name: String): Int? =
+    mainTabs.indexOfFirst { it.configuration.name == name }.takeIf { it >= 0 }
+
+fun tabNavigatorHostId(name: String): Int? =
+    mainTabs.firstOrNull { it.configuration.name == name }?.configuration?.navigatorHostId
