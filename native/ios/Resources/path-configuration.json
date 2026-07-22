@@ -1,5 +1,5 @@
 {
-  "settings": {},
+  "settings": { "map_accent": "#f69900" },
   "rules": [
     {
       "patterns": ["/.*"],

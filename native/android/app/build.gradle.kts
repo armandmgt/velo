@@ -95,6 +95,11 @@ dependencies {
     // Fused Location Provider — streams GPS fixes for the native recording (#55).
     implementation("com.google.android.gms:play-services-location:21.4.0")
 
+    // MapLibre GL Native — the live map behind the recording screen (Recording.dc.html
+    // redesign). Consumes the same MapTiler style the web uses, via the style URL
+    // delivered in the path configuration's `settings` (ConfigurationsController).
+    implementation("org.maplibre.gl:android-sdk:11.8.0")
+
     // Room — persists the in-progress recording session + ordered points so a ride
     // survives a process kill (#56). room-ktx adds coroutine/suspend support.
     implementation("androidx.room:room-runtime:2.8.4")

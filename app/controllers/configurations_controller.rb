@@ -6,6 +6,28 @@ class ConfigurationsController < ApplicationController
   # Forms present modally; everything else pushes onto the native nav stack.
   MODAL_PATTERNS = [ "/new$", "/edit$" ].freeze
 
+  # Map configuration for the native recording screen's MapLibre map. The native
+  # shells read this from `pathConfiguration.settings` at launch (no webview, so
+  # they can't get it over the Strada bridge). `map_style_url` is the same MapTiler
+  # streets style the web uses (see map_helpers.js `styleUrl`), so the native
+  # basemap matches the web; `map_accent` is the app's `--color-primary` (orange),
+  # used for the live route trace + distance hero.
+  #
+  # Flat string keys (not a nested object): Hotwire Native Android types
+  # `settings` as Map<String,String>, so nested objects wouldn't survive there.
+  #
+  # NOTE: this endpoint is `allow_unauthenticated_access`, so the key here is
+  # publicly fetchable. Prefer a dedicated, usage-capped MapTiler key for native.
+  def self.map_settings
+    key = Rails.application.credentials.maptiler_api_key
+    {
+      map_style_url: "https://api.maptiler.com/maps/streets/style.json?key=#{key}",
+      # The browser-resolved sRGB of the web theme's `--color-primary`
+      # (oklch(76% 0.188 70.08)) — so the native trace/accent matches the webviews.
+      map_accent: "#f69900"
+    }
+  end
+
   # Cross-tab routing. Each bottom tab owns a section of the app, but Hotwire
   # Native pushes a tapped link onto whichever tab's stack it was tapped from —
   # so an activity opened from the dashboard feed would land in the dashboard
@@ -44,7 +66,7 @@ class ConfigurationsController < ApplicationController
 
     def ios_configuration
       {
-        settings: {},
+        settings: self.class.map_settings,
         rules: [
           { patterns: [ "/.*" ], properties: { context: "default", pull_to_refresh_enabled: true } },
           *TAB_RULES,
@@ -59,7 +81,7 @@ class ConfigurationsController < ApplicationController
     # properties accumulate top-down, so the modal rule only overrides context.
     def android_configuration
       {
-        settings: {},
+        settings: self.class.map_settings,
         rules: [
           {
             patterns: [ ".*" ],

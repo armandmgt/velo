@@ -214,6 +214,15 @@ final class RecordingController: NSObject {
     var currentStats: RecordingStats {
         accumulator.snapshot(elapsed: elapsed, currentSpeed: lastFixSpeed)
     }
+
+    /// The current session's recorded points as map coordinates, oldest-first.
+    /// Used to seed the live trace when the recording screen is reopened onto an
+    /// in-progress recording (the map view is recreated but the route persists).
+    var routeCoordinates: [CLLocationCoordinate2D] {
+        (session?.orderedPoints ?? []).map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+    }
 }
 
 // MARK: - LocationRecorderDelegate

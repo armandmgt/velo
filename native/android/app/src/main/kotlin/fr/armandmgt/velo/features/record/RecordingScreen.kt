@@ -1,15 +1,21 @@
 package fr.armandmgt.velo.features.record
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +33,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -44,12 +49,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.data.RecordingState
 import fr.armandmgt.velo.ui.theme.VeloTheme
@@ -72,15 +92,38 @@ sealed interface RecordingScreenState {
     data object Uploading : RecordingScreenState
 }
 
-/** Amber used for the paused state (Material has no built-in "warning" role). */
-private val PausedColor = Color(0xFFF59E0B)
+/**
+ * The design's flat, light palette (Recording.dc.html): sharp-cornered white
+ * surfaces with thin borders — deliberately *not* Material tokens, so the native
+ * recording screen matches the web pixel-for-pixel.
+ */
+private object Rec {
+    val ink = Color(0xFF161616)        // primary text        — oklch(20% 0 0)
+    val muted = Color(0xFF555555)      // captions / secondary — oklch(45% 0 0)
+    val border = Color(0xFFCECECE)     // chip / button border — oklch(85% 0 0)
+    val borderDock = Color(0xFFD7D7D7) // dock border          — oklch(88% 0 0)
+    val divider = Color(0xFFE4E4E4)    // internal dividers    — oklch(92% 0 0)
+    val grabber = Color(0xFFC4C4C4)    // grab handle          — oklch(82% 0 0)
+    val orange = Color(0xFFF69900)     // distance / speed     — web `--color-primary` resolved
+    val green = Color(0xFF20C45F)      // Démarrer fill        — oklch(72% 0.19 150)
+    val greenText = Color(0xFF08351A)  // Démarrer text        — oklch(24% 0.06 153)
+    val redBorder = Color(0xFFFF627E)  // Arrêter border       — oklch(71% 0.194 13.4)
+    val red = Color(0xFFDD1B53)        // Arrêter / rec pill   — oklch(58% 0.22 13.4)
+    val paused = Color(0xFFD36000)     // paused pill          — oklch(62% 0.18 56)
+    val surface = Color(0xFFFFFFFF)
+}
+
+/** A flat white sharp-cornered card: soft shadow + 1px border, no rounded corners. */
+private fun Modifier.flatCard(borderColor: Color, elevation: Dp): Modifier =
+    this
+        .shadow(elevation, RectangleShape, clip = false)
+        .background(Rec.surface)
+        .border(1.dp, borderColor)
 
 /**
- * The native recording screen (#56), redesigned as a **dashboard**: a compact
- * header (sport chip ⟷ GPS chip), a pulsing state pill, a large **distance** hero,
- * and a filled 2×2 metric card (temps · vitesse/allure · moyenne · tours) that
- * gives the body weight. GPS signal stays a minor chip; recording state reads from
- * the pill. Controls run start, pause/resume, lap, and stop.
+ * The native recording screen (#56), redesigned map-centric + flat per
+ * `Recording.dc.html`: a full-bleed live map with floating white chips / pill and a
+ * collapsible stats dock over flat sharp-cornered controls.
  */
 @Composable
 fun RecordingScreen(
@@ -100,6 +143,22 @@ fun RecordingScreen(
     onDiscard: () -> Unit,
 ) {
     Scaffold { innerPadding ->
+        // Streaming is the map-centric surface; the other states keep the simple
+        // stacked column layout.
+        if (state is RecordingScreenState.Streaming) {
+            RecordingMapScreen(
+                innerPadding = innerPadding,
+                ui = state.state,
+                selectedSport = selectedSport,
+                onSelectSport = onSelectSport,
+                onStartStop = onStartStop,
+                onPause = onPause,
+                onResume = onResume,
+                onLap = onLap,
+            )
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -107,7 +166,6 @@ fun RecordingScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // The body fills the space above the bottom action area.
             val bodyModifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -122,9 +180,6 @@ fun RecordingScreen(
                 RecordingScreenState.Uploading ->
                     UploadingBody(bodyModifier)
 
-                is RecordingScreenState.Streaming ->
-                    DashboardBody(bodyModifier, state.state, selectedSport, onSelectSport)
-
                 is RecordingScreenState.Reviewing ->
                     ReviewBody(
                         bodyModifier,
@@ -136,65 +191,290 @@ fun RecordingScreen(
                         selectedVisibility,
                         onSelectVisibility,
                     )
+
+                is RecordingScreenState.Streaming -> Unit // handled above
             }
 
-            // Bottom action area: Démarrer while armed; Tour/Pause + Arrêter while
-            // recording; Enregistrer/Supprimer while reviewing; nothing during the
-            // permission/upload states.
-            when (state) {
-                is RecordingScreenState.Streaming -> Controls(
-                    ui = state.state,
-                    onStartStop = onStartStop,
-                    onPause = onPause,
-                    onResume = onResume,
-                    onLap = onLap,
-                )
-
-                is RecordingScreenState.Reviewing -> ReviewControls(onSave = onSave, onDiscard = onDiscard)
-
-                else -> Unit
+            if (state is RecordingScreenState.Reviewing) {
+                ReviewControls(onSave = onSave, onDiscard = onDiscard)
             }
+        }
+    }
+}
+
+/**
+ * The map-centric recording surface: a full-bleed [RecordingMap] with the header
+ * chips + state pill floating on top and a collapsible stats dock over the controls
+ * at the bottom. The camera is kept above the dock by measuring the bottom overlay's
+ * height and feeding it as the map's bottom padding.
+ */
+@Composable
+private fun RecordingMapScreen(
+    innerPadding: PaddingValues,
+    ui: RecordingUiState,
+    selectedSport: Sport,
+    onSelectSport: (Sport) -> Unit,
+    onStartStop: (Boolean) -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onLap: () -> Unit,
+) {
+    val position = remember(ui.latitude, ui.longitude) {
+        val lat = ui.latitude
+        val lng = ui.longitude
+        if (lat != null && lng != null) RoutePoint(lat, lng) else null
+    }
+    var bottomOverlayHeight by remember { mutableStateOf(0) }
+
+    Box(Modifier.fillMaxSize()) {
+        RecordingMap(
+            routePoints = ui.routePoints,
+            position = position,
+            bottomPaddingPx = bottomOverlayHeight,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        // Top overlay: sport ⟷ GPS chips, then the state pill.
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Header(selectedSport, onSelectSport, ui.accuracy, armed = ui.armed)
+            if (!ui.armed) {
+                Spacer(Modifier.size(12.dp))
+                PillCapsule { StatePill(ui.recordingState) }
+            }
+        }
+
+        // Bottom overlay: collapsible stats dock over the controls.
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(innerPadding)
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+                .onSizeChanged { bottomOverlayHeight = it.height },
+        ) {
+            RecordingDock(ui, selectedSport.usesPace)
+            Spacer(Modifier.size(10.dp))
+            Controls(ui, onStartStop, onPause, onResume, onLap)
+        }
+    }
+}
+
+/** A flat white sharp-cornered capsule backing the state pill so it reads over the map. */
+@Composable
+private fun PillCapsule(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .flatCard(Rec.border, 2.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+    ) { content() }
+}
+
+/**
+ * The collapsible stats dock floating at the bottom of the map. Armed → the "Prêt à
+ * enregistrer" card; recording/paused → a compact one-row summary or the expanded
+ * Distance | Temps + Vitesse · Moyenne · Tours layout, toggled by the grabber.
+ */
+@Composable
+private fun RecordingDock(ui: RecordingUiState, usesPace: Boolean) {
+    var collapsed by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize()
+            .flatCard(Rec.borderDock, 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (!ui.armed) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { collapsed = !collapsed }
+                    .semantics { contentDescription = "Réduire ou agrandir les statistiques" }
+                    .padding(vertical = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                GrabHandle()
+            }
+        }
+
+        when {
+            ui.armed -> IdleDockContent()
+            collapsed -> CollapsedStats(ui, usesPace)
+            else -> ExpandedStats(ui, usesPace)
         }
     }
 }
 
 @Composable
-private fun DashboardBody(
-    modifier: Modifier,
-    ui: RecordingUiState,
-    selectedSport: Sport,
-    onSelectSport: (Sport) -> Unit,
-) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Header(selectedSport, onSelectSport, ui.accuracy, armed = ui.armed)
+private fun GrabHandle() {
+    Box(
+        Modifier
+            .size(width = 36.dp, height = 5.dp)
+            .clip(RoundedCornerShape(3.dp))
+            .background(Rec.grabber),
+    )
+}
 
-        Spacer(Modifier.size(12.dp))
+/** Dock content before Démarrer: a quiet "ready to record" card. */
+@Composable
+private fun IdleDockContent() {
+    Column(
+        modifier = Modifier.padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        GrabHandle()
+        Spacer(Modifier.size(16.dp))
+        Text(
+            text = stringResource(R.string.recording_ready_title).uppercase(),
+            color = Rec.muted,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.6.sp,
+        )
+        Spacer(Modifier.size(6.dp))
+        Text(
+            text = stringResource(R.string.recording_ready_subtitle),
+            color = Rec.muted,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
 
-        // Reserve the pill's row even while armed (hidden) so the hero doesn't jump
-        // vertically the moment recording starts.
-        if (ui.armed) {
-            Spacer(Modifier.size(20.dp))
-        } else {
-            StatePill(ui.recordingState)
+/** The collapsed dock: distance · | · temps · [spacer] · vitesse, one row. */
+@Composable
+private fun CollapsedStats(ui: RecordingUiState, usesPace: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(
+                text = "%.1f".format(ui.distanceMeters / 1000),
+                color = Rec.orange,
+                style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+            )
+            Spacer(Modifier.width(4.dp))
+            Text("km", color = Rec.muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 3.dp))
         }
+        Spacer(Modifier.width(16.dp))
+        Box(Modifier.width(1.dp).height(26.dp).background(Rec.divider))
+        Spacer(Modifier.width(16.dp))
+        Text(
+            text = dockElapsed(ui.elapsedSeconds).full,
+            color = Rec.ink,
+            style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+        )
+        Spacer(Modifier.weight(1f))
+        // The number in accent, the unit smaller and muted (design's collapsed speed).
+        Text(collapsedSpeed(ui.currentSpeedMps, usesPace))
+    }
+}
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Hero(ui.distanceMeters)
-
-            Spacer(Modifier.size(28.dp))
-
-            MetricCard(ui, selectedSport.usesPace)
+/** Collapsed-dock speed: accent number + a smaller muted unit (` km/h` or ` /km`). */
+private fun collapsedSpeed(metersPerSecond: Double, usesPace: Boolean): AnnotatedString {
+    val number = if (usesPace) speedNumber(metersPerSecond, true) else "%.1f".format(metersPerSecond * 3.6)
+    val unit = if (usesPace) " /km" else " km/h"
+    return buildAnnotatedString {
+        withStyle(SpanStyle(color = Rec.orange, fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum")) {
+            append(number)
+        }
+        withStyle(SpanStyle(color = Rec.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)) {
+            append(unit)
         }
     }
 }
 
-/** Sport chip (left) ⟷ GPS chip (right). */
+/** The expanded dock: Distance | Temps (two big columns) over Vitesse · Moyenne · Tours. */
+@Composable
+private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean) {
+    val time = dockElapsed(ui.elapsedSeconds)
+    val vitLabel = if (usesPace) "Vit. /km" else "Vit. km/h"
+    val moyLabel = if (usesPace) "Moy. /km" else "Moy. km/h"
+
+    Column {
+        Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 20.dp, end = 16.dp, top = 2.dp, bottom = 14.dp),
+            ) {
+                CaptionRow(R.drawable.ic_stat_distance, stringResource(R.string.recording_distance))
+                Spacer(Modifier.size(2.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = "%.1f".format(ui.distanceMeters / 1000),
+                        color = Rec.orange,
+                        style = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text("km", color = Rec.muted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 5.dp))
+                }
+            }
+            Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
+            Column(
+                modifier = Modifier.weight(1f).padding(start = 16.dp, end = 20.dp, top = 2.dp, bottom = 14.dp),
+            ) {
+                CaptionRow(R.drawable.ic_stat_time, stringResource(R.string.recording_elapsed))
+                Spacer(Modifier.size(2.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = time.big,
+                        color = Rec.ink,
+                        style = TextStyle(fontSize = 40.sp, fontWeight = FontWeight.ExtraBold, fontFeatureSettings = "tnum"),
+                    )
+                    Text(
+                        text = time.small,
+                        color = Rec.muted,
+                        style = TextStyle(fontSize = 19.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+                        modifier = Modifier.padding(bottom = 3.dp),
+                    )
+                }
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(0.5.dp).background(Rec.divider))
+        Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+            StatCell(speedNumber(ui.currentSpeedMps, usesPace), Rec.orange, vitLabel)
+            Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
+            StatCell(speedNumber(ui.averageSpeedMps, usesPace), Rec.ink, moyLabel)
+            Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
+            StatCell(ui.lap.toString(), Rec.ink, stringResource(R.string.recording_laps))
+        }
+    }
+}
+
+/** A small caption row: a tinted icon + an uppercase muted label. */
+@Composable
+private fun CaptionRow(iconRes: Int, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(iconRes), contentDescription = null, tint = Rec.muted, modifier = Modifier.size(13.dp))
+        Spacer(Modifier.width(5.dp))
+        Text(text.uppercase(), color = Rec.muted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp)
+    }
+}
+
+/** One bottom-row stat cell: a value over an uppercase caption, centred. */
+@Composable
+private fun RowScope.StatCell(value: String, valueColor: Color, caption: String) {
+    Column(
+        modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(value, color = valueColor, style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"))
+        Spacer(Modifier.size(2.dp))
+        Text(caption.uppercase(), color = Rec.muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.4.sp)
+    }
+}
+
+/** Sport chip (left) ⟷ GPS chip (right), both flat white bordered chips. */
 @Composable
 private fun Header(
     selectedSport: Sport,
@@ -207,15 +487,199 @@ private fun Header(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SportChip(selectedSport, onSelectSport, enabled = armed)
+        FlatSportChip(selectedSport, onSelectSport, enabled = armed)
         GpsChip(accuracy)
     }
 }
 
 /**
- * Sport chip — an outlined button showing the sport's icon + name, with a pull-down
- * picker over [Sport.entries]. The picker only opens while [enabled] (pre-Démarrer);
- * once recording the sport is locked, but the chip stays a full-colour label.
+ * Flat sport chip: a white bordered chip (icon + name) with a pull-down picker.
+ * Opens only while [enabled] (pre-Démarrer); once recording the sport is locked.
+ */
+@Composable
+private fun FlatSportChip(selected: Sport, onSelect: (Sport) -> Unit, enabled: Boolean) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .flatCard(Rec.border, 2.dp)
+                .clickable(enabled = enabled) { expanded = true }
+                .padding(horizontal = 13.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(selected.iconRes), contentDescription = null, tint = Rec.ink, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(7.dp))
+            Text(stringResource(selected.nameRes), color = Rec.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            Sport.entries.forEach { sport ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(sport.nameRes)) },
+                    leadingIcon = {
+                        Icon(painterResource(sport.iconRes), contentDescription = null, modifier = Modifier.size(20.dp))
+                    },
+                    onClick = {
+                        onSelect(sport)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** Flat white GPS chip: a signal-coloured dot + the current status. */
+@Composable
+private fun GpsChip(accuracy: Float?) {
+    val dotColor = when {
+        accuracy == null -> Rec.muted
+        accuracy <= 15f -> Rec.green
+        accuracy <= 40f -> Rec.paused
+        else -> Rec.red
+    }
+    val value = accuracy?.let { "%.0f m".format(it) } ?: stringResource(R.string.recording_gps_searching)
+
+    Row(
+        modifier = Modifier
+            .flatCard(Rec.border, 2.dp)
+            .padding(horizontal = 13.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(dotColor))
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = stringResource(R.string.recording_gps_signal, value),
+            color = Rec.ink,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/** State pill contents: a pulsing coloured dot + uppercase coloured word. */
+@Composable
+private fun StatePill(recordingState: RecordingState) {
+    val recording = recordingState != RecordingState.PAUSED
+    val color = if (recording) Rec.red else Rec.paused
+
+    val transition = rememberInfiniteTransition(label = "pill")
+    val pulse by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.28f,
+        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+        label = "pulse",
+    )
+    val dotAlpha = if (recording) pulse else 1f
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(9.dp).clip(CircleShape).background(color).alpha(dotAlpha))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(
+                if (recording) R.string.recording_state_recording else R.string.recording_state_paused,
+            ).uppercase(),
+            color = color,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.4.sp,
+        )
+    }
+}
+
+/**
+ * Flat, sharp-cornered bottom controls (no Material buttons): a full-width green
+ * Démarrer while armed, else Tour · Pause · Arrêter (recording) or Reprendre · Arrêter
+ * (paused). [onStartStop] is handed the current [armed] flag so the caller decides
+ * start vs stop.
+ */
+@Composable
+private fun Controls(
+    ui: RecordingUiState,
+    onStartStop: (Boolean) -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
+    onLap: () -> Unit,
+) {
+    Column(modifier = Modifier.padding(top = 10.dp, bottom = 14.dp)) {
+        if (ui.armed) {
+            FlatButton(
+                text = stringResource(R.string.recording_start),
+                onClick = { onStartStop(true) },
+                background = Rec.green,
+                textColor = Rec.greenText,
+                modifier = Modifier.fillMaxWidth(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+            )
+        } else {
+            val paused = ui.recordingState == RecordingState.PAUSED
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (!paused) {
+                    // Visible text doubles as the label Maestro taps via "^Tour$".
+                    FlatButton(
+                        text = stringResource(R.string.recording_mark_lap),
+                        onClick = onLap,
+                        background = Rec.surface,
+                        textColor = Rec.ink,
+                        modifier = Modifier.weight(1f),
+                        border = Rec.border,
+                    )
+                }
+                FlatButton(
+                    text = if (paused) stringResource(R.string.recording_resume) else stringResource(R.string.recording_pause),
+                    onClick = { if (paused) onResume() else onPause() },
+                    background = if (paused) Rec.green else Rec.surface,
+                    textColor = if (paused) Rec.greenText else Rec.ink,
+                    modifier = Modifier.weight(if (paused) 2f else 1f),
+                    border = if (paused) null else Rec.border,
+                    fontWeight = if (paused) FontWeight.Bold else FontWeight.SemiBold,
+                )
+                FlatButton(
+                    text = stringResource(R.string.recording_stop),
+                    onClick = { onStartStop(false) },
+                    background = Rec.surface,
+                    textColor = Rec.red,
+                    modifier = Modifier.weight(1f),
+                    border = Rec.redBorder,
+                )
+            }
+        }
+    }
+}
+
+/** A flat, sharp-cornered button (Box + optional border) — replaces Material buttons. */
+@Composable
+private fun FlatButton(
+    text: String,
+    onClick: () -> Unit,
+    background: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+    border: Color? = null,
+    fontWeight: FontWeight = FontWeight.SemiBold,
+    fontSize: TextUnit = 15.sp,
+) {
+    Box(
+        modifier = modifier
+            .background(background)
+            .then(if (border != null) Modifier.border(1.dp, border) else Modifier)
+            .clickable(onClick = onClick)
+            .padding(vertical = 15.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, color = textColor, fontWeight = fontWeight, fontSize = fontSize)
+    }
+}
+
+// MARK: - Review screen (out of scope of the recording redesign; keeps Material)
+
+/**
+ * Sport chip for the review form — an outlined button with a pull-down picker.
+ * (The live recording header uses [FlatSportChip]; this stays Material for the
+ * review form.)
  */
 @Composable
 private fun SportChip(selected: Sport, onSelect: (Sport) -> Unit, enabled: Boolean) {
@@ -255,68 +719,6 @@ private fun SportChip(selected: Sport, onSelect: (Sport) -> Unit, enabled: Boole
     }
 }
 
-/** Slim GPS-signal chip: a coloured dot + the current horizontal accuracy. */
-@Composable
-private fun GpsChip(accuracy: Float?) {
-    val color = when {
-        accuracy == null -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        accuracy <= 15f -> MaterialTheme.colorScheme.secondary
-        accuracy <= 40f -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.error
-    }
-    val value =
-        accuracy?.let { "%.0f m".format(it) } ?: stringResource(R.string.recording_gps_searching)
-
-    Surface(color = color.copy(alpha = 0.15f), shape = RoundedCornerShape(14.dp)) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Surface(color = color, shape = CircleShape, modifier = Modifier.size(8.dp)) {}
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = stringResource(R.string.recording_gps_signal, value),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            )
-        }
-    }
-}
-
-/** Recording/paused state pill with a pulsing dot (red recording, amber paused). */
-@Composable
-private fun StatePill(recordingState: RecordingState) {
-    val recording = recordingState != RecordingState.PAUSED
-    val color = if (recording) MaterialTheme.colorScheme.error else PausedColor
-
-    val transition = rememberInfiniteTransition(label = "pill")
-    val pulse by transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0.25f,
-        animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
-        label = "pulse",
-    )
-    val dotAlpha = if (recording) pulse else 1f
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-            color = color,
-            shape = CircleShape,
-            modifier = Modifier
-                .size(10.dp)
-                .alpha(dotAlpha),
-        ) {}
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = stringResource(
-                if (recording) R.string.recording_state_recording else R.string.recording_state_paused,
-            ),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-        )
-    }
-}
-
 /** The hero: a large distance number with a small unit, over a quiet caption. */
 @Composable
 private fun Hero(distanceMeters: Double) {
@@ -342,42 +744,6 @@ private fun Hero(distanceMeters: Double) {
     }
 }
 
-/** Filled 2×2 metric card with hairline dividers: temps · vitesse/allure · moyenne · tours. */
-@Composable
-private fun MetricCard(ui: RecordingUiState, usesPace: Boolean) {
-    val speed = if (usesPace) formatPace(ui.currentSpeedMps) else formatSpeedKmh(ui.currentSpeedMps)
-    val average = if (usesPace) formatPace(ui.averageSpeedMps) else formatSpeedKmh(ui.averageSpeedMps)
-    val speedLabel = stringResource(if (usesPace) R.string.recording_pace else R.string.recording_speed)
-
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column {
-            MetricRow(
-                left = formatElapsed(ui.elapsedSeconds) to stringResource(R.string.recording_elapsed),
-                right = speed to speedLabel,
-            )
-            HorizontalDivider()
-            MetricRow(
-                left = average to stringResource(R.string.recording_average_speed),
-                right = ui.lap.toString() to stringResource(R.string.recording_laps),
-            )
-        }
-    }
-}
-
-/** One grid row: two equal stat cells split by a vertical hairline. */
-@Composable
-private fun MetricRow(left: Pair<String, String>, right: Pair<String, String>) {
-    Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-        Stat(left.first, left.second, Modifier.weight(1f))
-        VerticalDivider(modifier = Modifier.fillMaxHeight())
-        Stat(right.first, right.second, Modifier.weight(1f))
-    }
-}
-
 @Composable
 private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
@@ -398,80 +764,9 @@ private fun Stat(value: String, label: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Bottom controls: a full-width Démarrer while armed, else a Tour ⟷ Pause/Reprendre
- * row above a full-width Arrêter. [onStartStop] is handed the current [armed] flag so
- * the caller decides start vs stop.
- */
-@Composable
-private fun Controls(
-    ui: RecordingUiState,
-    onStartStop: (Boolean) -> Unit,
-    onPause: () -> Unit,
-    onResume: () -> Unit,
-    onLap: () -> Unit,
-) {
-    Column(modifier = Modifier.padding(top = 12.dp, bottom = 16.dp)) {
-        if (ui.armed) {
-            Button(
-                onClick = { onStartStop(true) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-            ) {
-                Text(stringResource(R.string.recording_start))
-            }
-        } else {
-            val paused = ui.recordingState == RecordingState.PAUSED
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                OutlinedButton(
-                    onClick = onLap,
-                    enabled = !paused,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(54.dp),
-                ) {
-                    // Visible text doubles as the contentDescription Maestro taps via
-                    // "^Tour$" — kept distinct from the "Tours" metric caption.
-                    Text(stringResource(R.string.recording_mark_lap))
-                }
-                OutlinedButton(
-                    onClick = { if (paused) onResume() else onPause() },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(54.dp),
-                ) {
-                    Text(
-                        stringResource(
-                            if (paused) R.string.recording_resume else R.string.recording_pause,
-                        ),
-                    )
-                }
-            }
-            Spacer(Modifier.size(12.dp))
-            Button(
-                onClick = { onStartStop(false) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp),
-            ) {
-                Text(stringResource(R.string.recording_stop))
-            }
-        }
-    }
-}
-
-/**
  * The review/confirm screen body (#67): a read-only distance hero + summary
- * (Temps · Moyenne), then the editable sport, name, and visibility fields.
- * Mirrors [DashboardBody]'s visual language; scrolls so the form stays reachable
- * above the keyboard on short screens.
+ * (Temps · Moyenne), then the editable sport, name, and visibility fields. Scrolls
+ * so the form stays reachable above the keyboard on short screens.
  */
 @Composable
 private fun ReviewBody(
@@ -654,6 +949,26 @@ private fun DeniedBody(modifier: Modifier, onOpenSettings: () -> Unit) {
     }
 }
 
+/** Elapsed split for the dock: `full` (collapsed) plus a big head + small `:ss` tail
+ *  (expanded), matching the design's two-weight time (e.g. 4:38 / :20). */
+private data class DockTime(val full: String, val big: String, val small: String)
+
+private fun dockElapsed(totalSeconds: Long): DockTime {
+    val h = totalSeconds / 3600
+    val m = (totalSeconds % 3600) / 60
+    val s = totalSeconds % 60
+    val small = ":%02d".format(s)
+    return if (h > 0) {
+        DockTime("%d:%02d:%02d".format(h, m, s), "%d:%02d".format(h, m), small)
+    } else {
+        DockTime("%d:%02d".format(m, s), "$m", small)
+    }
+}
+
+/** The value only (no unit) for the bottom stat cells. */
+private fun speedNumber(metersPerSecond: Double, usesPace: Boolean): String =
+    if (usesPace) formatPace(metersPerSecond).removeSuffix("/km") else "%.1f".format(metersPerSecond * 3.6)
+
 private fun formatElapsed(totalSeconds: Long): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
@@ -678,41 +993,6 @@ private fun formatPace(metersPerSecond: Double): String {
     val minutes = (secondsPerKm / 60).toInt()
     val seconds = (secondsPerKm % 60).toInt()
     return "%d:%02d/km".format(minutes, seconds)
-}
-
-@Preview(name = "Armed")
-@Composable
-private fun RecordingScreenArmedPreview() {
-    VeloTheme {
-        RecordingScreen(
-            state = RecordingScreenState.Streaming(
-                RecordingUiState(
-                    recordingState = RecordingState.RECORDING,
-                    armed = true,
-                    accuracy = 6.5f,
-                    pointCount = 0,
-                    lap = 0,
-                    elapsedSeconds = 0,
-                    distanceMeters = 0.0,
-                    currentSpeedMps = 0.0,
-                    averageSpeedMps = 0.0,
-                ),
-            ),
-            selectedSport = Sport.BIKE,
-            onSelectSport = {},
-            onStartStop = {},
-            onPause = {},
-            onResume = {},
-            onLap = {},
-            onOpenSettings = {},
-            reviewName = "",
-            onReviewNameChange = {},
-            selectedVisibility = Visibility.PRIVATE,
-            onSelectVisibility = {},
-            onSave = {},
-            onDiscard = {},
-        )
-    }
 }
 
 @Preview(name = "Streaming")
