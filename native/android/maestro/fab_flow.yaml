@@ -1,0 +1,89 @@
+appId: fr.armandmgt.velo
+name: FAB flow (contextual bottom-nav FAB — record ⇄ new activity ⇄ new route)
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/fab_flow.yaml. The FAB is a
+# FloatingActionButton whose icon, contentDescription and click action are
+# re-pointed per selected tab (MainActivity.updateFab, wired via
+# setOnTabSelectedListener): Record on the dashboard, a `+` that routes to the
+# web "new" form on Activités / Parcours. Maestro matches it by
+# contentDescription. The in-page "+" header buttons are `hotwire-native:hidden`,
+# so each label below belongs to the FAB alone.
+#
+# Tab labels are anchored (`^…$`) — Maestro matches text as a substring regex,
+# so bare "Activités" would also hit the dashboard's "Activités récentes"
+# heading, which is the dashboard-only marker.
+- launchApp:
+    clearState: true
+    stopApp: true
+    permissions:
+      location: allow
+
+# Cold start loads the login webview; wait it out before asserting.
+- extendedWaitUntil:
+    visible: "Connexion"
+    timeout: 15000
+# No hideKeyboard on Android: it falls back to Back, which would finish the root
+# LoginActivity. The dev form is pre-filled, so submit straight away.
+- tapOn: "Se connecter"
+- assertVisible: "Activités récentes"
+
+# Dashboard (tab 0): the FAB is the Record entry point.
+- assertVisible: "Enregistrer"
+- takeScreenshot: android-fab-dashboard-record
+
+# Activités tab: the FAB swaps to the `+` → "Nouvelle activité", and the record
+# label is gone (a swap, not an addition).
+- tapOn:
+    text: "^Activités$"
+- assertVisible: "Nouvelle activité"
+- assertNotVisible: "Enregistrer"
+- takeScreenshot: android-fab-activities-new
+
+# Parcours tab: the FAB becomes "Nouveau parcours".
+- tapOn:
+    text: "^Parcours$"
+- assertVisible: "Nouveau parcours"
+- assertNotVisible: "Nouvelle activité"
+- takeScreenshot: android-fab-parcours-new
+
+# Back to the dashboard: the FAB reverts to Record.
+- tapOn:
+    text: "^Tableau de bord$"
+- assertVisible: "Activités récentes"
+- assertVisible: "Enregistrer"
+- assertNotVisible: "Nouveau parcours"
+
+# Action wiring A — the Activités FAB routes to /activities/new (modal). The
+# modal title collides with the FAB label, so assert the activity form's
+# "Description" field, unique to that form.
+- tapOn:
+    text: "^Activités$"
+- tapOn: "Nouvelle activité"
+- extendedWaitUntil:
+    visible: "Description"
+    timeout: 10000
+# The FAB floats in the Activity root, so it must be hidden behind the modal —
+# match it by resource id (its contentDescription collides with the modal title).
+- assertNotVisible:
+    id: "record_fab"
+- takeScreenshot: android-fab-activities-modal
+# Back dismisses the modal, returning to the Activités tab — the FAB returns.
+- pressKey: Back
+- assertNotVisible: "Description"
+- assertVisible:
+    id: "record_fab"
+
+# Action wiring B — the Parcours FAB routes to /planned_routes/new (modal). Its
+# title + back link are `hotwire-native:hidden`, so assert the route-planner
+# hint text, which is visible and unique to that form.
+- tapOn:
+    text: "^Parcours$"
+- tapOn: "Nouveau parcours"
+- extendedWaitUntil:
+    visible: "Cliquez sur la carte.*"
+    timeout: 10000
+- assertNotVisible:
+    id: "record_fab"
+- takeScreenshot: android-fab-parcours-modal

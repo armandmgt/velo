@@ -1,0 +1,87 @@
+appId: fr.armandmgt.velo
+name: FAB flow (contextual tab-bar FAB — record ⇄ new activity ⇄ new route)
+tags:
+  - regression
+---
+# Guards the contextual floating action button ("Make the native FAB contextual
+# to the selected tab", #82). The FAB is a floating UIButton owned by
+# RecordTabBarController; `updateFab` re-resolves its glyph, accessibilityLabel
+# and tap action from the selected tab: Record on the dashboard, a `+` that
+# opens the web "new" form on Activités / Parcours. Maestro matches the FAB by
+# its accessibilityLabel. The in-page "+" header buttons are now
+# `hotwire-native:hidden`, so each label below belongs to the FAB alone.
+#
+# Tab labels are anchored (`^…$`) — Maestro matches text as a substring regex,
+# so bare "Activités" would also hit the dashboard's "Activités récentes"
+# heading. "Activités récentes" is the dashboard-only marker (the old
+# "Résumé par période" heading is gone after the dashboard redesign).
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+    # Pre-grant While-Using location so that if the dashboard Record FAB is ever
+    # exercised no system alert pops over the assertions. (We only assert it here.)
+    permissions:
+      location: inuse
+
+# Cold start loads the login webview; wait it out before asserting.
+- extendedWaitUntil:
+    visible: "Connexion"
+    timeout: 15000
+- hideKeyboard
+- tapOn: "Se connecter"
+- assertVisible: "Activités récentes"
+
+# Dashboard (tab 0): the FAB is the Record entry point.
+- assertVisible: "Enregistrer"
+- takeScreenshot: ios-fab-dashboard-record
+
+# Activités tab: the FAB swaps to the `+` → "Nouvelle activité", and the record
+# label is gone (a swap, not an addition).
+- tapOn:
+    text: "^Activités$"
+- assertVisible: "Nouvelle activité"
+- assertNotVisible: "Enregistrer"
+- takeScreenshot: ios-fab-activities-new
+
+# Parcours tab: the FAB becomes "Nouveau parcours".
+- tapOn:
+    text: "^Parcours$"
+- assertVisible: "Nouveau parcours"
+- assertNotVisible: "Nouvelle activité"
+- takeScreenshot: ios-fab-parcours-new
+
+# Back to the dashboard: the FAB reverts to Record.
+- tapOn:
+    text: "^Tableau de bord$"
+- assertVisible: "Activités récentes"
+- assertVisible: "Enregistrer"
+- assertNotVisible: "Nouveau parcours"
+
+# Action wiring A — the Activités FAB opens /activities/new modally. The modal's
+# nav title "Nouvelle activité" collides with the FAB label, so assert the
+# activity form's "Description" field, which is unique to that form.
+- tapOn:
+    text: "^Activités$"
+- tapOn: "Nouvelle activité"
+- extendedWaitUntil:
+    visible: "Description"
+    timeout: 10000
+- takeScreenshot: ios-fab-activities-modal
+# Dismiss the pageSheet by dragging it down from the nav bar.
+- swipe:
+    start: "50%, 8%"
+    end: "50%, 92%"
+    duration: 400
+- assertNotVisible: "Description"
+
+# Action wiring B — the Parcours FAB opens /planned_routes/new modally. Its
+# title + back link are `hotwire-native:hidden`, so assert the route-planner
+# hint text, which is visible and unique to that form.
+- tapOn:
+    text: "^Parcours$"
+- tapOn: "Nouveau parcours"
+- extendedWaitUntil:
+    visible: "Cliquez sur la carte.*"
+    timeout: 10000
+- takeScreenshot: ios-fab-parcours-modal

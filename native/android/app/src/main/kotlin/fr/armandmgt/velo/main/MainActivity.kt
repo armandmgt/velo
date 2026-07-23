@@ -5,9 +5,12 @@ import android.os.Bundle
 import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
+import androidx.navigation.NavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dev.hotwire.navigation.activities.HotwireActivity
+import dev.hotwire.navigation.navigator.Navigator
 import dev.hotwire.navigation.tabs.HotwireBottomNavigationController
 import dev.hotwire.navigation.tabs.navigatorConfigurations
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
@@ -35,16 +38,43 @@ class MainActivity : HotwireActivity() {
         setContentView(R.layout.activity_main)
         findViewById<View>(R.id.root).applyDefaultImeWindowInsets()
 
+        // Resolve the FAB before the tabs load: their navigator hosts can become
+        // ready (→ onNavigatorReady) as part of that, and the modal listener there
+        // touches recordFab.
+        recordFab = findViewById(R.id.record_fab)
+
         initializeBottomTabs()
 
         // The FAB is contextual to the selected tab: Record on the dashboard,
         // a "+" that opens the web "new" form on the Activités / Parcours tabs.
-        recordFab = findViewById(R.id.record_fab)
         updateFab(DASHBOARD_TAB_INDEX)
         bottomNavigationController.setOnTabSelectedListener { index, _ -> updateFab(index) }
     }
 
     override fun navigatorConfigurations() = mainTabs.navigatorConfigurations
+
+    override fun onNavigatorReady(navigator: Navigator) {
+        super.onNavigatorReady(navigator)
+        // The FAB floats in the Activity's root layout, so a modal destination
+        // (e.g. a "/new" form) would otherwise overlap it. The bottom nav hides
+        // itself on modal destinations (HotwireBottomNavigationController); the FAB
+        // isn't managed there, so mirror that behaviour by watching each tab
+        // navigator's destination changes and hiding the FAB while a modal shows.
+        navigator.host.navController.addOnDestinationChangedListener(fabModalVisibilityListener)
+    }
+
+    private val fabModalVisibilityListener =
+        NavController.OnDestinationChangedListener { controller, _, arguments ->
+            // Only react to the active tab's navigator, matching
+            // HotwireBottomNavigationController's own modal-visibility guard.
+            if (delegate.currentNavigator?.host?.navController != controller) {
+                return@OnDestinationChangedListener
+            }
+            // The typed accessor is library-internal; read the raw argument
+            // ("modal" / "default") the path config sets for MODAL_PATTERNS.
+            val presentationContext = arguments?.getString("presentation-context")
+            recordFab.isVisible = !presentationContext.equals("modal", ignoreCase = true)
+        }
 
     private fun initializeBottomTabs() {
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav)

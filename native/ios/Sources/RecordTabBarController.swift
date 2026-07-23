@@ -33,23 +33,25 @@ final class RecordTabBarController: HotwireTabBarController {
     /// (S3, #51); in the `+` modes it opens `/activities/new` or `/planned_routes/new`.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
-    /// Tab indices, matching `HotwireTab.all` (dashboard, activities, plannedRoutes).
-    private static let activitiesTabIndex = 1
-    private static let plannedRoutesTabIndex = 2
-
     /// The FAB action resolved for the current tab + recording state.
     private var fabMode: FabMode = .record
 
     /// Re-resolve the FAB whenever the selected tab changes programmatically
     /// (e.g. the recording-review screen jumps to the Activités tab). Tab *taps*
-    /// don't route through this setter — `tabBar(_:didSelect:)` covers those.
+    /// don't route through this setter — the `UITabBarControllerDelegate`
+    /// callbacks below cover those.
     override var selectedIndex: Int {
         didSet { updateFab() }
     }
 
-    override func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
-        super.tabBar(tabBar, didSelect: item)
-        updateFab()
+    /// Re-resolves the FAB on tab *taps*, which don't route through `selectedIndex`.
+    /// `HotwireTabBarController` makes itself its own `UITabBarControllerDelegate`
+    /// (`delegate = self`, to `start()` the tab's navigator), and we can't override
+    /// its `public` (non-`open`) delegate methods, nor call `super` on the
+    /// low-level `tabBar(_:didSelect:)` (no super implementation → SIGABRT). So we
+    /// interpose a forwarding delegate that runs Hotwire's callback, then ours.
+    private lazy var fabTabBarDelegate = FabTabBarDelegate(forwardingTo: self) { [weak self] in
+        self?.updateFab()
     }
 
     override func viewDidLoad() {
@@ -85,6 +87,13 @@ final class RecordTabBarController: HotwireTabBarController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // Install our forwarding delegate here, not in viewDidLoad: `viewDidLoad`
+        // runs *inside* `HotwireTabBarController.init`, which then resets
+        // `delegate = self` right after `super.init`, clobbering an earlier
+        // assignment. By viewDidAppear init is long done, so this sticks. Idempotent.
+        if !(delegate is FabTabBarDelegate) {
+            delegate = fabTabBarDelegate
+        }
         updateFab()
     }
 
@@ -118,13 +127,25 @@ final class RecordTabBarController: HotwireTabBarController {
     /// Decide what the FAB should be right now: a live recording always wins (keep
     /// the record button reachable from every tab); otherwise the selected tab
     /// picks the mode.
+    ///
+    /// Resolve the tab through `activeNavigator` rather than `selectedIndex`: on
+    /// iOS 18+ the tab bar is `UITab`-backed and `selectedIndex` doesn't track the
+    /// selection (HotwireTabBarController itself resolves via `selectedTab` first,
+    /// which is exactly what `activeNavigator` uses).
     private func resolvedFabMode() -> FabMode {
         if RecordingController.shared.isActive { return .record }
-        switch selectedIndex {
-        case Self.activitiesTabIndex: return .newActivity
-        case Self.plannedRoutesTabIndex: return .newRoute
-        default: return .record
+        // `viewDidLoad` (→ updateFab) runs during init, before `load(_:)` sets the
+        // tabs up, and `activeNavigator` fatalErrors when no tab resolves. The
+        // per-tab navigators only exist post-`load`, so their presence gates the
+        // `activeNavigator` read; until then the FAB is the default Record button.
+        guard let activitiesNavigator = navigator(for: .activities),
+              let plannedRoutesNavigator = navigator(for: .plannedRoutes) else {
+            return .record
         }
+        let active = activeNavigator
+        if active === activitiesNavigator { return .newActivity }
+        if active === plannedRoutesNavigator { return .newRoute }
+        return .record
     }
 
     /// Sync the FAB's glyph, colour, label and pulse to the resolved mode: a red,
@@ -253,5 +274,33 @@ final class RecordTabBarController: HotwireTabBarController {
         navigationController.modalPresentationStyle = .fullScreen
         navigationController.isModalInPresentation = true
         present(navigationController, animated: true)
+    }
+}
+
+/// Sits between `UITabBarController` and Hotwire's own delegate: it forwards the
+/// `didSelect` callbacks to `HotwireTabBarController` (which `start()`s the newly
+/// selected tab's navigator) and then runs `onSelect` — how `RecordTabBarController`
+/// learns about tab *taps* without overriding Hotwire's non-`open` delegate methods.
+/// These delegate callbacks only *notify* of a selection; the tab switch itself is
+/// UIKit-internal, so forwarding here can't break navigation. iOS 18+ reports
+/// selection via the `UITab` callback, earlier systems via the view-controller one.
+private final class FabTabBarDelegate: NSObject, UITabBarControllerDelegate {
+    private weak var forwardee: HotwireTabBarController?
+    private let onSelect: () -> Void
+
+    init(forwardingTo forwardee: HotwireTabBarController, onSelect: @escaping () -> Void) {
+        self.forwardee = forwardee
+        self.onSelect = onSelect
+    }
+
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        forwardee?.tabBarController(tabBarController, didSelect: viewController)
+        onSelect()
+    }
+
+    @available(iOS 18.0, *)
+    func tabBarController(_ tabBarController: UITabBarController, didSelectTab selectedTab: UITab, previousTab: UITab?) {
+        forwardee?.tabBarController(tabBarController, didSelectTab: selectedTab, previousTab: previousTab)
+        onSelect()
     }
 }
