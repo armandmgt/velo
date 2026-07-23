@@ -33,9 +33,18 @@ platform :ios do
       project: XCODEPROJ,
       scheme: SCHEME,
       configuration: "Release",
-      export_method: "app-store",
       output_directory: "build/fastlane",
       clean: true,
+      # Force automatic export signing. Without an explicit signingStyle, Xcode 16+
+      # defaults `-exportArchive` to *manual* and then fails ("requires a provisioning
+      # profile") because gym's export options carry no `provisioningProfiles` dict.
+      # Automatic + the ASC API key + `-allowProvisioningUpdates` (both already
+      # forwarded to export) lets Xcode mint the app-store distribution profile.
+      export_options: {
+        method: "app-store",
+        signingStyle: "automatic",
+        teamID: "5B86S3AWVU",
+      },
       xcargs: "#{xcode_auth_args} CURRENT_PROJECT_VERSION=#{next_build}",
     )
 
