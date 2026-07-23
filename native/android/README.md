@@ -100,7 +100,7 @@ requirement before production access.
      app (or at minimum: Release manager + view app information).
 
 4. **Drop the JSON key** at
-   `~/.config/play-publisher/velo-play-publisher.json` (or set
+   `~/.config/play-publisher/gplay-amgt-ae423ca5782f.json` (or set
    `PLAY_STORE_JSON_KEY=/path/to/key.json`).
 
 5. **Install gems:**
