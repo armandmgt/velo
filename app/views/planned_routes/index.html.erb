@@ -1,29 +1,23 @@
 <% content_for :title, t("planned_route.index.title") %>
 
-<main class="prose dark:prose-invert md:py-16 p-4">
-  <header class="flex justify-between items-center mb-4 gap-3">
-    <h1 class="mt-0 mb-0 hotwire-native:hidden"><%= t("planned_route.index.title") %></h1>
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <header class="flex items-center justify-between gap-3 mb-5 sm:mb-6">
+    <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0 hotwire-native:hidden"><%= t("planned_route.index.title") %></h1>
 
     <%# Hidden in the native shells — the tab-bar FAB opens this form there. %>
-    <%= link_to new_planned_route_path, class: "btn btn-primary btn-lg hotwire-native:hidden" do %>
+    <%= link_to new_planned_route_path, class: "btn btn-primary hotwire-native:hidden" do %>
       <%= icon "plus", class: "size-[1.4em]" %>
       <span class="hidden sm:block"><%= t("planned_route.index.new") %></span>
     <% end %>
   </header>
 
-  <section id="planned_routes" class="not-prose">
-    <% if @planned_routes.empty? %>
-      <p class="text-center"><%= t("planned_route.index.empty") %></p>
-    <% else %>
-      <ul class="list bg-base-100 rounded-box shadow-md">
-        <% @planned_routes.each do |planned_route| %>
-          <li class="list-row">
-            <div class="list-col-grow">
-              <%= render "planned_routes/planned_route_recap", planned_route: planned_route %>
-            </div>
-          </li>
-        <% end %>
-      </ul>
-    <% end %>
-  </section>
+  <% if @planned_routes.empty? %>
+    <p class="opacity-60"><%= t("planned_route.index.empty") %></p>
+  <% else %>
+    <div id="planned_routes" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <% @planned_routes.each do |planned_route| %>
+        <%= render "planned_routes/planned_route_card", planned_route: planned_route %>
+      <% end %>
+    </div>
+  <% end %>
 </main>

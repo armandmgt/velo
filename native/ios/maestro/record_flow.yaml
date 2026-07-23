@@ -23,16 +23,22 @@ tags:
 - hideKeyboard
 - tapOn: "Se connecter"
 
-- assertVisible: "Résumé par période"
+# Settle the post-login tab-bar swap, then assert the dashboard-only recent-
+# activity header ("Résumé par période" was removed in the dashboard redesign).
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "ACTIVITÉS RÉCENTES|Activités récentes"
 
 # The native Record button is a floating UIButton (accessibilityLabel), not a
 # tab — owned by RecordTabBarController so it can animate while recording.
 - tapOn: "Enregistrer"
 
-# Fully native recording screen, presented as a full-screen modal. It opens
-# *armed* (explicit-start UX): a sport picker (defaulting to the last-used sport,
-# "Vélo de route" on a fresh install) and Démarrer are shown; recording hasn't begun.
-- assertVisible: "Enregistrement"
+# Fully native, map-centric recording screen, presented as a full-screen modal.
+# It opens *armed* (explicit-start UX): a sport picker (defaulting to the last-used
+# sport, "Vélo de route" on a fresh install), Démarrer, and a "Prêt à enregistrer"
+# dock card float over the live map. The nav title was dropped in the map redesign
+# (only Fermer floats), so we assert the armed dock card instead of "Enregistrement".
+- assertVisible: "PRÊT À ENREGISTRER"
 - assertVisible: "Vélo de route"
 - assertVisible: "Démarrer"
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
@@ -51,6 +57,22 @@ tags:
     latitude: 48.8566
     longitude: 2.3522
 - assertVisible: "GPS (bon|correct|moyen|faible)"
+
+# The state now reads from the pill (the nav title is gone), and the stats live in
+# a collapsible bottom dock over the map — expanded by default (the "DISTANCE"
+# caption is shown only when expanded). Toggle the grabber to collapse ⇄ expand and
+# confirm the caption follows; a screenshot captures the map + dock rendering.
+- assertVisible: "Enregistrement"
+- assertVisible: "DISTANCE"
+- takeScreenshot: record-map
+- tapOn:
+    id: "dockGrabber"
+- waitForAnimationToEnd
+- assertNotVisible: "DISTANCE"
+- tapOn:
+    id: "dockGrabber"
+- waitForAnimationToEnd
+- assertVisible: "DISTANCE"
 
 # Smoke-test the controls: lap marker, then pause ⇄ resume.
 - tapOn: "Tour"

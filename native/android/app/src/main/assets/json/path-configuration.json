@@ -1,5 +1,5 @@
 {
-  "settings": {},
+  "settings": { "map_accent": "#f69900" },
   "rules": [
     {
       "patterns": [".*"],
@@ -8,6 +8,18 @@
         "uri": "hotwire://fragment/web",
         "pull_to_refresh_enabled": true
       }
+    },
+    {
+      "patterns": ["^/$"],
+      "properties": { "tab": "dashboard" }
+    },
+    {
+      "patterns": ["^/activities(/|$)"],
+      "properties": { "tab": "activities" }
+    },
+    {
+      "patterns": ["^/planned_routes(/|$)"],
+      "properties": { "tab": "planned_routes" }
     },
     {
       "patterns": ["/new$", "/edit$"],

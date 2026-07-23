@@ -83,12 +83,12 @@ class MainActivity : HotwireActivity() {
     }
 
     /** Point the FAB's icon, label and tap action at whatever the selected tab needs. */
-    private fun updateFab(tabIndex: Int) {
-        when (tabIndex) {
-            ACTIVITIES_TAB_INDEX -> configureFab(R.drawable.ic_add, R.string.new_activity) {
+    private fun updateFab(selectedTabIndex: Int) {
+        when (selectedTabIndex) {
+            tabIndex("activities") -> configureFab(R.drawable.ic_add, R.string.new_activity) {
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
             }
-            PLANNED_ROUTES_TAB_INDEX -> configureFab(R.drawable.ic_add, R.string.new_route) {
+            tabIndex("planned_routes") -> configureFab(R.drawable.ic_add, R.string.new_route) {
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/planned_routes/new")
             }
             else -> configureFab(R.drawable.ic_record, R.string.record) {
@@ -111,15 +111,24 @@ class MainActivity : HotwireActivity() {
 
     /** Switch to the Activités tab and route its navigator to the freshly created activity (#57). */
     private fun openActivity(url: String) {
-        bottomNavigationController.selectTab(ACTIVITIES_TAB_INDEX)
-        val host = delegate.findNavigatorHost(R.id.activities_navigator_host) ?: return
+        routeInTab("activities", url)
+    }
+
+    /**
+     * Switch to the [tabName] tab and route its navigator to [url]. Backs
+     * cross-tab routing ([TabRouteDecisionHandler]): a link whose section is
+     * owned by another tab lands in that tab's stack instead of the current one.
+     */
+    fun routeInTab(tabName: String, url: String) {
+        val index = tabIndex(tabName) ?: return
+        val hostId = tabNavigatorHostId(tabName) ?: return
+        bottomNavigationController.selectTab(index)
+        val host = delegate.findNavigatorHost(hostId) ?: return
         // Post so the tab's navigator is ready when it was never opened before.
         host.view?.post { host.navigator?.route(url) }
     }
 
     private companion object {
         const val DASHBOARD_TAB_INDEX = 0
-        const val ACTIVITIES_TAB_INDEX = 1
-        const val PLANNED_ROUTES_TAB_INDEX = 2
     }
 }

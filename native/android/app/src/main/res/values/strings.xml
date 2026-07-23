@@ -27,6 +27,8 @@
     <string name="recording_state_paused">En pause</string>
     <string name="recording_gps_signal">Signal GPS : %1$s</string>
     <string name="recording_gps_searching">recherche…</string>
+    <string name="recording_ready_title">Prêt à enregistrer</string>
+    <string name="recording_ready_subtitle">Le GPS est calé sur votre position.</string>
     <string name="recording_pause">Pause</string>
     <string name="recording_resume">Reprendre</string>
     <string name="recording_mark_lap">Tour</string>

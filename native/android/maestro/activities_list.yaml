@@ -1,0 +1,50 @@
+appId: fr.armandmgt.velo
+name: Activities list (redesigned cards, dashboard ⇄ Activités share one design)
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/activities_list.yaml. The activities index
+# was rebuilt to reuse the dashboard's recent-activity card
+# (`activities/_activity_card`, rendered by both `activity_feeds#index` and
+# `activities#index`). Both pages also `turbo_stream_from Current.user,
+# :activities` via `shared/_activity_stream`, so a create/edit/sync morphs them
+# live. This flow guards that redesign: the same card (date · location, sport,
+# distance, D+) shows up under "Activités récentes" on the dashboard *and* in the
+# Activités bottom-nav tab — the visible surface of the shared partial + stream.
+- launchApp:
+    clearState: true
+    stopApp: true
+
+# No hideKeyboard: on Android it falls back to Back, which would finish the root
+# LoginActivity. The dev form is pre-filled (test@example.com / dev), so submit.
+- assertVisible: "Se connecter"
+- tapOn: "Se connecter"
+
+# Webview content is only queryable once the post-login bottom-nav swap settles;
+# without this the first webview assertion races the transition.
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# Dashboard recent-activity card. "Activités récentes" is the section header,
+# dashboard-only (absent from the Activités index), so it doubles as the "we're
+# on the dashboard" marker. It renders CSS-uppercased; the alternation tolerates
+# iOS's uppercased exposure and Android's DOM-cased one. The card exposes its
+# date · location line as one accessibility string.
+- extendedWaitUntil:
+    visible: "ACTIVITÉS RÉCENTES|Activités récentes"
+    timeout: 20000
+- assertVisible: "MARDI 30 JUIN 2026 20H53"
+- assertVisible: "QUARTIER SAINT-MERRI"
+
+# Same card design on the Activités tab. "Activités" now matches only the
+# bottom-nav item (the redesign dropped the old dashboard stat cards whose labels
+# also read "Activités", so the previous `index: 2` disambiguation is gone).
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "MARDI 30 JUIN 2026 20H53"
+    timeout: 12000
+- assertVisible: "QUARTIER SAINT-MERRI"
+# A second card proves the list renders the whole grid, not just one entry.
+- assertVisible: "MOUNTAIN VIEW"

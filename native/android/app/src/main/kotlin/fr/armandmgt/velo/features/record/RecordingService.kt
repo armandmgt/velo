@@ -45,6 +45,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+/** A recorded fix as a plain lat/lng, for drawing the live map trace. Kept free of
+ *  MapLibre types so the service (and its unit tests) don't depend on the map SDK. */
+data class RoutePoint(val latitude: Double, val longitude: Double)
+
 /** The live state the recording screen renders (#56): GPS readout + derived stats. */
 data class RecordingUiState(
     val recordingState: RecordingState = RecordingState.RECORDING,
@@ -59,6 +63,8 @@ data class RecordingUiState(
     val distanceMeters: Double = 0.0,
     val currentSpeedMps: Double = 0.0,
     val averageSpeedMps: Double = 0.0,
+    /** The recorded trace so far, oldest-first, for the live map line (map-centric redesign). */
+    val routePoints: List<RoutePoint> = emptyList(),
 )
 
 /**
@@ -106,6 +112,11 @@ class RecordingService : Service() {
     private var lastLatitude: Double? = null
     private var lastLongitude: Double? = null
     private var lastAccuracy: Float? = null
+
+    // The recorded trace, oldest-first, for the live map line. A new immutable
+    // snapshot is published whenever a point is appended so StateFlow re-emits.
+    private val routePoints = mutableListOf<RoutePoint>()
+    private var routeSnapshot: List<RoutePoint> = emptyList()
 
     // Elapsed clock: wall-clock recording time minus paused stretches, on a
     // monotonic base so a system clock change can't skew it.
@@ -205,6 +216,8 @@ class RecordingService : Service() {
                 lap = 1
                 lastFixSpeed = 0.0
                 lastPersistedSecond = null
+                routePoints.clear()
+                routeSnapshot = emptyList()
                 accumulatedElapsedMs = 0L
                 stretchStartMs = SystemClock.elapsedRealtime()
                 startTicker()
@@ -239,6 +252,8 @@ class RecordingService : Service() {
         val segmentSpeed = accumulator.add(location)
         lastFixSpeed = if (location.hasSpeed()) location.speed.toDouble() else segmentSpeed
         pointCount++
+        routePoints.add(RoutePoint(location.latitude, location.longitude))
+        routeSnapshot = routePoints.toList()
 
         val point = RecordingPointEntity(
             sessionId = current.id,
@@ -343,6 +358,7 @@ class RecordingService : Service() {
             distanceMeters = accumulator.distance,
             currentSpeedMps = lastFixSpeed,
             averageSpeedMps = accumulator.averageSpeed(),
+            routePoints = routeSnapshot,
         )
     }
 
