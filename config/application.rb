@@ -21,6 +21,12 @@ module Velo
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
+
+    # No ActiveStorage variants are generated anywhere in the app; disable the
+    # processor so boot doesn't try to load vips, which isn't in the Gemfile or
+    # CI/dev images.
+    config.active_storage.variant_processor = :disabled
+
     config.i18n.default_locale = :fr
   end
 end
