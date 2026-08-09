@@ -42,6 +42,7 @@ RUN cd lib/ruby_fit && bundle install && ./bin/rake compile
 
 # Install application gems
 COPY vendor/* ./vendor/
+COPY lib/frontend_errors/ ./lib/frontend_errors/
 COPY Gemfile Gemfile.lock ./
 
 RUN bundle install && \

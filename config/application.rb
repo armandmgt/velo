@@ -14,7 +14,9 @@ module Velo
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
-    config.autoload_lib(ignore: %w[assets tasks templates ruby_fit])
+    # `ruby_fit` and `frontend_errors` are path gems, loaded by Bundler — Zeitwerk
+    # must not also try to autoload their trees as application code.
+    config.autoload_lib(ignore: %w[assets tasks templates ruby_fit frontend_errors])
 
     # Configuration for the application, engines, and railties goes here.
     #

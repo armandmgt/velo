@@ -92,6 +92,9 @@ Rails.application.configure do
 
   # Configure Solid Errors
   config.solid_errors.connects_to = { database: { writing: :errors } }
-  config.solid_errors.base_controller_class = "ApplicationController"
+  # The dashboard is mounted at /admin/solid_errors, but a mounted engine doesn't
+  # inherit the namespace's filters — this base class is what actually restricts
+  # it to admins.
+  config.solid_errors.base_controller_class = "Admin::AdminController"
   config.solid_errors.destroy_after = 30.days
 end

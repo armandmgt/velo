@@ -18,8 +18,18 @@ Rails.application.routes.draw do
   get "configurations/ios_v1"     => "configurations#ios_v1",     as: :ios_configuration
   get "configurations/android_v1" => "configurations#android_v1", as: :android_configuration
 
+  # Browser errors are posted here and reported through Rails.error, so they land
+  # wherever server-side errors do.
+  mount FrontendErrors::Engine, at: "/frontend_errors"
+
   namespace :admin, admin: true do
     resources :users
+
+    # solid_errors is a production-only gem, so the constant doesn't exist in
+    # dev/test. Access is gated by `config.solid_errors.base_controller_class`
+    # (Admin::AdminController), not by this namespace — a mounted engine doesn't
+    # inherit the surrounding scope's filters.
+    mount SolidErrors::Engine, at: "solid_errors" if defined?(SolidErrors::Engine)
   end
 
   resource :map_style, only: %i[ show ]
