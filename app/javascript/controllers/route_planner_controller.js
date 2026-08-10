@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import maplibregl from "maplibre-gl"
-import { primaryAccentColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
+import { FitToBoundsControl, primaryAccentColor, styleUrl } from "controllers/lib/map_helpers"
 
 const PREVIEW_DEBOUNCE_MS = 200
 
@@ -21,7 +21,6 @@ export default class extends Controller {
     "hint",
     "error",
     "errorMessage",
-    "retry",
     "clear",
     "undo",
     "redo",
@@ -75,26 +74,15 @@ export default class extends Controller {
         paint: { "line-color": this._accentColor, "line-width": 3 },
       })
 
-      this._hydrateInitialWaypoints()
+      if (this.hasInitialWaypointsValue) {
+        const seeded = this.initialWaypointsValue
+        if (Array.isArray(seeded) && seeded.length !== 0) {
+          this._hydrateInitialWaypoints(seeded)
+        }
+      }
     })
 
     this.map.on("click", (e) => this._handleMapClick(e))
-
-    if (this.hasSportSelectTarget) {
-      this.sportSelectTarget.addEventListener("change", () => this._schedulePreview())
-    }
-    if (this.hasClearTarget) {
-      this.clearTarget.addEventListener("click", (e) => { e.preventDefault(); this.clear() })
-    }
-    if (this.hasUndoTarget) {
-      this.undoTarget.addEventListener("click", (e) => { e.preventDefault(); this.undo() })
-    }
-    if (this.hasRedoTarget) {
-      this.redoTarget.addEventListener("click", (e) => { e.preventDefault(); this.redo() })
-    }
-    if (this.hasRetryTarget) {
-      this.retryTarget.addEventListener("click", (e) => { e.preventDefault(); this._fetchPreview() })
-    }
 
     this._updateUI()
   }
@@ -153,13 +141,23 @@ export default class extends Controller {
     this._setWaypoints(next, { record: false })
   }
 
+  // Action entry points for `data-action` wiring — the `_`-prefixed methods
+  // stay internal; these expose them to the view.
+  schedulePreview() {
+    this._schedulePreview()
+  }
+
+  retry() {
+    this._fetchPreview()
+  }
+
   // --- waypoint mutation ---
 
   // Every mutation funnels through here. When `record` is true (the default)
   // we push the prior waypoints onto the history stack so `undo()` can return
   // to it — covering add, move, insert, remove, and clear with one path. Any
   // fresh user action also invalidates the redo stack (timeline diverged).
-  _setWaypoints(next, { record = true } = {}) {
+  _setWaypoints(next, { record = true, local = false } = {}) {
     const normalized = next.map((p) => [ p[0], p[1] ])
     if (record && !this._isSameWaypoints(this._waypoints, normalized)) {
       this._history.push(this._waypoints.map((p) => [ p[0], p[1] ]))
@@ -172,7 +170,9 @@ export default class extends Controller {
     this._waypointMarkers = this._waypoints.map((lngLat, i) => this._buildWaypointMarker(lngLat, i))
 
     this._updateUI()
-    this._schedulePreview()
+    if (!local) {
+      this._schedulePreview()
+    }
   }
 
   _isSameWaypoints(a, b) {
@@ -205,12 +205,20 @@ export default class extends Controller {
     this._setWaypoints(next)
   }
 
-  _hydrateInitialWaypoints() {
-    if (!this.hasInitialWaypointsValue) return
-    const seeded = this.initialWaypointsValue
-    if (!Array.isArray(seeded) || seeded.length === 0) return
+  _hydrateInitialWaypoints(seeded) {
     // Seeded state is the baseline — don't make undo wipe it.
     this._setWaypoints(seeded, { record: false })
+    const bounds = seeded.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(seeded[0], seeded[0])
+    )
+    this._fitControl.setBounds(bounds)
+    this.map.fitBounds(bounds, { padding: 60, animate: false })
+  }
+
+  _hydrateReceivedWaypoints(seeded) {
+    // Seeded state is the baseline — don't make undo wipe it.
+    this._setWaypoints(seeded, { record: false, local: true })
     const bounds = seeded.reduce(
       (b, c) => b.extend(c),
       new maplibregl.LngLatBounds(seeded[0], seeded[0])
@@ -336,7 +344,7 @@ export default class extends Controller {
   }
 
   async _fetchPreview() {
-    if (this._waypoints.length < 2) {
+    if (this._waypoints.length < 2 && !this._getGpxSourceFile()) {
       this._routeCoordinates = []
       this._setRouteGeojson({ type: "FeatureCollection", features: [] })
       this._updateStats(null, null)
@@ -351,15 +359,20 @@ export default class extends Controller {
 
     try {
       const csrf = document.querySelector("meta[name='csrf-token']")?.content || ""
+      const formData = new FormData()
+      formData.append("sport", sport)
+      formData.append("waypoints", JSON.stringify(this._waypoints))
+      if (this._getGpxSourceFile()) {
+        formData.append("gpx_source", this._getGpxSourceFile())
+      }
       const response = await fetch(this.previewUrlValue, {
         method: "POST",
         credentials: "same-origin",
         headers: {
-          "Content-Type": "application/json",
           "Accept":       "application/json",
           "X-CSRF-Token": csrf,
         },
-        body: JSON.stringify({ sport, waypoints: this._waypoints }),
+        body: formData,
       })
 
       if (!response.ok) {
@@ -369,6 +382,11 @@ export default class extends Controller {
       }
 
       const data = await response.json()
+      if (this._getGpxSourceFile()) {
+        this._clearGpxSourceFile()
+        this._waypoints = data.waypoints
+        this._hydrateReceivedWaypoints(data.waypoints)
+      }
       this._routeCoordinates = data.coordinates || data.geojson?.geometry?.coordinates || []
       this._setRouteGeojson({ type: "FeatureCollection", features: [ data.geojson ] })
       this._setFitBounds(data.geojson)
@@ -378,6 +396,14 @@ export default class extends Controller {
       console.error(err)
       this._setError("routing_failed")
     }
+  }
+
+  _getGpxSourceFile() {
+    return this.element.elements.namedItem("planned_route[gpx_source]").files[0]
+  }
+
+  _clearGpxSourceFile() {
+    this.element.elements.namedItem("planned_route[gpx_source]").value = null
   }
 
   _pushElevation(samples) {

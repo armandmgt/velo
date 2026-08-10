@@ -3,7 +3,8 @@
 <% form_id = dom_id(planned_route, :form) %>
 
 <% content_for :bridge_navbar_buttons do %>
-  <%= button_tag t("planned_route.form.save"),
+  <%= button_tag(
+        t("planned_route.form.save"),
         type: :submit,
         form: form_id,
         class: "hidden",
@@ -13,32 +14,39 @@
           "bridge-style": "primary",
           "bridge-ios-image": "checkmark",
           "bridge-android-image": "check"
-        } %>
+        }
+      ) %>
 <% end %>
 
-<%= form_with model: planned_route,
-              id: form_id,
-              data: {
-                controller: "route-planner",
-                "route-planner-preview-url-value": preview_planned_routes_path,
-                "route-planner-initial-waypoints-value": planned_route.waypoints.to_json,
-                "route-planner-elevation-profile-outlet": "[data-route-planner-elevation-chart]"
-              },
-              class: "absolute inset-0" do |form| %>
+<%= form_with(
+      model: planned_route,
+      id: form_id,
+      data: {
+        controller: "route-planner",
+        "route-planner-preview-url-value": preview_planned_routes_path,
+        "route-planner-initial-waypoints-value": planned_route.waypoints.to_json,
+        "route-planner-elevation-profile-outlet": "[data-route-planner-elevation-chart]"
+      },
+      class: "absolute inset-0"
+    ) do |form| %>
 
   <div data-route-planner-map class="h-full w-full"></div>
 
-  <%= form.hidden_field :waypoints_json,
+  <%= form.hidden_field(
+        :waypoints_json,
         value: planned_route.waypoints.to_json,
-        data: { "route-planner-target": "waypointsField" } %>
+        data: { "route-planner-target": "waypointsField" }
+      ) %>
 
   <%# Top-left: title, back link, name, sport, hint %>
   <div class="absolute top-3 left-3 z-10 max-w-[calc(100%-3.5rem)] sm:max-w-sm">
     <div class="bg-base-100/95 backdrop-blur rounded-box shadow-md p-3 flex flex-col gap-2">
       <div class="flex items-center gap-2 hotwire-native:hidden">
-        <%= link_to back_path,
-                    class: "btn btn-ghost btn-sm btn-circle shrink-0",
-                    aria: { label: back_label } do %>
+        <%= link_to(
+              back_path,
+              class: "btn btn-ghost btn-sm btn-circle shrink-0",
+              aria: { label: back_label }
+            ) do %>
           <%= icon "arrow-left", class: "size-4" %>
         <% end %>
         <h1 class="text-base font-semibold truncate flex-1 m-0"><%= title %></h1>
@@ -46,9 +54,11 @@
 
       <div>
         <%= form.label :name, class: "block mb-1 text-xs font-medium opacity-70" %>
-        <%= form.text_field :name,
+        <%= form.text_field(
+              :name,
               class: class_names("w-full input input-sm", { "input-error": planned_route.errors.include?(:name) }),
-              required: true %>
+              required: true
+            ) %>
         <% if planned_route.errors.include?(:name) %>
           <p class="mt-1 text-xs text-error">
             <%= planned_route.errors.full_messages_for(:name).to_sentence %>
@@ -58,13 +68,20 @@
 
       <div>
         <%= form.label :sport, class: "block mb-1 text-xs font-medium opacity-70" %>
-        <%= form.select :sport,
+        <%= form.select(
+              :sport,
               routable_sport_grouped_options(planned_route.sport),
               { include_blank: false },
               {
                 class: class_names("w-full select select-sm", { "select-error": planned_route.errors.include?(:sport) }),
-                data: { "route-planner-target": "sportSelect" }
-              } %>
+                data: { "route-planner-target": "sportSelect", action: "change->route-planner#schedulePreview" }
+              }
+            ) %>
+      </div>
+
+      <div>
+        <%= form.label :gpx_source, class: "block mb-1 text-xs font-medium opacity-70" %>
+        <%= form.file_field :gpx_source, data: { action: "input->route-planner#schedulePreview" } %>
       </div>
 
       <p class="text-xs opacity-70 m-0" data-route-planner-target="hint">
@@ -85,9 +102,11 @@
   >
     <%= icon "circle-x", class: "size-5 shrink-0" %>
     <span class="flex-1" data-route-planner-target="errorMessage"></span>
-    <button type="button"
-            class="btn btn-sm btn-ghost"
-            data-route-planner-target="retry">
+    <button
+      type="button"
+      class="btn btn-sm btn-ghost"
+      data-action="route-planner#retry"
+    >
       <%= icon "rotate-cw", class: "size-4" %>
       <%= t("planned_route.form.retry") %>
     </button>
@@ -120,31 +139,41 @@
 
       <%# Action toolbar %>
       <div class="pointer-events-auto bg-base-100/95 backdrop-blur rounded-box shadow-md p-1 flex gap-1">
-        <button type="button"
-                class="btn btn-ghost btn-sm"
-                aria-label="<%= t("planned_route.form.undo") %>"
-                disabled
-                data-route-planner-target="undo">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          aria-label="<%= t("planned_route.form.undo") %>"
+          disabled
+          data-route-planner-target="undo"
+          data-action="route-planner#undo"
+        >
           <%= icon "undo-2", class: "size-[1.2em]" %>
         </button>
-        <button type="button"
-                class="btn btn-ghost btn-sm"
-                aria-label="<%= t("planned_route.form.redo") %>"
-                disabled
-                data-route-planner-target="redo">
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm"
+          aria-label="<%= t("planned_route.form.redo") %>"
+          disabled
+          data-route-planner-target="redo"
+          data-action="route-planner#redo"
+        >
           <%= icon "redo-2", class: "size-[1.2em]" %>
         </button>
-        <%= tag.button(type: "button",
-                       class: "btn btn-ghost btn-sm",
-                       aria: { label: t("planned_route.form.clear") },
-                       disabled: planned_route.waypoints.empty?,
-                       data: { "route-planner-target": "clear" }) do %>
+        <%= tag.button(
+          type: "button",
+          class: "btn btn-ghost btn-sm",
+          aria: { label: t("planned_route.form.clear") },
+          disabled: planned_route.waypoints.empty?,
+          data: { "route-planner-target": "clear", action: "route-planner#clear" }
+        ) do %>
           <%= icon "trash-2", class: "size-[1.2em]" %>
         <% end %>
-        <%= form.submit t("planned_route.form.save"),
+        <%= form.submit(
+              t("planned_route.form.save"),
               class: "btn btn-primary btn-sm hotwire-native:hidden",
               disabled: planned_route.waypoints.length < 2,
-              data: { "route-planner-target": "submit" } %>
+              data: { "route-planner-target": "submit" }
+            ) %>
       </div>
     </div>
 

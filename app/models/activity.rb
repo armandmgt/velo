@@ -63,7 +63,7 @@ class Activity < ApplicationRecord
 
   def parse_gpx_file(gpx_file, reverse_geocode: true)
     str = gpx_file.try(:read) || gpx_file.download
-    GpxExtractor.new(self, reverse_geocode: reverse_geocode).extract(str)
+    GpxExtractor.new(str).to_activity(self, reverse_geocode: reverse_geocode)
   end
 
   def active_time_duration

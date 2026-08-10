@@ -65,14 +65,15 @@ class PlannedRoutesController < ApplicationController
 
     render json: {
       geojson: {
-        type:     "Feature",
+        type: "Feature",
         geometry: { type: "LineString", coordinates: result.coordinates },
         properties: {}
       },
-      coordinates:           result.coordinates,
-      distance_meters:       result.distance_meters,
+      waypoints: waypoints,
+      coordinates: result.coordinates,
+      distance_meters: result.distance_meters,
       elevation_gain_meters: result.elevation_gain_meters,
-      elevation_samples:     result.elevation_samples
+      elevation_samples: result.elevation_samples
     }
   rescue BRouterClient::NoRouteFound
     render json: { error: "no_route" }, status: :unprocessable_content
@@ -95,11 +96,11 @@ class PlannedRoutesController < ApplicationController
 
     result = RoutePlanner.new(sport: planned_route.sport, waypoints: planned_route.waypoints).call
     planned_route.assign_attributes(
-      path:                  result.path_wkt,
-      distance_meters:       result.distance_meters,
+      path: result.path_wkt,
+      distance_meters: result.distance_meters,
       elevation_gain_meters: result.elevation_gain_meters,
-      elevation_samples:     result.elevation_samples,
-      routing_profile:       result.profile
+      elevation_samples: result.elevation_samples,
+      routing_profile: result.profile
     )
 
     if planned_route.save
@@ -126,8 +127,17 @@ class PlannedRoutesController < ApplicationController
     permitted.merge("waypoints" => [])
   end
 
+  MAX_EXTRACTED_WAYPOINTS = 20
+
   def parse_preview_body
-    [ params[:sport].to_s, Array(params[:waypoints]).map { |pair| Array(pair).map(&:to_f) } ]
+    if params[:gpx_source].present?
+      waypoints = GpxExtractor.new(params[:gpx_source].read).parse_points
+      retain_every_nth_waypoint = [ 1, waypoints.size / MAX_EXTRACTED_WAYPOINTS ].max
+      waypoints = waypoints.filter_map.with_index { |element, i| element if i % retain_every_nth_waypoint == 0 }
+      [ params[:sport].to_s, waypoints.pluck(:lon, :lat) ]
+    else
+      [ params[:sport].to_s, JSON.parse(params[:waypoints]).map { |pair| Array(pair).map(&:to_f) } ]
+    end
   end
 
   def valid_waypoints?(waypoints)

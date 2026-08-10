@@ -7,7 +7,7 @@ class GpxExtractorTest < ActiveSupport::TestCase
   end
 
   def extract(activity = @user.activities.build)
-    GpxExtractor.new(activity, reverse_geocode: false).extract(@gpx)
+    GpxExtractor.new(@gpx).to_activity(activity, reverse_geocode: false)
     activity
   end
 
@@ -76,7 +76,7 @@ class GpxExtractorTest < ActiveSupport::TestCase
 
   def extract_native(activity = @user.activities.build)
     gpx = Rails.root.join("test/fixtures/files/gpx/native_recording.gpx").read
-    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+    GpxExtractor.new(gpx).to_activity(activity, reverse_geocode: false)
     activity
   end
 
@@ -143,7 +143,7 @@ class GpxExtractorTest < ActiveSupport::TestCase
     gpx = %(<?xml version="1.0"?><gpx><trk><type>cycling</type><trkseg>#{rows.join}</trkseg></trk></gpx>)
 
     activity = @user.activities.build(sport: :bike)
-    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+    GpxExtractor.new(gpx).to_activity(activity, reverse_geocode: false)
 
     assert_operator activity.max_speed.to_f, :<, 10, "the ~55 m/s spike should be filtered out"
     assert_nil activity.activity_data_points[10].speed, "spike-out speed should be nulled"
@@ -160,7 +160,7 @@ class GpxExtractorTest < ActiveSupport::TestCase
           %(</trkseg></trk></gpx>)
 
     activity = @user.activities.build(sport: :bike, name: "Une seconde")
-    GpxExtractor.new(activity, reverse_geocode: false).extract(gpx)
+    GpxExtractor.new(gpx).to_activity(activity, reverse_geocode: false)
 
     assert_equal 1, activity.activity_data_points.size
     assert_nil activity.path

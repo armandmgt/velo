@@ -130,7 +130,7 @@ class PlannedRoutesControllerTest < ActionDispatch::IntegrationTest
     @planned_route.reload
     assert_equal "Tour mis à jour", @planned_route.name
     assert_equal "gravel_ride", @planned_route.sport
-    assert_equal "trekking", @planned_route.routing_profile
+    assert_equal "mtb", @planned_route.routing_profile
     assert_equal 1234, @planned_route.distance_meters
   end
 

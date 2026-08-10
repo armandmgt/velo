@@ -24,42 +24,29 @@ class GpxExtractor
     "backcountryski" => :nordic_ski, "swimming" => :swim
   }.freeze
 
-  def initialize(activity, reverse_geocode: true)
-    @activity = activity
-    @reverse_geocode = reverse_geocode
+  def initialize(gpx_string)
+    @doc = Nokogiri::XML(gpx_string)
+    @doc.remove_namespaces!
   end
 
-  def extract(gpx_string)
-    doc = Nokogiri::XML(gpx_string)
-    doc.remove_namespaces!
-
-    apply_track_metadata(doc)
-    pts = parse_points(doc)
-    build_data_points(pts)
+  def to_activity(activity, reverse_geocode: true)
+    apply_track_metadata(activity)
+    pts = parse_points
+    build_data_points(activity, pts, reverse_geocode:)
   end
 
-  private
-
-  def apply_track_metadata(doc)
-    name = doc.at_xpath("//trk/name")&.text
-    @activity.name ||= name if name.present?
-
-    type = doc.at_xpath("//trk/type")&.text
-    @activity.sport ||= (GPX_SPORT_MAP[type.downcase.delete(" -_")] || :bike) if type.present?
-  end
-
-  def parse_points(doc)
-    doc.xpath("//trkpt").filter_map do |node|
+  def parse_points
+    @doc.xpath("//trkpt").filter_map do |node|
       lat = node["lat"]&.to_f
       lon = node["lon"]&.to_f
       time = node.at_xpath("time")&.text
-      next if lat.nil? || lon.nil? || time.blank?
+      next if lat.nil? || lon.nil?
       next unless lat.finite? && lon.finite?
 
       {
         lat: lat,
         lon: lon,
-        time: Time.parse(time).utc,
+        time: time && Time.parse(time).utc,
         ele: float(node.at_xpath("ele")&.text),
         hr: integer(node.at_xpath(".//hr")&.text),
         cad: float(node.at_xpath(".//cad")&.text),
@@ -68,8 +55,18 @@ class GpxExtractor
     end
   end
 
-  def build_data_points(pts)
-    return finalize([], 0.0, 0.0, 0.0, 0.0, nil) if pts.empty?
+  private
+
+  def apply_track_metadata(activity)
+    name = @doc.at_xpath("//trk/name")&.text
+    activity.name ||= name if name.present?
+
+    type = @doc.at_xpath("//trk/type")&.text
+    activity.sport ||= (GPX_SPORT_MAP[type.downcase.delete(" -_")] || :bike) if type.present?
+  end
+
+  def build_data_points(activity, pts, reverse_geocode:)
+    return finalize(activity, [], 0.0, 0.0, 0.0, 0.0, nil, reverse_geocode: false) if pts.empty?
 
     prev = nil
     distance = 0.0
@@ -80,7 +77,7 @@ class GpxExtractor
     coords = []
 
     pts.each do |pt|
-      dp = @activity.activity_data_points.build(recorded_at: pt[:time])
+      dp = activity.activity_data_points.build(recorded_at: pt[:time])
       dp.altitude = pt[:ele] if pt[:ele]
       dp.heart_rate = pt[:hr] if pt[:hr]
       dp.cadence = pt[:cad] if pt[:cad]
@@ -119,25 +116,25 @@ class GpxExtractor
     # through the Hampel filter and derive max_speed from what survives.
     max_speed = SpeedFilter.new.filter!(data_points)
 
-    @activity.start_time = pts.first[:time]
-    @activity.end_time = pts.last[:time]
-    finalize(coords, distance, elevation_gain, moving_seconds, max_speed, pts.first)
+    activity.start_time = pts.first[:time]
+    activity.end_time = pts.last[:time]
+    finalize(activity, coords, distance, elevation_gain, moving_seconds, max_speed, pts.first, reverse_geocode:)
   end
 
-  def finalize(coords, distance, elevation_gain, moving_seconds, max_speed, first_point)
-    @activity.distance = distance.round(1)
-    @activity.total_elevation_gain = elevation_gain.round(1)
-    @activity.max_speed = max_speed if max_speed&.positive?
-    @activity.active_time = ActiveSupport::Duration.build(moving_seconds.round).iso8601
+  def finalize(activity, coords, distance, elevation_gain, moving_seconds, max_speed, first_point, reverse_geocode:)
+    activity.distance = distance.round(1)
+    activity.total_elevation_gain = elevation_gain.round(1)
+    activity.max_speed = max_speed if max_speed&.positive?
+    activity.active_time = ActiveSupport::Duration.build(moving_seconds.round).iso8601
     # A LineString needs at least two vertices; a single-point recording (e.g. a
     # native recording stopped almost immediately, or one with a single GPS fix)
     # legitimately has no path — leave it nil rather than build an invalid geometry.
-    @activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" if coords.size >= 2
+    activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" if coords.size >= 2
 
-    if @reverse_geocode && first_point
-      @activity.location ||= NominatimClient.new.reverse_geocode(first_point[:lat], first_point[:lon])
+    if reverse_geocode && first_point
+      activity.location ||= NominatimClient.new.reverse_geocode(first_point[:lat], first_point[:lon])
     end
-    @activity.location ||= "Unknown"
+    activity.location ||= "Unknown"
   end
 
   def float(str)
