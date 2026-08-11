@@ -1,4 +1,9 @@
 class PlannedRoutesController < ApplicationController
+  # Comfortably above a 5-hour 1 Hz ride export (~2.5 MB), and small enough that
+  # building a Nokogiri DOM stays cheap inside the request.
+  MAX_GPX_BYTES = 5.megabytes
+  MAX_SEEDED_WAYPOINTS = 20
+
   before_action :set_planned_route, only: %i[ show edit update update_visibility destroy ]
 
   def index
@@ -52,12 +57,44 @@ class PlannedRoutesController < ApplicationController
     redirect_to planned_routes_path, notice: t("planned_route.flash.deleted"), status: :see_other
   end
 
+  # Multipart. Body: gpx_source=<file>
+  # Returns: { waypoints: [[lon, lat], ...], name: String|nil }
+  #
+  # Deliberately does no routing — the client feeds the waypoints back through
+  # #preview, so an import stays one cheap call and undo/redo keep working.
+  def import_gpx
+    upload = params[:gpx_source]
+    return render_gpx_error(:gpx_missing) unless upload.respond_to?(:read) && upload.respond_to?(:original_filename)
+    return render_gpx_error(:gpx_invalid_type) unless upload.original_filename.to_s.downcase.end_with?(".gpx")
+    return render_gpx_error(:gpx_too_large, status: :content_too_large) if upload.size.to_i > MAX_GPX_BYTES
+
+    extractor = GpxExtractor.new(upload.read)
+    return render_gpx_error(:gpx_unreadable) unless extractor.gpx?
+
+    points = extractor.parse_points.map { |point| [ point[:lon], point[:lat] ] }
+    return render_gpx_error(:gpx_no_points) if points.length < 2
+
+    render json: {
+      waypoints: RouteSimplifier.call(points, max_points: MAX_SEEDED_WAYPOINTS),
+      name:      extractor.track_name
+    }
+  rescue Nokogiri::XML::SyntaxError, EncodingError => e
+    Rails.logger.info("GPX import rejected: #{e.class}: #{e.message}")
+    render_gpx_error(:gpx_unreadable)
+  end
+
   # JSON. Body: { sport: "bike", waypoints: [[lon, lat], ...] }
   # Returns: { geojson:, distance_meters:, elevation_gain_meters:, elevation_samples: }
   def preview
     sport, waypoints = parse_preview_body
 
-    unless PlannedRoute.sports.key?(sport) && valid_waypoints?(waypoints)
+    return render json: { error: "invalid_input" }, status: :unprocessable_content unless PlannedRoute.sports.key?(sport)
+
+    if waypoints.length > PlannedRoute::MAX_WAYPOINTS
+      return render json: { error: "too_many_waypoints" }, status: :unprocessable_content
+    end
+
+    unless valid_waypoints?(waypoints)
       return render json: { error: "invalid_input" }, status: :unprocessable_content
     end
 
@@ -69,7 +106,6 @@ class PlannedRoutesController < ApplicationController
         geometry: { type: "LineString", coordinates: result.coordinates },
         properties: {}
       },
-      waypoints: waypoints,
       coordinates: result.coordinates,
       distance_meters: result.distance_meters,
       elevation_gain_meters: result.elevation_gain_meters,
@@ -127,24 +163,33 @@ class PlannedRoutesController < ApplicationController
     permitted.merge("waypoints" => [])
   end
 
-  MAX_EXTRACTED_WAYPOINTS = 20
-
+  # Accepts both encodings this endpoint sees: a JSON body (where Rails has
+  # already deserialized params[:waypoints] into an Array) and a form-encoded
+  # JSON string. Coordinates are converted strictly — Float(_, exception: false)
+  # yields nil for garbage so valid_waypoints? rejects it, where to_f would have
+  # silently routed "abc" as 0.0.
   def parse_preview_body
-    if params[:gpx_source].present?
-      waypoints = GpxExtractor.new(params[:gpx_source].read).parse_points
-      retain_every_nth_waypoint = [ 1, waypoints.size / MAX_EXTRACTED_WAYPOINTS ].max
-      waypoints = waypoints.filter_map.with_index { |element, i| element if i % retain_every_nth_waypoint == 0 }
-      [ params[:sport].to_s, waypoints.pluck(:lon, :lat) ]
-    else
-      [ params[:sport].to_s, JSON.parse(params[:waypoints]).map { |pair| Array(pair).map(&:to_f) } ]
+    raw = params[:waypoints]
+    raw = JSON.parse(raw) if raw.is_a?(String)
+
+    waypoints = Array(raw).map do |pair|
+      pair.is_a?(Array) ? pair.map { |value| Float(value, exception: false) } : pair
     end
+
+    [ params[:sport].to_s, waypoints ]
+  rescue JSON::ParserError
+    [ params[:sport].to_s, [] ]
   end
 
   def valid_waypoints?(waypoints)
     waypoints.length >= 2 && waypoints.all? do |pair|
-      pair.is_a?(Array) && pair.length == 2 &&
+      pair.is_a?(Array) && pair.length == 2 && pair.all?(Numeric) &&
         pair[0].between?(-180, 180) && pair[1].between?(-90, 90)
     end
+  end
+
+  def render_gpx_error(code, status: :unprocessable_content)
+    render json: { error: code }, status: status
   end
 
   def error_sentence(record)

@@ -17,6 +17,10 @@ class PlannedRoute < ApplicationRecord
     hike:               "hiking-beta"
   }.freeze
 
+  # Waypoints ride in BRouter's GET query string (~22 chars each), so an
+  # unbounded list is both a URL-length problem and a way to abuse a third party.
+  MAX_WAYPOINTS = 100
+
   enum :sport, ROUTABLE_SPORTS.index_by(&:itself)
   enum :visibility, %i[private shareable public].index_by(&:itself), prefix: true
 
@@ -101,6 +105,7 @@ class PlannedRoute < ApplicationRecord
   def waypoints_shape
     return errors.add(:waypoints, :invalid) unless waypoints.is_a?(Array)
     return errors.add(:waypoints, :too_short, count: 2) if waypoints.length < 2
+    return errors.add(:waypoints, :too_long, count: MAX_WAYPOINTS) if waypoints.length > MAX_WAYPOINTS
 
     return if waypoints.all? do |pair|
       pair.is_a?(Array) && pair.length == 2 &&

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Route-style export: <rte>/<rtept> with no <trk> at all. Several route
+     builders save this form, so the planner has to seed from it. -->
+<gpx creator="RouteBuilder" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+ <rte>
+  <name>Itinéraire du dimanche</name>
+  <rtept lat="48.8566000" lon="2.3522000"><ele>35.0</ele></rtept>
+  <rtept lat="48.8586000" lon="2.3542000"><ele>38.0</ele></rtept>
+  <rtept lat="48.8606000" lon="2.3562000"><ele>41.0</ele></rtept>
+  <rtept lat="48.8626000" lon="2.3582000"><ele>37.0</ele></rtept>
+ </rte>
+</gpx>

@@ -24,6 +24,7 @@
       data: {
         controller: "route-planner",
         "route-planner-preview-url-value": preview_planned_routes_path,
+        "route-planner-import-url-value": import_gpx_planned_routes_path,
         "route-planner-initial-waypoints-value": planned_route.waypoints.to_json,
         "route-planner-elevation-profile-outlet": "[data-route-planner-elevation-chart]"
       },
@@ -57,7 +58,8 @@
         <%= form.text_field(
               :name,
               class: class_names("w-full input input-sm", { "input-error": planned_route.errors.include?(:name) }),
-              required: true
+              required: true,
+              data: { "route-planner-target": "nameField" }
             ) %>
         <% if planned_route.errors.include?(:name) %>
           <p class="mt-1 text-xs text-error">
@@ -81,7 +83,27 @@
 
       <div>
         <%= form.label :gpx_source, class: "block mb-1 text-xs font-medium opacity-70" %>
-        <%= form.file_field :gpx_source, data: { action: "input->route-planner#schedulePreview" } %>
+        <div class="flex items-center gap-2">
+          <%# name: nil keeps the picker out of the model submission entirely — the
+              file is POSTed to import_gpx over fetch and is never persisted. %>
+          <%= form.file_field(
+                :gpx_source,
+                name: nil,
+                accept: ".gpx,application/gpx+xml",
+                class: "file-input file-input-sm file-input-bordered w-full",
+                data: {
+                  "route-planner-target": "gpxInput",
+                  action: "change->route-planner#importGpx"
+                }
+              ) %>
+          <span
+            class="loading loading-spinner loading-sm shrink-0 hidden"
+            role="status"
+            aria-label="<%= t("planned_route.form.gpx_importing") %>"
+            data-route-planner-target="gpxBusy"
+          ></span>
+        </div>
+        <p class="mt-1 text-xs opacity-60 m-0"><%= t("planned_route.form.gpx_hint") %></p>
       </div>
 
       <p class="text-xs opacity-70 m-0" data-route-planner-target="hint">
@@ -99,6 +121,12 @@
     data-no-route-message="<%= t('planned_route.errors.no_route') %>"
     data-routing-failed-message="<%= t('planned_route.errors.routing_failed') %>"
     data-invalid-input-message="<%= t('planned_route.errors.need_two_waypoints') %>"
+    data-too-many-waypoints-message="<%= t('planned_route.errors.too_many_waypoints') %>"
+    data-gpx-missing-message="<%= t('planned_route.errors.gpx_missing') %>"
+    data-gpx-invalid-type-message="<%= t('planned_route.errors.gpx_invalid_type') %>"
+    data-gpx-too-large-message="<%= t('planned_route.errors.gpx_too_large') %>"
+    data-gpx-unreadable-message="<%= t('planned_route.errors.gpx_unreadable') %>"
+    data-gpx-no-points-message="<%= t('planned_route.errors.gpx_no_points') %>"
   >
     <%= icon "circle-x", class: "size-5 shrink-0" %>
     <span class="flex-1" data-route-planner-target="errorMessage"></span>
@@ -106,6 +134,7 @@
       type="button"
       class="btn btn-sm btn-ghost"
       data-action="route-planner#retry"
+      data-route-planner-target="retry"
     >
       <%= icon "rotate-cw", class: "size-4" %>
       <%= t("planned_route.form.retry") %>

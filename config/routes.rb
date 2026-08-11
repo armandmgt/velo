@@ -46,6 +46,7 @@ Rails.application.routes.draw do
   end
   resources :planned_routes, only: %i[ index new create edit update show destroy ] do
     post :preview, on: :collection
+    post :import_gpx, on: :collection
     patch :visibility, on: :member, action: :update_visibility
   end
 

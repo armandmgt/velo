@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A planned route rather than a recording: <ele> but no <time>, matching what
+     PlannedRoute#to_gpx emits and what Komoot / RideWithGPS export. -->
+<gpx creator="Velo" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+ <trk>
+  <name>Boucle planifiée</name>
+  <type>bike</type>
+  <trkseg>
+   <trkpt lat="48.8566000" lon="2.3522000"><ele>35.0</ele></trkpt>
+   <trkpt lat="48.8576000" lon="2.3532000"><ele>36.0</ele></trkpt>
+   <trkpt lat="48.8586000" lon="2.3542000"><ele>38.0</ele></trkpt>
+   <trkpt lat="48.8596000" lon="2.3552000"><ele>41.0</ele></trkpt>
+   <trkpt lat="48.8606000" lon="2.3562000"><ele>39.0</ele></trkpt>
+   <trkpt lat="48.8616000" lon="2.3572000"><ele>37.0</ele></trkpt>
+  </trkseg>
+ </trk>
+</gpx>

@@ -23,6 +23,24 @@ class PlannedRouteTest < ActiveSupport::TestCase
     assert_not PlannedRoute.new(base.merge(waypoints: [ [ "a", 2.0 ], [ 3.0, 4.0 ] ])).valid?
   end
 
+  # Waypoints ride in BRouter's GET query string, so the list needs a ceiling.
+  test "accepts exactly MAX_WAYPOINTS waypoints" do
+    waypoints = Array.new(PlannedRoute::MAX_WAYPOINTS) { |i| [ 2.0 + (i * 0.001), 48.0 ] }
+
+    assert PlannedRoute.new(user: users(:one), name: "x", sport: "bike", waypoints: waypoints).valid?
+  end
+
+  test "rejects more than MAX_WAYPOINTS waypoints with a waypoint-specific message" do
+    waypoints = Array.new(PlannedRoute::MAX_WAYPOINTS + 1) { |i| [ 2.0 + (i * 0.001), 48.0 ] }
+    route = PlannedRoute.new(user: users(:one), name: "x", sport: "bike", waypoints: waypoints)
+
+    assert_not route.valid?
+    message = route.errors.full_messages_for(:waypoints).to_sentence
+    assert_includes message, PlannedRoute::MAX_WAYPOINTS.to_s
+    # The default :too_long message talks about characters, which is nonsense here.
+    assert_not_includes message, "caractères"
+  end
+
   test "sport_category and sport_icon_name delegate to Activity mapping" do
     pr = PlannedRoute.new(sport: "mountain_bike_ride")
     assert_equal :cycling, pr.sport_category

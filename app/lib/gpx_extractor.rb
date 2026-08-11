@@ -25,28 +25,46 @@ class GpxExtractor
   }.freeze
 
   def initialize(gpx_string)
-    @doc = Nokogiri::XML(gpx_string)
+    # NONET is explicit so a crafted external entity can't make the server fetch
+    # a URL while parsing an upload.
+    @doc = Nokogiri::XML(gpx_string, &:nonet)
     @doc.remove_namespaces!
   end
 
   def to_activity(activity, reverse_geocode: true)
     apply_track_metadata(activity)
-    pts = parse_points
-    build_data_points(activity, pts, reverse_geocode:)
+    # activity_data_points.recorded_at is NOT NULL and build_data_points does
+    # timestamp arithmetic, so timeless points can never become data points. A
+    # route-style GPX (Komoot, RideWithGPS, our own PlannedRoute#to_gpx) carries
+    # no <time> at all and degrades to an activity with no points — which fails
+    # Activity's start_time validation as a 422, rather than raising.
+    build_data_points(activity, parse_points.select { |pt| pt[:time] }, reverse_geocode:)
   end
 
+  # Nokogiri recovers from malformed input rather than raising, so an arbitrary
+  # upload still yields a document — one with no root. That's the signal callers
+  # need to reject a file that merely ends in .gpx.
+  def gpx?
+    @doc.root&.name == "gpx"
+  end
+
+  def track_name
+    @doc.at_xpath("//trk/name")&.text.presence || @doc.at_xpath("//rte/name")&.text.presence
+  end
+
+  # Permissive on purpose: the route planner seeds waypoints from files that
+  # carry no timestamps, so points with no usable <time> come back with nil.
   def parse_points
-    @doc.xpath("//trkpt").filter_map do |node|
+    point_nodes.filter_map do |node|
       lat = node["lat"]&.to_f
       lon = node["lon"]&.to_f
-      time = node.at_xpath("time")&.text
       next if lat.nil? || lon.nil?
       next unless lat.finite? && lon.finite?
 
       {
         lat: lat,
         lon: lon,
-        time: time && Time.parse(time).utc,
+        time: parse_time(node.at_xpath("time")&.text),
         ele: float(node.at_xpath("ele")&.text),
         hr: integer(node.at_xpath(".//hr")&.text),
         cad: float(node.at_xpath(".//cad")&.text),
@@ -57,8 +75,25 @@ class GpxExtractor
 
   private
 
+  # <trk> is the recording form and wins when present. <rte> is the planning
+  # form most route builders export; fall back to it so those files still seed a
+  # route. <wpt> is deliberately ignored — those are unordered POIs, not a path.
+  def point_nodes
+    nodes = @doc.xpath("//trkpt")
+    nodes.empty? ? @doc.xpath("//rtept") : nodes
+  end
+
+  # A garbage <time> must not take down the whole parse; the planner doesn't
+  # need timestamps and to_activity drops the point anyway.
+  def parse_time(str)
+    return nil if str.blank?
+    Time.parse(str).utc
+  rescue ArgumentError
+    nil
+  end
+
   def apply_track_metadata(activity)
-    name = @doc.at_xpath("//trk/name")&.text
+    name = track_name
     activity.name ||= name if name.present?
 
     type = @doc.at_xpath("//trk/type")&.text

@@ -3,10 +3,14 @@ import maplibregl from "maplibre-gl"
 import { FitToBoundsControl, primaryAccentColor, styleUrl } from "controllers/lib/map_helpers"
 
 const PREVIEW_DEBOUNCE_MS = 200
+// Mirrors PlannedRoutesController::MAX_GPX_BYTES so an oversized file fails
+// instantly instead of after a pointless upload.
+const MAX_GPX_BYTES = 5 * 1024 * 1024
 
 export default class extends Controller {
   static values = {
     previewUrl: String,
+    importUrl: String,
     initialLng: { type: Number, default: 2.3522 },   // Paris fallback
     initialLat: { type: Number, default: 48.8566 },
     initialWaypoints: { type: Array, default: [] },
@@ -24,6 +28,10 @@ export default class extends Controller {
     "clear",
     "undo",
     "redo",
+    "gpxInput",
+    "gpxBusy",
+    "nameField",
+    "retry",
   ]
 
   static outlets = [ "elevation-profile" ]
@@ -77,7 +85,7 @@ export default class extends Controller {
       if (this.hasInitialWaypointsValue) {
         const seeded = this.initialWaypointsValue
         if (Array.isArray(seeded) && seeded.length !== 0) {
-          this._hydrateInitialWaypoints(seeded)
+          this._hydrateWaypoints(seeded)
         }
       }
     })
@@ -157,7 +165,7 @@ export default class extends Controller {
   // we push the prior waypoints onto the history stack so `undo()` can return
   // to it — covering add, move, insert, remove, and clear with one path. Any
   // fresh user action also invalidates the redo stack (timeline diverged).
-  _setWaypoints(next, { record = true, local = false } = {}) {
+  _setWaypoints(next, { record = true } = {}) {
     const normalized = next.map((p) => [ p[0], p[1] ])
     if (record && !this._isSameWaypoints(this._waypoints, normalized)) {
       this._history.push(this._waypoints.map((p) => [ p[0], p[1] ]))
@@ -170,9 +178,7 @@ export default class extends Controller {
     this._waypointMarkers = this._waypoints.map((lngLat, i) => this._buildWaypointMarker(lngLat, i))
 
     this._updateUI()
-    if (!local) {
-      this._schedulePreview()
-    }
+    this._schedulePreview()
   }
 
   _isSameWaypoints(a, b) {
@@ -205,20 +211,11 @@ export default class extends Controller {
     this._setWaypoints(next)
   }
 
-  _hydrateInitialWaypoints(seeded) {
-    // Seeded state is the baseline — don't make undo wipe it.
-    this._setWaypoints(seeded, { record: false })
-    const bounds = seeded.reduce(
-      (b, c) => b.extend(c),
-      new maplibregl.LngLatBounds(seeded[0], seeded[0])
-    )
-    this._fitControl.setBounds(bounds)
-    this.map.fitBounds(bounds, { padding: 60, animate: false })
-  }
-
-  _hydrateReceivedWaypoints(seeded) {
-    // Seeded state is the baseline — don't make undo wipe it.
-    this._setWaypoints(seeded, { record: false, local: true })
+  // Seeds the map from an external source and frames it. `record` decides
+  // whether undo can walk back past this: false for the page's own baseline,
+  // true for a GPX import, which overwrites whatever the user hand-placed.
+  _hydrateWaypoints(seeded, { record = false } = {}) {
+    this._setWaypoints(seeded, { record })
     const bounds = seeded.reduce(
       (b, c) => b.extend(c),
       new maplibregl.LngLatBounds(seeded[0], seeded[0])
@@ -344,7 +341,7 @@ export default class extends Controller {
   }
 
   async _fetchPreview() {
-    if (this._waypoints.length < 2 && !this._getGpxSourceFile()) {
+    if (this._waypoints.length < 2) {
       this._routeCoordinates = []
       this._setRouteGeojson({ type: "FeatureCollection", features: [] })
       this._updateStats(null, null)
@@ -358,21 +355,15 @@ export default class extends Controller {
     this._setError(null)
 
     try {
-      const csrf = document.querySelector("meta[name='csrf-token']")?.content || ""
-      const formData = new FormData()
-      formData.append("sport", sport)
-      formData.append("waypoints", JSON.stringify(this._waypoints))
-      if (this._getGpxSourceFile()) {
-        formData.append("gpx_source", this._getGpxSourceFile())
-      }
       const response = await fetch(this.previewUrlValue, {
         method: "POST",
         credentials: "same-origin",
         headers: {
           "Accept":       "application/json",
-          "X-CSRF-Token": csrf,
+          "Content-Type": "application/json",
+          "X-CSRF-Token": this._csrfToken(),
         },
-        body: formData,
+        body: JSON.stringify({ sport, waypoints: this._waypoints }),
       })
 
       if (!response.ok) {
@@ -382,11 +373,6 @@ export default class extends Controller {
       }
 
       const data = await response.json()
-      if (this._getGpxSourceFile()) {
-        this._clearGpxSourceFile()
-        this._waypoints = data.waypoints
-        this._hydrateReceivedWaypoints(data.waypoints)
-      }
       this._routeCoordinates = data.coordinates || data.geojson?.geometry?.coordinates || []
       this._setRouteGeojson({ type: "FeatureCollection", features: [ data.geojson ] })
       this._setFitBounds(data.geojson)
@@ -398,12 +384,80 @@ export default class extends Controller {
     }
   }
 
-  _getGpxSourceFile() {
-    return this.element.elements.namedItem("planned_route[gpx_source]").files[0]
+  // --- GPX import ---
+
+  // Seeds the planner from an uploaded track. The server only extracts and
+  // downsamples waypoints; routing happens on the preview that _setWaypoints
+  // schedules, so this path stays cheap and undo/redo behave as usual.
+  async importGpx() {
+    const file = this._gpxFile()
+    if (!file) return
+
+    if (!/\.gpx$/i.test(file.name)) return this._failImport("gpx_invalid_type")
+    if (file.size > MAX_GPX_BYTES) return this._failImport("gpx_too_large")
+
+    this._setError(null)
+    this._setImporting(true)
+
+    try {
+      const body = new FormData()
+      body.append("gpx_source", file)
+
+      const response = await fetch(this.importUrlValue, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Accept": "application/json", "X-CSRF-Token": this._csrfToken() },
+        body,
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) return this._failImport(payload.error || "gpx_unreadable")
+
+      const waypoints = Array.isArray(payload.waypoints) ? payload.waypoints : []
+      if (waypoints.length < 2) return this._failImport("gpx_no_points")
+
+      this._clearGpxFile()
+      // record: true — an import replaces hand-placed waypoints, so undo has to
+      // be able to bring them back.
+      this._hydrateWaypoints(waypoints, { record: true })
+      this._applyImportedName(payload.name)
+    } catch (err) {
+      console.error(err)
+      this._failImport("gpx_unreadable")
+    } finally {
+      this._setImporting(false)
+    }
   }
 
-  _clearGpxSourceFile() {
-    this.element.elements.namedItem("planned_route[gpx_source]").value = null
+  _failImport(code) {
+    this._clearGpxFile()
+    this._setError(code)
+  }
+
+  // Null-guarded: `change` also fires when the picker is cancelled or cleared.
+  _gpxFile() {
+    if (!this.hasGpxInputTarget) return null
+    return this.gpxInputTarget.files?.[0] ?? null
+  }
+
+  _clearGpxFile() {
+    if (this.hasGpxInputTarget) this.gpxInputTarget.value = ""
+  }
+
+  _setImporting(flag) {
+    if (this.hasGpxInputTarget) this.gpxInputTarget.disabled = flag
+    if (this.hasGpxBusyTarget) this.gpxBusyTarget.classList.toggle("hidden", !flag)
+    this.element.setAttribute("aria-busy", flag ? "true" : "false")
+  }
+
+  _applyImportedName(name) {
+    if (!name || !this.hasNameFieldTarget) return
+    if (this.nameFieldTarget.value.trim() !== "") return
+    this.nameFieldTarget.value = name
+  }
+
+  _csrfToken() {
+    return document.querySelector("meta[name='csrf-token']")?.content || ""
   }
 
   _pushElevation(samples) {
@@ -461,6 +515,9 @@ export default class extends Controller {
     } else {
       this.errorTarget.textContent = message
     }
+    // "Réessayer" re-runs the preview, which does nothing for a rejected GPX —
+    // the file input has already been cleared.
+    if (this.hasRetryTarget) this.retryTarget.classList.toggle("hidden", code.startsWith("gpx_"))
     this.errorTarget.classList.remove("hidden")
   }
 

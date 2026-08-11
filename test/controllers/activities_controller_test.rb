@@ -61,6 +61,20 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert response.parsed_body["errors"].present?
   end
 
+  # A route-style GPX carries no <time>. Feeding those points to the data-point
+  # builder used to raise NoMethodError on nil and return a 500; the extractor
+  # now drops them, so this degrades to the ordinary validation failure.
+  test "JSON create returns 422 for a timeless route gpx rather than raising" do
+    assert_no_difference("Activity.count") do
+      post activities_url,
+           params: { activity: { name: "Parcours", sport: "bike", fit_file: file_fixture_upload("gpx/route_no_time.gpx") } },
+           headers: { "Accept" => "application/json" }
+    end
+
+    assert_response :unprocessable_content
+    assert response.parsed_body["errors"].present?
+  end
+
   test "should show activity" do
     get activity_url(@activity)
     assert_response :success

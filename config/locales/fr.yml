@@ -13,8 +13,16 @@ fr:
       planned_route:
         name: Nom
         sport: Sport
-        waypoints: Waypoints
+        waypoints: Étapes
+        gpx_source: Fichier GPX
     errors:
+      models:
+        planned_route:
+          attributes:
+            waypoints:
+              too_short: doivent être au moins %{count}
+              too_long: ne peuvent pas dépasser %{count}
+              invalid: sont invalides
       messages:
         record_invalid: 'La validation a échoué : %{errors}'
         restrict_dependent_destroy:
@@ -109,6 +117,8 @@ fr:
       back: "Retour aux parcours"
     form:
       hint: "Cliquez sur la carte pour ajouter une étape, sur le tracé pour insérer entre deux. Glissez un repère pour le déplacer, double-cliquez pour le supprimer."
+      gpx_hint: "Ou importez une trace GPX (.gpx, 5 Mo max) pour placer les étapes automatiquement."
+      gpx_importing: "Import du fichier GPX en cours…"
       save: "Enregistrer"
       undo: "Annuler"
       redo: "Rétablir"
@@ -123,6 +133,12 @@ fr:
       no_route: "Aucun itinéraire possible entre ces points pour ce sport."
       routing_failed: "Impossible de calculer l'itinéraire. Réessayez dans un instant."
       need_two_waypoints: "Ajoutez au moins deux étapes pour calculer un itinéraire."
+      too_many_waypoints: "Ce parcours comporte trop d'étapes (100 maximum)."
+      gpx_missing: "Choisissez un fichier GPX à importer."
+      gpx_invalid_type: "Ce fichier n'est pas un GPX. Sélectionnez un fichier .gpx."
+      gpx_too_large: "Ce fichier est trop volumineux (5 Mo maximum)."
+      gpx_unreadable: "Ce fichier GPX est illisible. Vérifiez l'export et réessayez."
+      gpx_no_points: "Ce fichier GPX ne contient aucun tracé exploitable."
     share:
       button: "Partager — copier le lien"
       copied: "Lien copié !"
