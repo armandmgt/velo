@@ -20,7 +20,7 @@ Rails.application.routes.draw do
 
   # Browser errors are posted here and reported through Rails.error, so they land
   # wherever server-side errors do.
-  mount FrontendErrors::Engine, at: "/frontend_errors"
+  mount SolidErrors::Frontend::Engine, at: "/frontend_errors"
 
   namespace :admin, admin: true do
     resources :users

@@ -4,7 +4,6 @@ gem "activerecord-postgis-adapter"
 gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "data_migrate"
-gem "frontend_errors", path: "lib/frontend_errors"
 gem "httparty"
 gem "image_processing", "~> 2.0"
 gem "importmap-rails"
@@ -23,6 +22,9 @@ gem "ruby_fit", path: "lib/ruby_fit"
 gem "solid_cable"
 gem "solid_cache"
 gem "solid_errors", group: :production
+# Not production-only, unlike solid_errors itself: it reports through Rails.error,
+# so it's a no-op wherever nothing has subscribed.
+gem "solid_errors-frontend", "~> 0.1"
 gem "solid_queue"
 gem "stimulus-rails"
 gem "tailwindcss-rails"

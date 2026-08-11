@@ -1,5 +1,5 @@
 import { Application } from "@hotwired/stimulus"
-import { installStimulusErrorHandler } from "frontend_errors"
+import { installStimulusErrorHandler } from "solid_errors_frontend"
 
 const application = Application.start()
 

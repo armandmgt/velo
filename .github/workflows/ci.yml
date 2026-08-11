@@ -98,10 +98,6 @@ jobs:
         run: bundle install && ./bin/rake compile
         working-directory: lib/ruby_fit
 
-      - name: Run frontend_errors gem tests
-        run: bundle install && bundle exec rake test
-        working-directory: lib/frontend_errors
-
       - name: Run tests
         env:
           RAILS_ENV: test
