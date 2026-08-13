@@ -8,8 +8,18 @@ class ActivitiesController < ApplicationController
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
 
+  # Douglas-Peucker tolerance (degrees, ~33 m) for the list thumbnails. The cards
+  # only draw a 60-point SVG polyline, so the full ~4k-point track is wasted
+  # transfer + RGeo allocation. Simplifying in SQL cuts the index payload ~40×.
+  THUMBNAIL_SIMPLIFY_TOLERANCE = 0.0003
+
   def index
-    @activities = Current.user.activities.order(start_time: :desc)
+    # Select every column except the heavy `path`, then re-add a simplified
+    # `path` under the same name so `route_thumbnail` casts it to RGeo as usual.
+    columns = Activity.column_names - [ "path" ]
+    @activities = Current.user.activities
+      .select(*columns, Arel.sql("ST_Simplify(path, #{THUMBNAIL_SIMPLIFY_TOLERANCE}) AS path"))
+      .order(start_time: :desc)
   end
 
   def show
