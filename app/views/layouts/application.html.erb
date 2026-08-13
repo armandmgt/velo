@@ -33,7 +33,9 @@
 
 <%= render "application/flash" %>
 
-<% if authenticated? %>
+<%# Keyed on the user rather than `authenticated?`: a service account is authenticated but
+    has nobody behind it, and this chrome is all human-user UI (activities, email address). %>
+<% if Current.user.present? %>
   <%= render "sessions/meta" %>
   <%= render "navbar" %>
 <% end %>

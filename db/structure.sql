@@ -324,11 +324,12 @@ CREATE TABLE public.schema_migrations (
 
 CREATE TABLE public.sessions (
     id bigint NOT NULL,
-    user_id bigint NOT NULL,
+    user_id bigint,
     ip_address character varying,
     user_agent character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    service_account boolean DEFAULT false NOT NULL
 );
 
 
@@ -679,6 +680,8 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260812183644'),
+('20260812183643'),
 ('20260710142702'),
 ('20260627124421'),
 ('20260624173312'),
