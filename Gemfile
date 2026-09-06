@@ -5,7 +5,7 @@ gem "bcrypt", "~> 3.1.7"
 gem "bootsnap", require: false
 gem "data_migrate"
 gem "httparty"
-gem "image_processing", "~> 2.0"
+gem "image_processing", "~> 2.1"
 gem "importmap-rails"
 gem "jbuilder"
 gem "kamal", require: false
