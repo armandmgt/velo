@@ -159,3 +159,17 @@ All extractors: extract metrics → create `ActivityDataPoint` records → rever
 - **Schema format:** SQL (`db/schema.sql`), not Ruby — required by PostGIS.
 - **Strava import:** `StravaImportsController` + `StravaImportService` handle ZIP extraction, `.fit` / `.fit.gz` / `.gpx` / `.gpx.gz` processing, and deduplication.
 - **iGPSport sync:** `IgpsportConnection` (per-user, encrypted credentials) managed via `igpsport_connection` controller. `IgpsportSyncService` + `IgpsportClient` pull rides; `IgpsportSyncJob` runs hourly (`config/recurring.yml`, Solid Queue).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as **GitHub issues** (`gh` CLI), inferred from the `origin` remote. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
