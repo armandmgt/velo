@@ -544,7 +544,7 @@ final class RecordingViewController: UIViewController {
             mapView.setPosition(last)
             mapView.follow(last)
         }
-        mapView.setMode(paused: controller.state == .paused, idle: controller.state == .idle)
+        mapView.setMode(paused: controller.state.isPaused, idle: controller.state == .idle)
         DispatchQueue.main.async { [weak self] in self?.updateMapInset() }
     }
 

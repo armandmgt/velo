@@ -16,13 +16,26 @@ is the same `Int16` by deliberate design, so inserting the new case next to
 `PAUSED` would renumber `STOPPED`, invalidate stored rows on both platforms and
 break the cross-platform ordinal alignment the entities are documented to keep.
 
-**Resume triggers on displacement, not on speed.** Entering auto-pause needs ten
-consecutive seconds of fixes under `MOVING_SPEED_THRESHOLD` (0.5 m/s, the same
-threshold the server uses for durée de déplacement); leaving it needs one fix
-more than 15 m from the position where we paused. A stationary phone reports
-0.3–0.8 m/s of Doppler noise, straddling that very threshold, so a speed-based
-exit flaps at every traffic light. The asymmetry is intentional: a late pause
-costs a few seconds of elapsed time, a late resume loses real track.
+**Entering is slow, leaving is eager.** Entering auto-pause needs ten consecutive
+seconds of fixes under `MOVING_SPEED_THRESHOLD` (0.5 m/s, the same threshold the
+server uses for durée de déplacement), and the fixes really must be consecutive:
+a hole in the stream leaves two isolated slow readings with an unobserved span
+between them, so a gap wider than a few seconds restarts the run rather than
+counting as stillness. A fix whose speed CoreLocation could not measure (-1)
+breaks the run too — only positive evidence pauses a recording.
+
+Leaving takes either 15 m of displacement from where we paused **or** a measured
+speed of 2 m/s, whichever comes first. Displacement is the primary test because a
+stationary phone reports 0.3–0.8 m/s of Doppler noise, straddling the entry
+threshold, so keying the exit on *that* threshold would flap at every traffic
+light. But displacement alone is not enough: a paused recording drops its fixes,
+so waiting to cover 15 m silently discards the first seconds of the rider pulling
+away — about 15 m of track and distance per stop, which on a city ride with 25
+junctions is a few hundred metres of missing route. 2 m/s (~7 km/h) sits far above
+the noise band while catching a rider within a second or two of setting off.
+
+The asymmetry throughout is intentional: a late pause costs a few seconds of
+elapsed time, a late resume loses real track.
 
 ## Consequences
 

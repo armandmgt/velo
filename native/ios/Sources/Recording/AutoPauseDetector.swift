@@ -28,6 +28,15 @@ struct AutoPauseDetector {
     static let stillDuration: TimeInterval = 10
     /// How far from the pause anchor counts as genuinely moving again (metres).
     static let resumeDistance: CLLocationDistance = 15
+    /// A measured speed this high (m/s, ~7 km/h) is unambiguous movement, far above
+    /// the stationary-noise band. Resuming on it as well as on displacement matters
+    /// because a paused recording drops its fixes: waiting to cover
+    /// `resumeDistance` throws away the first seconds of the rider pulling away.
+    static let resumeSpeed: CLLocationSpeed = 2.0
+    /// Consecutive fixes further apart than this (seconds) say nothing about the
+    /// span between them, so they cannot build a still run. Mirrors the spirit of
+    /// `RecordingStats.pauseGapSeconds` in the distance accumulator.
+    static let maxFixGap: TimeInterval = 5
 
     /// What the detector is currently watching for.
     private enum Phase {
@@ -50,6 +59,8 @@ struct AutoPauseDetector {
     private var phase: Phase = .inactive
     /// When the current unbroken run of still fixes began.
     private var stillSince: Date?
+    /// The previous fix, for gap detection and for anchoring a manual pause.
+    private var lastFix: CLLocation?
 
     init(isEnabled: Bool) {
         self.isEnabled = isEnabled
@@ -59,12 +70,16 @@ struct AutoPauseDetector {
     mutating func reset() {
         phase = .armed
         stillSince = nil
+        lastFix = nil
     }
 
     /// Fold in one fix — including the ones the recording drops while paused, which
     /// is exactly how the auto-resume is detected.
     mutating func consider(_ location: CLLocation) -> Outcome {
         guard isEnabled else { return .none }
+
+        let previous = lastFix
+        lastFix = location
 
         switch phase {
         case .inactive:
@@ -79,6 +94,14 @@ struct AutoPauseDetector {
                 stillSince = nil
                 return .none
             }
+            // A hole in the fix stream (backgrounding, a tunnel, re-acquisition)
+            // leaves us with two isolated slow readings and no idea what happened
+            // between them — the rider may have been moving the whole time. Start
+            // the run over rather than counting the gap as stillness.
+            if let previous, location.timestamp.timeIntervalSince(previous.timestamp) > Self.maxFixGap {
+                stillSince = location.timestamp
+                return .none
+            }
             guard let since = stillSince else {
                 stillSince = location.timestamp
                 return .none
@@ -89,17 +112,24 @@ struct AutoPauseDetector {
             return .shouldAutoPause
 
         case .autoPaused(let anchor):
-            guard location.distance(from: anchor) > Self.resumeDistance else { return .none }
+            guard hasLeft(anchor, location) else { return .none }
             phase = .armed
             stillSince = nil
             return .shouldAutoResume
 
         case .suppressed(let anchor):
-            guard location.distance(from: anchor) > Self.resumeDistance else { return .none }
+            guard hasLeft(anchor, location) else { return .none }
             phase = .armed
             stillSince = nil
             return .none
         }
+    }
+
+    /// Has the rider genuinely left `anchor`? Either they have covered ground, or
+    /// they are measurably moving at a speed no stationary phone reports.
+    private func hasLeft(_ anchor: CLLocation, _ location: CLLocation) -> Bool {
+        if location.distance(from: anchor) > Self.resumeDistance { return true }
+        return location.speed >= Self.resumeSpeed
     }
 
     /// The rider tapped **Reprendre**. From an automatic pause that suppresses the
@@ -110,7 +140,10 @@ struct AutoPauseDetector {
         case .autoPaused(let anchor):
             phase = .suppressed(anchor: anchor)
         default:
-            phase = .armed
+            // A manual pause deserves the same courtesy: someone who taps Reprendre
+            // at a start line has said they want to be recorded, so don't pause them
+            // again ten seconds later just because they haven't set off yet.
+            phase = lastFix.map { .suppressed(anchor: $0) } ?? .armed
         }
         stillSince = nil
     }

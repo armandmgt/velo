@@ -362,7 +362,8 @@ final class RecordingReviewViewController: UIViewController {
             LapSplits.splits(
                 boundaries: session.lapBoundaries,
                 totalDistance: stats.distance,
-                totalElapsed: stats.elapsed
+                totalElapsed: stats.elapsed,
+                isFinished: true
             )
         )
     }

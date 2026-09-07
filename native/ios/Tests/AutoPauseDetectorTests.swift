@@ -74,12 +74,13 @@ struct AutoPauseDetectorTests {
         #expect(detector.consider(fix(at: 20, speed: 0.1)) == .shouldAutoPause)
     }
 
-    @Test("resume needs fifteen metres, not a speed reading")
+    @Test("fifteen metres resumes even when the speed reads zero")
     func resumeOnDisplacement() {
         var detector = armedDetector()
         for second in 0...10 { _ = detector.consider(fix(at: TimeInterval(second), speed: 0.1)) }
-        // Doppler noise while stationary must not resume, however fast it reads.
-        #expect(detector.consider(fix(at: 11, speed: 4, metresNorth: 3)) == .none)
+        // Displacement stands on its own: a rider whose speed never reads valid
+        // still gets resumed once they have covered ground.
+        #expect(detector.consider(fix(at: 11, speed: 0, metresNorth: 3)) == .none)
         #expect(detector.consider(fix(at: 12, speed: 0, metresNorth: 14)) == .none)
         #expect(detector.consider(fix(at: 13, speed: 0, metresNorth: 20)) == .shouldAutoResume)
     }
@@ -131,6 +132,58 @@ struct AutoPauseDetectorTests {
         }
         #expect(detector.consider(fix(at: 9, speed: -1)) == .none)
         #expect(detector.consider(fix(at: 10, speed: 0.1)) == .none)
+    }
+
+    @Test("clear movement resumes without waiting to cover fifteen metres")
+    func resumeOnUnambiguousSpeed() {
+        var detector = armedDetector()
+        for second in 0...10 { _ = detector.consider(fix(at: TimeInterval(second), speed: 0.1)) }
+        // Waiting for 15 m of displacement throws away the first seconds of the
+        // rider pulling away, because a paused recording drops its fixes. A speed
+        // well clear of the stationary-noise band is evidence enough.
+        #expect(detector.consider(fix(at: 11, speed: 3, metresNorth: 2)) == .shouldAutoResume)
+    }
+
+    @Test("noise-band speed alone does not resume")
+    func noiseSpeedDoesNotResume() {
+        var detector = armedDetector()
+        for second in 0...10 { _ = detector.consider(fix(at: TimeInterval(second), speed: 0.1)) }
+        // 0.3–0.8 m/s is what a stationary phone reports; so is an unmeasurable -1.
+        #expect(detector.consider(fix(at: 11, speed: 0.8, metresNorth: 1)) == .none)
+        #expect(detector.consider(fix(at: 12, speed: -1, metresNorth: 1)) == .none)
+    }
+
+    @Test("a broken fix stream does not count as ten still seconds")
+    func gapDoesNotCountAsStillness() {
+        var detector = armedDetector()
+        // Two isolated slow readings a minute apart say nothing about the minute
+        // between them — the rider may have ridden the whole way.
+        #expect(detector.consider(fix(at: 0, speed: 0.1)) == .none)
+        #expect(detector.consider(fix(at: 60, speed: 0.1)) == .none)
+        // A genuine unbroken run still pauses — timed from the fix that restarted
+        // it at t=60, so the pause is due at t=70.
+        for second in 61..<70 {
+            #expect(detector.consider(fix(at: TimeInterval(second), speed: 0.1)) == .none)
+        }
+        #expect(detector.consider(fix(at: 70, speed: 0.1)) == .shouldAutoPause)
+    }
+
+    @Test("resuming a manual pause also disarms the detector until the rider moves")
+    func manualPauseResumeSuppresses() {
+        var detector = armedDetector()
+        _ = detector.consider(fix(at: 0, speed: 3))
+        detector.userDidPause()
+        detector.userDidResume()
+
+        // Stopped at a start line, told to record: leave them alone.
+        for second in 1...40 {
+            #expect(detector.consider(fix(at: TimeInterval(second), speed: 0.1)) == .none)
+        }
+        #expect(detector.consider(fix(at: 41, speed: 3, metresNorth: 20)) == .none)
+        for second in 42..<52 {
+            #expect(detector.consider(fix(at: TimeInterval(second), speed: 0.1, metresNorth: 20)) == .none)
+        }
+        #expect(detector.consider(fix(at: 52, speed: 0.1, metresNorth: 20)) == .shouldAutoPause)
     }
 
     @Test("a disabled detector never fires")
