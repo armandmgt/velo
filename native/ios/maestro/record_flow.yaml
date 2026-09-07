@@ -41,6 +41,9 @@ tags:
 - assertVisible: "PRÊT À ENREGISTRER"
 - assertVisible: "Vélo de route"
 - assertVisible: "Démarrer"
+# S12a (#60): pause automatique is configured here, on the armed card — the only
+# place it's reachable, so the setting can't shift under a ride in progress.
+- assertVisible: "Pause automatique"
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
 # — .fullScreen + isModalInPresentation), so the only way back is the button.
 - assertNotVisible: "Tableau de bord"
@@ -76,6 +79,26 @@ tags:
 
 # Smoke-test the controls: lap marker, then pause ⇄ resume.
 - tapOn: "Tour"
+
+# S12a (#60): the Tours counter opens the split sheet. Only a smoke test here —
+# Maestro's iOS driver cannot traverse a sheet presented over the full-screen
+# recording modal (its contents are absent from the hierarchy even while plainly
+# on screen), so this proves the tap presents and dismisses without breaking the
+# screen, and the screenshot captures the rendering. The splits are asserted for
+# real on the review screen below, which is an ordinary pushed controller.
+#
+# The *auto-pause* rules can't be driven from here either: `setLocation` plants a
+# single static fix and no further updates follow, so no run of still fixes ever
+# accumulates. AutoPauseDetectorTests covers the hysteresis instead.
+- tapOn:
+    id: "toursCell"
+- waitForAnimationToEnd
+- takeScreenshot: record-laps
+- swipe:
+    direction: DOWN
+- waitForAnimationToEnd
+- assertVisible: "DISTANCE"
+
 - tapOn: "Pause"
 - assertVisible: "Reprendre"
 - tapOn: "Reprendre"
@@ -86,6 +109,15 @@ tags:
 - tapOn: "Arrêter"
 - assertVisible: "Vérifier la sortie"
 - assertVisible: "Supprimer"
+
+# S12a (#60): the review screen now carries a still preview of the route, the
+# split list, and *both* clocks — temps écoulé beside durée de déplacement, so the
+# number here is never confused with the (stricter) one the activity page shows.
+- assertVisible: "TEMPS ÉCOULÉ"
+- assertVisible: "DURÉE DE DÉPLACEMENT"
+# The split list: its "DIST." column header appears nowhere else on this screen.
+- assertVisible: "TOURS"
+- assertVisible: "DIST."
 - takeScreenshot: record-review
 
 # Enregistrer serializes the recording to GPX and uploads it via POST /activities.

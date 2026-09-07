@@ -17,9 +17,13 @@ extension Notification.Name {
 /// recording exists at a time and three places share it: the recording screen
 /// (live stats), the tab-bar button (active/idle), and launch (kill recovery).
 ///
-/// State machine: `idle → recording ⇄ paused → stopped(→ idle)`. Fixes are only
-/// persisted while `.recording`; `.paused` drops them (and breaks the distance
-/// segment so the paused gap isn't counted).
+/// State machine: `idle → recording ⇄ paused/autoPaused → stopped(→ idle)`. Fixes
+/// are only persisted while `.recording`; both paused states drop them (and break
+/// the distance segment so the paused gap isn't counted).
+///
+/// `.autoPaused` is pause automatique — identical in effect to `.paused`,
+/// differing only in who triggered it and who may end it. See
+/// `docs/adr/0002-auto-pause-is-a-distinct-persisted-state.md`.
 final class RecordingController: NSObject {
     static let shared = RecordingController()
 
@@ -27,8 +31,14 @@ final class RecordingController: NSObject {
         case idle
         case recording
         case paused
+        case autoPaused
 
         var isActive: Bool { self != .idle }
+
+        /// Paused either way — the clock is frozen and fixes are dropped. The UI
+        /// renders the two identically apart from the state pill, which names
+        /// which kind of pause it is.
+        var isPaused: Bool { self == .paused || self == .autoPaused }
     }
 
     weak var delegate: RecordingControllerDelegate?
@@ -61,6 +71,11 @@ final class RecordingController: NSObject {
 
     private let recorder = LocationRecorder()
     private let store = RecordingStore()
+
+    /// Watches the fix stream for pause automatique. Inert until `start()` arms it,
+    /// and configured from the preference as it stood at Démarrer, so a ride
+    /// records under the setting it began with.
+    private var detector = AutoPauseDetector(isEnabled: false)
 
     private var session: RecordingSession?
     private var accumulator = RecordingStatsAccumulator()
@@ -124,6 +139,8 @@ final class RecordingController: NSObject {
         lastPersistedSecond = nil
         accumulatedElapsed = 0
         stretchStart = Date()
+        detector = AutoPauseDetector(isEnabled: AutoPauseDetector.isEnabledPreference)
+        detector.reset()
 
         recorder.start()
         startTicker()
@@ -131,22 +148,51 @@ final class RecordingController: NSObject {
         emitStats()
     }
 
+    /// The rider tapped **Pause**. Also the way out of an automatic pause into a
+    /// manual one: an explicit pause outranks the detector, so no amount of
+    /// movement will resume it.
     func pause() {
+        guard state == .recording || state == .autoPaused else { return }
+        detector.userDidPause()
+        enterPause(.paused)
+    }
+
+    /// The rider tapped **Reprendre**, from either kind of pause. From an
+    /// automatic one this also disarms the detector until they have genuinely
+    /// moved — re-pausing someone who just asked to be recorded is the worst
+    /// failure mode this feature has.
+    func resume() {
+        guard state.isPaused else { return }
+        detector.userDidResume()
+        leavePause()
+    }
+
+    /// Ten still seconds: enter pause automatique (ADR 0002).
+    private func autoPause() {
         guard state == .recording else { return }
+        enterPause(.autoPaused)
+    }
+
+    /// Fifteen metres from where we auto-paused: back to recording.
+    private func autoResume() {
+        guard state == .autoPaused else { return }
+        leavePause()
+    }
+
+    private func enterPause(_ target: State) {
         accumulatedElapsed = elapsed
         stretchStart = nil
         lastFixSpeed = 0
         // Break the segment so the paused gap adds neither distance nor moving time.
         accumulator.breakSegment()
         stopTicker()
-        session?.recordingState = .paused
+        session?.recordingState = target == .autoPaused ? .autoPaused : .paused
         store.save()
-        state = .paused
+        state = target
         emitStats()
     }
 
-    func resume() {
-        guard state == .paused else { return }
+    private func leavePause() {
         stretchStart = Date()
         startTicker()
         session?.recordingState = .recording
@@ -155,12 +201,33 @@ final class RecordingController: NSObject {
         emitStats()
     }
 
-    /// Mark a lap boundary — a marker for now (S3). Bumps the session's lap
-    /// counter; subsequent points inherit the new ordinal.
+    /// Close the running Tour and open the next one (S12a — #60).
+    ///
+    /// Snapshots the cumulative totals *before* bumping the counter, so the row
+    /// closes the lap that was running; `LapSplits` differences consecutive rows
+    /// into splits. Only available while actually recording — Tour is hidden in
+    /// both paused states, so a zero-distance lap can't be minted at a red light.
     func markLap() {
-        guard isActive, let session else { return }
+        guard state == .recording, let session else { return }
+        store.appendLap(
+            to: session,
+            ordinal: session.lapCount,
+            endedAt: Date(),
+            cumulativeDistance: accumulator.distance,
+            cumulativeElapsed: elapsed
+        )
         session.lapCount += 1
         store.save()
+    }
+
+    /// Splits for the recording in progress: one per Tour, the last in progress.
+    var lapSplits: [LapSplit] {
+        let stats = currentStats
+        return LapSplits.splits(
+            boundaries: session?.lapBoundaries ?? [],
+            totalDistance: stats.distance,
+            totalElapsed: stats.elapsed
+        )
     }
 
     /// Finalize the recording: mark it stopped, stop streaming, and return the
@@ -173,6 +240,8 @@ final class RecordingController: NSObject {
         store.save()
         stopTicker()
         recorder.stop()
+        // A fresh detector starts inert, so no fix can move a finished recording.
+        detector = AutoPauseDetector(isEnabled: false)
         session = nil
         accumulatedElapsed = 0
         stretchStart = nil
@@ -233,6 +302,14 @@ extension RecordingController: LocationRecorderDelegate {
     }
 
     func locationRecorder(_ recorder: LocationRecorder, didUpdate location: CLLocation) {
+        // Every fix feeds the detector, including the ones a paused recording drops
+        // — watching them is exactly how the auto-resume is spotted (ADR 0002).
+        switch detector.consider(location) {
+        case .shouldAutoPause: autoPause()
+        case .shouldAutoResume: autoResume()
+        case .none: break
+        }
+
         // Armed (idle) or paused: surface the fix for the debug readout, but don't
         // record it.
         guard state == .recording, let session else {

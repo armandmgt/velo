@@ -25,14 +25,22 @@ final class RecordingMapView: UIView {
     private var route: [CLLocationCoordinate2D] = []
     private var styleLoaded = false
 
+    /// Preview mode: a still, non-interactive rendering of a finished trace for
+    /// the review screen (S12a — #60), rather than the live follow-the-rider map.
+    private let isPreview: Bool
+    private let startMarker = MLNPointAnnotation()
+    private let finishMarker = MLNPointAnnotation()
+    private var hasEndpoints = false
+
     /// Deferred camera target if a fix arrives before the style finishes loading.
     private var pendingCenter: CLLocationCoordinate2D?
     /// Space the dock occupies at the bottom, so the followed position sits above it.
     private var bottomInset: CGFloat = 320
 
-    init() {
+    init(preview: Bool = false) {
         let config = MapConfig.current
         accentColor = config.accentColor
+        isPreview = preview
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
 
@@ -41,6 +49,14 @@ final class RecordingMapView: UIView {
         mapView.delegate = self
         mapView.allowsTilting = false
         mapView.compassView.compassVisibility = .hidden
+        if preview {
+            // A summary, not a second map screen: freeze the camera rather than the
+            // whole view, so the attribution control stays tappable as the tile
+            // licence expects.
+            mapView.allowsScrolling = false
+            mapView.allowsZooming = false
+            mapView.allowsRotating = false
+        }
         // The recording screen owns the camera (follow mode); scroll/zoom stay on
         // for the user, but attribution must remain visible per the tile licence.
         if let url = config.styleURL { mapView.styleURL = url }
@@ -107,7 +123,53 @@ final class RecordingMapView: UIView {
     }
 
     private func applyContentInset() {
+        guard !isPreview else { return }
         mapView.contentInset = UIEdgeInsets(top: 96, left: 24, bottom: bottomInset, right: 24)
+    }
+
+    // MARK: - Preview
+
+    /// Show a finished trace, framed to its own bounds, with start and finish
+    /// markers. Used by the review screen after Arrêter.
+    func showRoutePreview(_ coordinates: [CLLocationCoordinate2D]) {
+        setRoute(coordinates)
+        guard let first = coordinates.first, let last = coordinates.last else { return }
+
+        startMarker.coordinate = first
+        finishMarker.coordinate = last
+        if !hasEndpoints {
+            mapView.addAnnotations([startMarker, finishMarker])
+            hasEndpoints = true
+        }
+
+        guard styleLoaded else { pendingCenter = last; return }
+        fitToRoute(coordinates)
+    }
+
+    /// Frame the trace. The decision (fit / centre / leave alone) is `RouteBounds`'
+    /// — a recording that never moved has a zero-area box, and asking MapLibre to
+    /// fit that zooms to nonsense.
+    private func fitToRoute(_ coordinates: [CLLocationCoordinate2D]) {
+        switch RouteBounds.framing(for: coordinates) {
+        case .none:
+            return
+        case .center(let latitude, let longitude):
+            mapView.setCenter(
+                CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                zoomLevel: 15,
+                animated: false
+            )
+        case .box(let minLat, let minLon, let maxLat, let maxLon):
+            let bounds = MLNCoordinateBounds(
+                sw: CLLocationCoordinate2D(latitude: minLat, longitude: minLon),
+                ne: CLLocationCoordinate2D(latitude: maxLat, longitude: maxLon)
+            )
+            mapView.setVisibleCoordinateBounds(
+                bounds,
+                edgePadding: UIEdgeInsets(top: 28, left: 28, bottom: 28, right: 28),
+                animated: false
+            )
+        }
     }
 }
 
@@ -138,6 +200,11 @@ extension RecordingMapView: MLNMapViewDelegate {
         styleLoaded = true
         setRoute(route)
         applyContentInset()
+        if isPreview, !route.isEmpty {
+            fitToRoute(route)
+            pendingCenter = nil
+            return
+        }
         if let center = pendingCenter ?? route.last {
             mapView.setCenter(center, zoomLevel: 15, animated: false)
             pendingCenter = nil
@@ -145,6 +212,12 @@ extension RecordingMapView: MLNMapViewDelegate {
     }
 
     func mapView(_ mapView: MLNMapView, viewFor annotation: MLNAnnotation) -> MLNAnnotationView? {
+        if annotation === startMarker {
+            return EndpointMarkerView(reuseIdentifier: "velo-start", fill: .white, ring: accentColor)
+        }
+        if annotation === finishMarker {
+            return EndpointMarkerView(reuseIdentifier: "velo-finish", fill: accentColor, ring: .white)
+        }
         guard annotation === marker else { return nil }
         let identifier = "velo-position"
         let view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? PositionMarkerView
@@ -227,4 +300,23 @@ struct MapConfig {
             alpha: 1
         )
     }
+}
+
+
+// MARK: - EndpointMarkerView
+
+/// Start / finish dots on the review screen's route preview: a small filled disc
+/// with a contrasting ring, quiet enough not to compete with the trace.
+private final class EndpointMarkerView: MLNAnnotationView {
+    init(reuseIdentifier: String, fill: UIColor, ring: UIColor) {
+        super.init(reuseIdentifier: reuseIdentifier)
+        frame = CGRect(x: 0, y: 0, width: 14, height: 14)
+        isEnabled = false
+        backgroundColor = fill
+        layer.cornerRadius = 7
+        layer.borderWidth = 2.5
+        layer.borderColor = ring.cgColor
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 }

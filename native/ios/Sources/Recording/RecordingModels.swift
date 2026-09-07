@@ -15,12 +15,21 @@ import Foundation
 /// The lifecycle of a recording. Persisted as `RecordingSession.state` (Int16).
 /// "Active" — what the single-active invariant and kill-recovery key on — means
 /// any state that isn't `.stopped`.
+///
+/// `autoPaused` is deliberately **appended at 3** rather than slotted next to
+/// `paused`: Android's mirror enum resolves by ordinal (`entries[value]`), so
+/// renumbering `stopped` would invalidate stored rows on both platforms. See
+/// `docs/adr/0002-auto-pause-is-a-distinct-persisted-state.md`.
 enum RecordingState: Int16 {
     case recording = 0
     case paused = 1
     case stopped = 2
+    case autoPaused = 3
 
     var isActive: Bool { self != .stopped }
+
+    /// Paused either way — the rider's clock is frozen and fixes are dropped.
+    var isPaused: Bool { self == .paused || self == .autoPaused }
 }
 
 /// One recording attempt: a start time, a coarse state, a lap counter, and its
@@ -33,6 +42,8 @@ final class RecordingSession: NSManagedObject {
     /// Current lap ordinal (1-based). Tapping "Tour" bumps it; new points inherit it.
     @NSManaged var lapCount: Int16
     @NSManaged var points: NSSet?
+    /// Closed-lap boundaries, one per Tour tap. See `RecordingLap`.
+    @NSManaged var laps: NSSet?
 
     var recordingState: RecordingState {
         get { RecordingState(rawValue: state) ?? .stopped }
@@ -45,6 +56,31 @@ final class RecordingSession: NSManagedObject {
         let set = points as? Set<RecordingPoint> ?? []
         return set.sorted { $0.timestamp < $1.timestamp }
     }
+
+    /// The closed laps as plain values, ready for `LapSplits.splits(boundaries:…)`.
+    var lapBoundaries: [LapBoundary] {
+        let set = laps as? Set<RecordingLap> ?? []
+        return set
+            .map { LapBoundary(ordinal: Int($0.ordinal), cumulativeDistance: $0.cumulativeDistance, cumulativeElapsed: $0.cumulativeElapsed) }
+            .sorted { $0.ordinal < $1.ordinal }
+    }
+}
+
+/// One closed lap: the cumulative distance and temps écoulé at the instant the
+/// rider tapped Tour (S12a — #60).
+///
+/// Storing cumulative snapshots rather than per-lap deltas keeps the write O(1)
+/// and exact; `LapSplits` turns consecutive rows into the splits the UI shows.
+/// Laps never leave the device — see
+/// `docs/adr/0001-laps-stay-on-the-device.md`.
+@objc(RecordingLap)
+final class RecordingLap: NSManagedObject {
+    /// The lap this row closes (1-based).
+    @NSManaged var ordinal: Int16
+    @NSManaged var endedAt: Date
+    @NSManaged var cumulativeDistance: Double
+    @NSManaged var cumulativeElapsed: TimeInterval
+    @NSManaged var session: RecordingSession?
 }
 
 /// A single per-second fix. GPS fields are always present; sensor fields

@@ -29,6 +29,10 @@ final class StatView: UIView {
         captionLabel.font = .preferredFont(forTextStyle: .caption2)
         captionLabel.textColor = .secondaryLabel
         captionLabel.textAlignment = .center
+        // "Durée de déplacement" has to fit a third of the summary card.
+        captionLabel.numberOfLines = 2
+        captionLabel.adjustsFontSizeToFitWidth = true
+        captionLabel.minimumScaleFactor = 0.8
         captionLabel.text = caption.uppercased()
 
         let stack = UIStackView(arrangedSubviews: [valueLabel, captionLabel])

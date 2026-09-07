@@ -69,6 +69,7 @@ final class RecordingViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         controller.delegate = self
+        autoPauseSwitch.isOn = AutoPauseDetector.isEnabledPreference
         updateSportButton()
         render(state: controller.state)
         render(stats: controller.currentStats)
@@ -117,6 +118,23 @@ final class RecordingViewController: UIViewController {
     private lazy var stopButton = makeStopButton()
 
     private var dockCollapsed = false
+
+    /// Pause automatique on/off for the next recording. Lives on the armed card,
+    /// which `updateDockVisibility` hides the moment recording starts — so the
+    /// setting is read at Démarrer and can't shift under a ride in progress.
+    private lazy var autoPauseSwitch: UISwitch = {
+        let toggle = UISwitch()
+        toggle.isOn = AutoPauseDetector.isEnabledPreference
+        toggle.accessibilityIdentifier = "autoPauseSwitch"
+        toggle.addAction(
+            UIAction { action in
+                guard let toggle = action.sender as? UISwitch else { return }
+                AutoPauseDetector.isEnabledPreference = toggle.isOn
+            },
+            for: .valueChanged
+        )
+        return toggle
+    }()
 
     private lazy var grabberButton = makeGrabber()
     private lazy var idleCard = makeIdleCard()
@@ -313,11 +331,22 @@ final class RecordingViewController: UIViewController {
         subtitle.textAlignment = .center
         subtitle.numberOfLines = 0
 
-        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle])
+        let autoPauseLabel = UILabel()
+        autoPauseLabel.text = "Pause automatique"
+        autoPauseLabel.font = .systemFont(ofSize: 14)
+        autoPauseLabel.textColor = Palette.ink
+
+        let autoPauseRow = UIStackView(arrangedSubviews: [autoPauseLabel, autoPauseSwitch])
+        autoPauseRow.axis = .horizontal
+        autoPauseRow.alignment = .center
+        autoPauseRow.spacing = 12
+
+        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle, autoPauseRow])
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 6
         stack.setCustomSpacing(16, after: handle)
+        stack.setCustomSpacing(14, after: subtitle)
         stack.isLayoutMarginsRelativeArrangement = true
         stack.directionalLayoutMargins = .init(top: 16, leading: 20, bottom: 22, trailing: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -427,6 +456,13 @@ final class RecordingViewController: UIViewController {
         let moyCell = statCell(value: moyValue, valueColor: Palette.ink, caption: moyCaption, captionText: "Moy. km/h")
         let toursCap = UILabel()
         let toursCell = statCell(value: toursValue, valueColor: Palette.ink, caption: toursCap, captionText: "Tours")
+        // The counter is the way into the splits: the dock stays the glanceable
+        // summary, and the full table lives one tap away in a sheet.
+        toursCell.isUserInteractionEnabled = true
+        toursCell.accessibilityIdentifier = "toursCell"
+        toursCell.addGestureRecognizer(
+            UITapGestureRecognizer(target: self, action: #selector(showLapSplits))
+        )
 
         let d1 = hairline(vertical: true)
         let d2 = hairline(vertical: true)
@@ -622,6 +658,16 @@ final class RecordingViewController: UIViewController {
         controller.state == .recording ? controller.pause() : controller.resume()
     }
 
+    /// Open the split list for the recording in progress.
+    @objc private func showLapSplits() {
+        guard controller.isActive else { return }
+        let sheet = LapSplitsViewController(
+            splits: controller.lapSplits,
+            usesPace: controller.sport.usesPace
+        )
+        present(sheet, animated: true)
+    }
+
     private func markLap() {
         controller.markLap()
         render(stats: controller.currentStats)
@@ -662,16 +708,18 @@ final class RecordingViewController: UIViewController {
             activeControls.isHidden = false
             lapButton.isHidden = false
             pauseResumeButton.setTitle("Pause", for: .normal)
-        case .paused:
-            statePill.set(.paused)
+        case .paused, .autoPaused:
+            statePill.set(state == .autoPaused ? .autoPaused : .paused)
             sportButton.isUserInteractionEnabled = false
             startButton.isHidden = true
             activeControls.isHidden = false
+            // Tour is hidden in both paused states, so a stop at a red light can't
+            // mint a zero-distance split.
             lapButton.isHidden = true
             pauseResumeButton.setTitle("Reprendre", for: .normal)
         }
         updateDockVisibility()
-        mapView.setMode(paused: state == .paused, idle: state == .idle)
+        mapView.setMode(paused: state.isPaused, idle: state == .idle)
         DispatchQueue.main.async { [weak self] in self?.updateMapInset() }
     }
 
@@ -787,7 +835,7 @@ extension RecordingViewController: RecordingControllerDelegate {
 /// The state pill's contents (dot + uppercase word). Flat + coloured to match the
 /// design; the backing white capsule is `pillContainer`. Pulses while recording.
 private final class StatusPillView: UIView {
-    enum State { case idle, recording, paused }
+    enum State { case idle, recording, paused, autoPaused }
 
     private let dot = UIView()
     private let label = UILabel()
@@ -831,6 +879,12 @@ private final class StatusPillView: UIView {
         case .paused:
             isHidden = false
             apply(color: Palette.paused, text: "En pause")
+            stopPulsing()
+        case .autoPaused:
+            // Named apart from a manual pause so the rider can tell who stopped
+            // the clock — and knows Reprendre will override it.
+            isHidden = false
+            apply(color: Palette.paused, text: "Pause auto")
             stopPulsing()
         }
     }

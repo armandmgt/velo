@@ -40,8 +40,19 @@ final class RecordingReviewViewController: UIViewController {
     private let heroUnitLabel = UILabel()
     private let heroCaptionLabel = UILabel()
 
-    private let elapsedStat = StatView(caption: "Temps")
+    // Two clocks, named exactly as CONTEXT.md defines them: the review screen
+    // shows both, so the number here is never mistaken for the (stricter) one the
+    // activity page will show after upload.
+    private let elapsedStat = StatView(caption: "Temps écoulé")
+    private let movingStat = StatView(caption: "Durée de déplacement")
     private let avgStat = StatView(caption: "Moyenne")
+
+    /// A still rendering of the trace just recorded.
+    private let mapPreview = RecordingMapView(preview: true)
+
+    private let scrollView = UIScrollView()
+
+    private lazy var lapSplitsView = LapSplitsView(usesPace: sport.usesPace)
 
     private lazy var sportButton = makeSportButton()
 
@@ -91,7 +102,9 @@ final class RecordingReviewViewController: UIViewController {
 
         let stack = UIStackView(arrangedSubviews: [
             heroBlock,
+            mapCard,
             summaryCard,
+            makeField(caption: "Tours", control: lapSplitsView, fillWidth: true),
             makeField(caption: "Sport", control: sportButton, fillWidth: false),
             makeField(caption: "Nom", control: nameField, fillWidth: true),
             makeField(caption: "Visibilité", control: visibilitySegmented, fillWidth: true),
@@ -105,6 +118,26 @@ final class RecordingReviewViewController: UIViewController {
     }()
 
     private lazy var summaryCard = makeSummaryCard()
+
+    /// The route preview, clipped to the same rounded card as the summary.
+    private lazy var mapCard: UIView = {
+        let card = UIView()
+        card.backgroundColor = .secondarySystemBackground
+        card.layer.cornerRadius = 20
+        card.layer.cornerCurve = .continuous
+        card.clipsToBounds = true
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(mapPreview)
+        NSLayoutConstraint.activate([
+            mapPreview.topAnchor.constraint(equalTo: card.topAnchor),
+            mapPreview.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+            mapPreview.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            mapPreview.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            // Tall enough that the MapTiler attribution stays legible.
+            card.heightAnchor.constraint(equalToConstant: 200),
+        ])
+        return card
+    }()
 
     private lazy var actionStack: UIStackView = {
         let stack = UIStackView(arrangedSubviews: [saveButton, deleteButton])
@@ -142,6 +175,26 @@ final class RecordingReviewViewController: UIViewController {
         setupLayout()
         updateSportButton()
         render()
+        mapPreview.showRoutePreview(
+            session.orderedPoints.map {
+                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+            }
+        )
+
+        // The name field now sits below the map and the split list, so the keyboard
+        // would cover it without an inset.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillChange(_:)),
+            name: UIResponder.keyboardWillChangeFrameNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(keyboardWillHide),
+            name: UIResponder.keyboardWillHideNotification,
+            object: nil
+        )
 
         // Dismiss the keyboard when tapping outside the name field.
         let tap = UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard))
@@ -166,19 +219,30 @@ final class RecordingReviewViewController: UIViewController {
         heroCaptionLabel.font = .preferredFont(forTextStyle: .caption1)
         heroCaptionLabel.textColor = .secondaryLabel
 
-        view.addSubview(contentStack)
+        // The map and the split list push the summary past a phone screen, so the
+        // review content scrolls while the actions stay pinned to the bottom.
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.keyboardDismissMode = .interactive
+        scrollView.addSubview(contentStack)
+
+        view.addSubview(scrollView)
         view.addSubview(actionStack)
         view.addSubview(uploadingStack)
 
         NSLayoutConstraint.activate([
-            contentStack.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 24),
-            contentStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
-            contentStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            contentStack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 24),
+            contentStack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
+            contentStack.leadingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.leadingAnchor, constant: 24),
+            contentStack.trailingAnchor.constraint(equalTo: scrollView.frameLayoutGuide.trailingAnchor, constant: -24),
 
             actionStack.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 24),
             actionStack.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -24),
             actionStack.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -24),
-            actionStack.topAnchor.constraint(greaterThanOrEqualTo: contentStack.bottomAnchor, constant: 16),
+            actionStack.topAnchor.constraint(equalTo: scrollView.bottomAnchor, constant: 16),
             saveButton.heightAnchor.constraint(equalToConstant: 54),
             deleteButton.heightAnchor.constraint(equalToConstant: 54),
 
@@ -227,7 +291,11 @@ final class RecordingReviewViewController: UIViewController {
         separator.backgroundColor = .separator
         separator.translatesAutoresizingMaskIntoConstraints = false
 
-        let row = UIStackView(arrangedSubviews: [elapsedStat, separator, avgStat])
+        let separator2 = UIView()
+        separator2.backgroundColor = .separator
+        separator2.translatesAutoresizingMaskIntoConstraints = false
+
+        let row = UIStackView(arrangedSubviews: [elapsedStat, separator, movingStat, separator2, avgStat])
         row.axis = .horizontal
         row.alignment = .fill
         row.distribution = .fill
@@ -243,7 +311,9 @@ final class RecordingReviewViewController: UIViewController {
             row.leadingAnchor.constraint(equalTo: card.leadingAnchor),
             row.trailingAnchor.constraint(equalTo: card.trailingAnchor),
             separator.widthAnchor.constraint(equalToConstant: 0.5),
+            separator2.widthAnchor.constraint(equalToConstant: 0.5),
             elapsedStat.widthAnchor.constraint(equalTo: avgStat.widthAnchor),
+            movingStat.widthAnchor.constraint(equalTo: avgStat.widthAnchor),
         ])
         return card
     }
@@ -285,7 +355,31 @@ final class RecordingReviewViewController: UIViewController {
     private func render() {
         heroValueLabel.text = RecordingFormatters.distanceKilometers(stats.distance)
         elapsedStat.value = RecordingFormatters.elapsedString(stats.elapsed)
+        movingStat.value = RecordingFormatters.elapsedString(stats.movingTime)
         avgStat.value = RecordingFormatters.speedOrPace(stats.averageSpeed, usesPace: sport.usesPace)
+        lapSplitsView.usesPace = sport.usesPace
+        lapSplitsView.setSplits(
+            LapSplits.splits(
+                boundaries: session.lapBoundaries,
+                totalDistance: stats.distance,
+                totalElapsed: stats.elapsed
+            )
+        )
+    }
+
+    @objc private func keyboardWillChange(_ notification: Notification) {
+        guard let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+        let overlap = max(view.bounds.maxY - view.convert(frame, from: nil).minY - actionStack.frame.height, 0)
+        scrollView.contentInset.bottom = overlap
+        scrollView.verticalScrollIndicatorInsets.bottom = overlap
+        if nameField.isFirstResponder {
+            scrollView.scrollRectToVisible(nameField.convert(nameField.bounds, to: scrollView), animated: true)
+        }
+    }
+
+    @objc private func keyboardWillHide() {
+        scrollView.contentInset.bottom = 0
+        scrollView.verticalScrollIndicatorInsets.bottom = 0
     }
 
     private func visibilityChanged() {

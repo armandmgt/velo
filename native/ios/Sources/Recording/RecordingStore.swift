@@ -85,6 +85,28 @@ final class RecordingStore {
         return point
     }
 
+    // MARK: - Laps
+
+    /// Close a lap: snapshot the cumulative totals at the instant Tour was tapped
+    /// (S12a — #60). `LapSplits` differences consecutive rows into splits.
+    @discardableResult
+    func appendLap(
+        to session: RecordingSession,
+        ordinal: Int16,
+        endedAt: Date,
+        cumulativeDistance: Double,
+        cumulativeElapsed: TimeInterval
+    ) -> RecordingLap {
+        let lap = RecordingLap(context: viewContext)
+        lap.ordinal = ordinal
+        lap.endedAt = endedAt
+        lap.cumulativeDistance = cumulativeDistance
+        lap.cumulativeElapsed = cumulativeElapsed
+        lap.session = session
+        save()
+        return lap
+    }
+
     /// Delete a finalized session (its points cascade away) — used to clear the
     /// local recording after a successful upload (S4 — #52).
     func delete(_ session: RecordingSession) {

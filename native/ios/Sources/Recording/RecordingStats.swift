@@ -21,8 +21,13 @@ struct RecordingStats {
     /// Mirrors `GpxExtractor::PAUSE_GAP_SECONDS`.
     static let pauseGapSeconds: TimeInterval = 30
 
-    /// Wall-clock recording time, excluding paused stretches (seconds).
+    /// Temps écoulé: wall-clock recording time, excluding paused stretches
+    /// (seconds). The clock the rider watches, and the one that times a Tour.
     var elapsed: TimeInterval = 0
+    /// Durée de déplacement: the stricter, speed-gated clock the server will
+    /// store as the Activity's `active_time`. Shown beside temps écoulé on the
+    /// review screen so the two numbers are never confused for each other.
+    var movingTime: TimeInterval = 0
     /// Total distance over the ground (meters).
     var distance: CLLocationDistance = 0
     /// Latest instantaneous speed (m/s), or 0 when stationary/unknown.
@@ -71,6 +76,7 @@ struct RecordingStatsAccumulator {
     func snapshot(elapsed: TimeInterval, currentSpeed: CLLocationSpeed) -> RecordingStats {
         RecordingStats(
             elapsed: elapsed,
+            movingTime: movingSeconds,
             distance: distance,
             currentSpeed: max(currentSpeed, 0),
             averageSpeed: movingSeconds > 0 ? distance / movingSeconds : 0
