@@ -1,14 +1,8 @@
 class ActivitiesController < ApplicationController
-  # A `POST /activities` with `Accept: application/json` originates outside the
-  # webview and carries no CSRF token. Auth rides the signed `session_id` cookie
-  # (not the CSRF-bearing Rails session), so exempting only the JSON format is
-  # safe; the HTML form stays fully protected. Mirrors
-  # ConfigurationsController#skip_forgery_protection.
-  #
-  # No client uses this today — #116 moved the recording upload into the review
-  # page, which submits the HTML form with a CSRF token like any other. Kept
-  # because the deferred offline queue (#117) is a native POST and will need it
-  # back, and re-deriving why it was safe is the expensive part.
+  # A JSON `POST /activities` originates outside the webview and carries no CSRF
+  # token; auth rides the signed `session_id` cookie instead, so exempting only
+  # that format is safe. No client uses it since #116 moved the upload into the
+  # review page — kept for the offline queue (#117), which will need it back.
   protect_from_forgery with: :exception, unless: -> { request.format.json? }
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
@@ -38,12 +32,9 @@ class ActivitiesController < ApplicationController
   end
 
   def create
-    # A native recording carries an idempotency key (#116, ADR 0003). The shell
-    # now hands the ride to the web review form and learns the upload succeeded
-    # only once the page reports back, so a process killed in between would
-    # otherwise upload the same ride twice. Answering the replay with the
-    # activity already created makes the retry indistinguishable from the
-    # original success, which is the whole point of the key.
+    # The shell learns the upload succeeded only once the review page reports
+    # back, so a process killed in between would otherwise upload the ride twice
+    # (#116, ADR 0003).
     if (replay = replayed_recording)
       return respond_with_created(replay)
     end
@@ -69,8 +60,7 @@ class ActivitiesController < ApplicationController
       end
     end
   rescue ActiveRecord::RecordNotUnique
-    # Two uploads of the same recording raced past the lookup above and the
-    # unique index settled it. Answer with whichever one won.
+    # Two uploads raced past the lookup above; the unique index settled it.
     (replay = replayed_recording) ? respond_with_created(replay) : raise
   end
 
@@ -112,9 +102,8 @@ class ActivitiesController < ApplicationController
 
   private
 
-  # The activity this upload's recording already created, if any. Scoped to the
-  # owner to match the unique index, so a key colliding with another account's
-  # row reads as absent rather than as someone else's ride.
+  # Scoped to the owner to match the unique index, so a key colliding with
+  # another account's row reads as absent rather than as someone else's ride.
   def replayed_recording
     uuid = activity_params[:recording_uuid].presence
     uuid && Current.user.activities.find_by(recording_uuid: uuid)
@@ -123,10 +112,6 @@ class ActivitiesController < ApplicationController
   def respond_with_created(activity)
     respond_to do |format|
       format.html { redirect_to activity, notice: "Activité créée avec succès." }
-      # Native recorders (issue #48) upload GPX out-of-band and navigate the
-      # webview to the returned URL — no Turbo redirect to follow. Unused since
-      # #116 moved the upload into the review page, but kept: the deferred
-      # offline queue (#117) is a native POST and will want this contract back.
       format.json { render json: { id: activity.id, url: activity_url(activity) }, status: :created, location: activity }
     end
   end
@@ -136,6 +121,10 @@ class ActivitiesController < ApplicationController
   end
 
   def activity_params
-    params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
+    permitted = params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
+    # A form always sends the key, so an unnamed upload arrives as "" — which
+    # defeats the `name ||=` fallback to the file's own track name (S0 §4).
+    permitted[:name] = nil if permitted.key?(:name) && permitted[:name].blank?
+    permitted
   end
 end

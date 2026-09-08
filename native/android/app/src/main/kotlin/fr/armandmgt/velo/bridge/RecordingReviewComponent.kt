@@ -16,19 +16,8 @@ import kotlinx.serialization.Serializable
 
 /**
  * The shell's half of the recording review (#116, ADR 0003 — supersedes #67).
- * Mirrors the iOS `RecordingReviewComponent`.
- *
- * The review screen is the web `/activities/new`; this hands it the finished
- * recording and listens for what the rider does with it:
- * - **connect** → reply with the compressed handoff, or `null` when there is no
- *   pending recording (the tab bar's FAB routes to the same URL, where the page
- *   must read as the plain upload form).
- * - **committed** → the page's upload succeeded; clear the local session.
- * - **discard** → confirm, then drop the recording. Nothing was uploaded.
- *
- * The shell no longer uploads anything itself: `ActivityUploader` and
- * `RecordingGpxEncoder` are gone, and the GPX is encoded on the web from the
- * points this component sends.
+ * Mirrors the iOS `RecordingReviewComponent`: the review screen is the web
+ * `/activities/new`, and this hands it the finished recording.
  */
 class RecordingReviewComponent(
     name: String,
@@ -51,9 +40,8 @@ class RecordingReviewComponent(
     }
 
     /**
-     * The compressed handoff, or `null` when there is nothing to hand over — the
-     * page treats both the same way, so a failure to encode degrades to the
-     * upload form rather than to a broken review screen.
+     * `null` when there is nothing to hand over. The page treats both the same
+     * way, so a failure to encode degrades to the plain upload form.
      */
     private fun encodedHandoff(): String? {
         val pending = RecordingHandoff.pending ?: return null
@@ -62,19 +50,12 @@ class RecordingReviewComponent(
             .getOrNull()
     }
 
-    /**
-     * The upload landed. Only now is it safe to drop the on-device recording —
-     * the store is the source of truth until the server has confirmed (S0 §5,
-     * weakened by ADR 0003 and bought back by the `recording_uuid` the page
-     * submitted, which makes a replay resolve to this same activity).
-     */
+    /** Only now is it safe to drop the on-device recording (S0 §5). */
     private fun handleCommitted(message: Message) {
         val url = message.data<CommittedData>()?.url
         clearPendingRecording()
 
         val activity = fragment.activity as? MainActivity
-        // Leave the review modal, then land on the created activity in the tab
-        // that owns activities — mirroring the iOS component.
         activity?.onBackPressedDispatcher?.onBackPressed()
         if (url != null) activity?.routeInTab("activities", url)
     }
@@ -103,13 +84,11 @@ class RecordingReviewComponent(
 
     @Serializable
     data class CommittedData(
-        /** Where the form submission landed — the created activity. */
         val url: String? = null,
     )
 
     @Serializable
     data class HandoffData(
-        /** Raw DEFLATE, base64'd. `null` when there is no pending recording. */
         val handoff: String? = null,
     )
 }

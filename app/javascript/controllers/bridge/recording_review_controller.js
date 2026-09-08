@@ -12,21 +12,7 @@ import {
 } from "controllers/lib/recording_formatters"
 
 // Connects to data-controller="bridge--recording-review"
-//
-// Turns `/activities/new` into the recording review screen the shells used to
-// build natively (#116, ADR 0003 — supersedes #66/#67).
-//
-// On connect it asks the shell for the **handoff** — the finished recording's
-// points, lap boundaries, stats and sport, gzipped and base64'd into one bridge
-// message. From that single payload it draws the route, renders the splits and
-// the three stats, encodes the GPX, and puts it into the form's real
-// `activity[fit_file]` input via `DataTransfer`. The form then submits like any
-// other Turbo form: CSRF from the page's meta tag, `422` re-rendering with
-// `activity.errors`, `201` redirecting to the new activity.
-//
-// #66 claimed a webview could not do this. What a webview cannot do is set a
-// file input's *path*; attaching a JS-constructed `File` has worked since Safari
-// 14.1, and the iOS deployment target is 17.0.
+// Turns /activities/new into the recording review screen (#116, ADR 0003).
 export default class extends BridgeComponent {
   static component = "recording-review"
   static targets = [
@@ -52,11 +38,9 @@ export default class extends BridgeComponent {
 
   connect() {
     super.connect()
-    // The page's default state is the plain upload form: file picker visible, no
-    // review chrome, submit live. That way a shell *without* this component — an
-    // older app against a newer server — still gets a form that works, rather
-    // than a review screen nothing can ever fill. Only once we know a handoff is
-    // on its way do we take the form over.
+    // The page ships as the plain upload form and is only taken over once a
+    // handoff is inbound, so a shell without this component still gets a form
+    // that works.
     this.#enterLoadingState()
     this.send("connect", {}, (message) => this.#receive(message.data))
   }
@@ -67,36 +51,23 @@ export default class extends BridgeComponent {
     this.map = undefined
   }
 
-  /**
-   * Enregistrer succeeded — only now may the shell clear the local recording,
-   * and the URL it landed on is the activity the shell should show. The
-   * `recording_uuid` submitted with the form makes a replay resolve to this same
-   * activity, so a shell killed before this message arrives cannot duplicate it.
-   */
   submitEnd(event) {
     if (!event.detail?.success) return
     this.send("committed", { url: event.detail.fetchResponse?.response?.url })
   }
 
-  /** Supprimer — the shell owns the confirmation and the delete. */
   discard(event) {
     event.preventDefault()
     this.send("discard")
   }
 
-  // MARK: - Handoff
-
   async #receive(data) {
-    // No pending recording. The tab bar's "+" routes here too — same URL, and
-    // the shell has nothing to hand over — so this is the plain upload form.
-    // Reveal the file picker rather than stranding the rider on a review screen
-    // for a ride that doesn't exist.
     if (!data?.handoff) return this.#fallBackToUpload()
 
     try {
       const handoff = await this.#decode(data.handoff)
-      // Reveal before drawing: MapLibre measures its container at construction,
-      // and a hidden one measures zero.
+      // Before drawing: MapLibre measures its container at construction, and a
+      // hidden one measures zero.
       this.#showReview()
       this.#render(handoff)
       this.#attachGpx(handoff)
@@ -105,15 +76,9 @@ export default class extends BridgeComponent {
     }
   }
 
-  // Raw DEFLATE + base64: a six-hour ride at ~1 Hz is ~21,600 points, and the
-  // bridge's native→web leg inlines its JSON into an `evaluateJavaScript` source
-  // string — raw, that is megabytes. 1 Hz GPS text compresses roughly ten to
-  // one, which keeps even the worst realistic ride in the low hundreds of KB, so
-  // one message suffices and there is no chunk-reassembly to get wrong.
-  //
-  // "deflate-raw" rather than gzip because it is what both shells' compressors
-  // emit natively (iOS `COMPRESSION_ZLIB`, Android `Deflater(nowrap: true)`) —
-  // no gzip container or CRC32 hand-rolled twice.
+  // deflate-raw rather than gzip: it is what both shells' compressors emit
+  // natively (iOS COMPRESSION_ZLIB, Android Deflater(nowrap = true)), so neither
+  // has to hand-roll a gzip container and CRC32.
   async #decode(base64) {
     const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0))
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))
@@ -165,9 +130,6 @@ export default class extends BridgeComponent {
     )
   }
 
-  // The points already crossed the bridge at full fidelity for the GPX, so the
-  // trace is drawn from them directly — there is nothing to save by simplifying
-  // something already paid for, and MapLibre draws the line on the GPU.
   #renderRoute(handoff) {
     const coordinates = (handoff.points ?? []).map((point) => [point.lon, point.lat])
     if (coordinates.length === 0) return
@@ -182,11 +144,17 @@ export default class extends BridgeComponent {
       container: this.mapTarget,
       style: styleUrl(),
       bounds,
-      fitBoundsOptions: { padding: 32 },
-      // A still rendering of the ride just recorded — nothing to pan to.
+      // A ride that barely moved gives near-zero bounds, which would otherwise
+      // fit to a zoom deeper than any tile exists at — a blank map.
+      fitBoundsOptions: { padding: 32, maxZoom: 16 },
       interactive: false,
-      attributionControl: { compact: true },
+      // The summary card rides over the map's lower edge, so the default
+      // bottom-right attribution would sit under it — and the tile licence
+      // requires it stay legible.
+      attributionControl: false,
     })
+
+    this.map.addControl(new maplibregl.AttributionControl({ compact: true }), "top-right")
 
     this.map.on("load", () => {
       this.map.addSource("route", {
@@ -197,7 +165,6 @@ export default class extends BridgeComponent {
           geometry: { type: "LineString", coordinates },
         },
       })
-      // Casing under the line, same as the activity map.
       this.map.addLayer({
         id: "route-casing",
         type: "line",
@@ -222,12 +189,11 @@ export default class extends BridgeComponent {
     new maplibregl.Marker({ element }).setLngLat(coordinate).addTo(this.map)
   }
 
-  // The moment #66 said was impossible: a `File` built in JS, attached to the
-  // form's real file input. The part's filename MUST end in `.gpx` — the server
-  // dispatches to `GpxExtractor` on the filename, not the field name (S0 §4).
   #attachGpx(handoff) {
     const gpx = encodeGpx(handoff, document.documentElement.dataset.bridgePlatform)
     const transfer = new DataTransfer()
+    // The filename, not the field name, is what routes the upload to
+    // GpxExtractor server-side (S0 §4).
     transfer.items.add(new File([gpx], "recording.gpx", { type: "application/gpx+xml" }))
     this.fileTarget.files = transfer.files
   }
@@ -237,16 +203,11 @@ export default class extends BridgeComponent {
     this.submitTarget.disabled = true
   }
 
-  /**
-   * No pending recording (or none we could read). Leave the page exactly as the
-   * server rendered it — the plain upload form — and hand the submit back.
-   */
   #fallBackToUpload() {
     this.statusTarget.hidden = true
     this.submitTarget.disabled = false
   }
 
-  /** Swap the upload form for the review: chrome in, file picker out. */
   #showReview() {
     this.reviewTarget.hidden = false
     this.discardTarget.hidden = false
@@ -255,11 +216,8 @@ export default class extends BridgeComponent {
     this.submitTarget.disabled = false
   }
 
-  /**
-   * A handoff arrived but could not be read. Don't offer the upload form as a
-   * consolation — the rider has no file to pick, and the recording is still on
-   * the device. Say so, and leave the submit disabled.
-   */
+  // No upload form as a consolation: there is no file for the rider to pick, and
+  // the recording is still on the device.
   #fail(error) {
     this.statusTarget.hidden = false
     this.statusTarget.textContent =

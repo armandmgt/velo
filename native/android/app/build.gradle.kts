@@ -88,10 +88,6 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
 
-    // OkHttp — multipart upload of the recorded GPX to POST /activities (#57).
-    // Already on the classpath transitively via Hotwire; pinned here so it's explicit.
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
     // Fused Location Provider — streams GPS fixes for the native recording (#55).
     implementation("com.google.android.gms:play-services-location:21.4.0")
 

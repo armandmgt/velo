@@ -23,9 +23,7 @@ class MainActivity : HotwireActivity() {
     private lateinit var recordFab: FloatingActionButton
 
     // A finished recording parks its handoff and asks for the review, which since
-    // #116 is the web `/activities/new` — presented modally by the path
-    // configuration, and filled by the `recording-review` bridge component
-    // (ADR 0003). The upload happens on that page; nothing is posted natively.
+    // #116 is the web `/activities/new`, presented modally by the path config.
     private val recordLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != RESULT_OK) return@registerForActivityResult

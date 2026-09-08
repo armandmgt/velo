@@ -16,9 +16,8 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  # The review chrome is rendered server-side for the shells only (#116, ADR
-  # 0003), so a browser never ships the markup and there is no flash of the
-  # wrong screen while the bridge connects.
+  # Rendered server-side for the shells only (#116), so a browser never ships
+  # the markup and there is no flash of the wrong screen.
   test "new renders the recording review chrome for the native shells only" do
     get new_activity_url
     assert_response :success
@@ -89,9 +88,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert response.parsed_body["errors"].present?
   end
 
-  # A recording replayed after a kill between the server's 201 and the shell
-  # clearing its local session must resolve to the ride already created
-  # (#116, ADR 0003) — otherwise the retry duplicates it.
+  # A replay after a kill must resolve to the ride already created (#116).
   test "create replaying a recording_uuid returns the activity already created" do
     uuid = SecureRandom.uuid
 
@@ -123,8 +120,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal created.id, response.parsed_body["id"]
   end
 
-  # The key is scoped to its owner, so one account's replay can never resolve to
-  # (or collide with) another's ride.
+  # The key is scoped to its owner.
   test "a recording_uuid belonging to another user does not resolve or collide" do
     uuid = SecureRandom.uuid
     users(:two).activities.create!(activities(:one).attributes.except("id").merge(recording_uuid: uuid))

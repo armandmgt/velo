@@ -1,8 +1,5 @@
-// Shared formatting for a handed-off recording's stats (#116, ADR 0003).
-//
-// Mirrors the shells' `RecordingFormatters`, which still format the *live*
-// dashboard while riding — the numbers a rider reads on the review screen must
-// not shift the moment the screen becomes a web page.
+// Mirrors the shells' RecordingFormatters, which still format the live dashboard
+// while riding: the numbers must not shift when the screen becomes a web page.
 
 /** `x.xx` km from a distance in metres. */
 export function distanceKilometers(meters) {
@@ -19,10 +16,7 @@ export function elapsedString(seconds) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${pad(minutes)}:${pad(secs)}`
 }
 
-/**
- * `m:ss/km`. Near-zero speed reads as `—` rather than an absurd figure —
- * the same guard the shells apply.
- */
+/** `m:ss/km`. Near-zero speed reads as `—` rather than an absurd figure. */
 export function pace(metersPerSecond) {
   if (!(metersPerSecond > 0.3)) return "—"
   const secondsPerKm = 1000 / metersPerSecond
@@ -36,7 +30,6 @@ export function speedKmh(metersPerSecond) {
   return (Math.max(metersPerSecond, 0) * 3.6).toFixed(1)
 }
 
-/** Running-style sports read as pace (min/km); everything else as speed (km/h). */
 const PACE_SPORTS = new Set(["run", "trail_run", "virtual_run", "walk"])
 
 export function usesPace(sport) {

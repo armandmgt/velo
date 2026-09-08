@@ -2,37 +2,28 @@ import Compression
 import CoreLocation
 import Foundation
 
-/// Everything a finished recording session gives the review screen (#116,
-/// ADR 0003) — its track, its tours, its stats and the sport it was recorded
-/// under, plus the idempotency key the upload carries.
+/// What a finished recording session gives the review screen (#116, ADR 0003).
+/// See `CONTEXT.md` ("Handoff").
 ///
-/// Transferred once, in one direction, when the review page connects: the web
-/// side knows nothing about the ride beyond this, so whatever a handoff leaves
-/// out cannot be recovered later. See `CONTEXT.md` ("Handoff").
-///
-/// **Stats travel precomputed and are not re-derived on the web.** A paused
-/// recording drops its fixes, so from the points alone nothing can tell a pause
-/// from a GPS dropout — temps écoulé is not reconstructible downstream. Only the
-/// shell can compute it, so only the shell does.
+/// Stats travel precomputed rather than derived on the web: a paused recording
+/// drops its fixes, so from the points alone nothing can tell a pause from a GPS
+/// dropout, and temps écoulé is not reconstructible downstream.
 struct RecordingHandoff {
-    /// Wire version, so a shell newer than the page it is talking to can be told
-    /// apart rather than silently misread.
+    /// Lets a shell newer than the page it talks to be told apart.
     static let version = 1
 
     let session: RecordingSession
     let stats: RecordingStats
     let sport: Sport
-    /// Minted at Arrêter and carried into `activity[recording_uuid]`. Makes an
-    /// upload replayed after a kill resolve to the ride already created instead
-    /// of duplicating it (S0 §5's invariant, restored — see ADR 0003).
+    /// Carried into `activity[recording_uuid]` so an upload replayed after a
+    /// kill resolves to the ride already created (ADR 0003).
     let recordingUuid: UUID
 
     init(session: RecordingSession, stats: RecordingStats, sport: Sport) {
         self.session = session
         self.stats = stats
         self.sport = sport
-        // The session's own id already identifies this recording uniquely and
-        // survives a kill, so a replay after relaunch mints the same key.
+        // The session id survives a kill, so a replay mints the same key.
         self.recordingUuid = session.id
     }
 }
@@ -40,9 +31,8 @@ struct RecordingHandoff {
 // MARK: - Wire format
 
 extension RecordingHandoff {
-    /// The payload as the review page reads it. Point keys are terse because
-    /// there are thousands of them: at ~1 Hz an hour of riding is ~3,600 points,
-    /// and the field names would otherwise outweigh the data.
+    /// Point keys are terse because at ~1 Hz an hour of riding is ~3,600 of
+    /// them, and the field names would otherwise outweigh the data.
     private struct Payload: Encodable {
         let version: Int
         let recordingUuid: String
@@ -116,25 +106,19 @@ extension RecordingHandoff {
         )
     }
 
-    /// The handoff as the bridge carries it: raw DEFLATE, base64'd.
-    ///
-    /// A six-hour ride at ~1 Hz is ~21,600 points, and the bridge's native→web
-    /// leg inlines its JSON into an `evaluateJavaScript` source string — raw,
-    /// that is megabytes. 1 Hz GPS text compresses roughly ten to one, which
-    /// keeps even the worst realistic ride in the low hundreds of KB, so one
-    /// message suffices and no chunk-reassembly is needed.
+    /// Raw DEFLATE, base64'd. The bridge's native→web leg inlines its JSON into
+    /// an `evaluateJavaScript` source string, and a six-hour ride is ~21,600
+    /// points — 1.5 MB raw, ~250 KB compressed, so one message suffices.
     ///
     /// Raw DEFLATE rather than gzip because `COMPRESSION_ZLIB` emits exactly
-    /// that, and the web's `DecompressionStream("deflate-raw")` reads it — no
-    /// gzip container or CRC32 to hand-roll on either shell.
+    /// that and the web reads it with `DecompressionStream("deflate-raw")`.
     func encoded() throws -> String {
         let json = try JSONEncoder().encode(payload)
         return try Self.deflate(json).base64EncodedString()
     }
 
     private static func deflate(_ data: Data) throws -> Data {
-        // Compressed output can exceed the input for incompressible data; the
-        // slack keeps a pathological ride from overflowing the buffer.
+        // Compressed output can exceed the input for incompressible data.
         let capacity = data.count + (data.count / 2) + 1024
         var destination = Data(count: capacity)
 

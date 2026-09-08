@@ -1,24 +1,14 @@
-// Serializes a handed-off recording to GPX 1.1 for upload (#116, ADR 0003).
+// The project's only GPX encoder (#116, ADR 0003). Emits exactly the S0 §2
+// schema, pinned to test/fixtures/files/gpx/native_recording.gpx.
 //
-// This is the *only* GPX encoder in the project. It used to exist twice, as
-// `RecordingGPXEncoder.swift` and `RecordingGpxEncoder.kt`; since the review
-// screen became a web page the shells hand over structured points and this
-// builds the file the form uploads.
-//
-// Emits exactly the schema locked in the S0 contract
-// (`docs/native-recording/s0-gpx-upload-contract.md` §2), proven to round-trip
-// by the server fixture `test/fixtures/files/gpx/native_recording.gpx`. The
-// device sends **positions + time + sensors only** — distance, speed, elevation
-// gain and the PostGIS path are all derived server-side by `GpxExtractor`, so we
-// deliberately do NOT emit `<speed>` or any summary.
+// Positions, time and sensors only: distance, speed, elevation gain and the
+// PostGIS path are all derived server-side by GpxExtractor, so emitting <speed>
+// or any summary here would be ignored.
 
-// Default track name when the user didn't name the activity; a fallback the
-// server's `activity[name]` param (and the awaiting-name prompt) override.
 export const DEFAULT_TRACK_NAME = "Sortie enregistrée sur le téléphone"
 
-// Best-effort `<trk><type>`, emitted for GPX self-containedness only — the
-// `activity[sport]` param wins server-side. `workout` has no mapping and must
-// travel via the param alone (S0 §3).
+// Best-effort only — the activity[sport] param wins server-side, and `workout`
+// has no mapping so it must travel via the param alone (S0 §3).
 const GPX_TYPES = {
   bike: "cycling",
   mountain_bike_ride: "mountainbiking",
@@ -37,8 +27,6 @@ const GPX_TYPES = {
 
 const CREATORS = { ios: "Velo iOS", android: "Velo Android" }
 
-// UTC ISO-8601 with a `Z` suffix and no fractional seconds, e.g.
-// `2026-06-25T08:00:00Z` (S0 §2) — matching Swift's `.withInternetDateTime`.
 function iso8601(value) {
   return new Date(value).toISOString().replace(/\.\d+Z$/, "Z")
 }
@@ -63,7 +51,6 @@ function trackPointExtension(point) {
 }
 
 function trackpoint(point) {
-  // Decimal degrees with 7 dp (≈11 mm), matching the reference fixture.
   const lines = [`   <trkpt lat="${point.lat.toFixed(7)}" lon="${point.lon.toFixed(7)}">`]
   if (point.ele !== undefined) lines.push(`    <ele>${point.ele.toFixed(1)}</ele>`)
   lines.push(`    <time>${iso8601(point.t)}</time>`)
@@ -72,7 +59,6 @@ function trackpoint(point) {
   if (tpx.length > 0 || point.pw !== undefined) {
     lines.push("    <extensions>")
     lines.push(...tpx)
-    // Strava-style <power>, sibling of TrackPointExtension (S0 §2).
     if (point.pw !== undefined) lines.push(`     <power>${point.pw}</power>`)
     lines.push("    </extensions>")
   }
@@ -81,9 +67,6 @@ function trackpoint(point) {
   return lines
 }
 
-// `handoff` is the decoded payload: `{ sport, startedAt, points: [...] }`.
-// `platform` is the bridge platform ("ios" / "android"), used only for the
-// cosmetic `creator` attribute.
 export function encodeGpx(handoff, platform) {
   const points = handoff.points ?? []
   const creator = CREATORS[platform] ?? "Velo"

@@ -1,23 +1,16 @@
-// Turns a finished recording's lap boundaries into one split per Tour
-// (#116, ADR 0003), mirroring the shells' `LapSplits`.
+// Lap boundaries into one split per Tour, mirroring the shells' LapSplits.
+// Laps arrive in the handoff and are rendered client-side; nothing here is
+// persisted (docs/adr/0001-laps-stay-on-the-device.md).
 //
-// Laps never reach the server — see `docs/adr/0001-laps-stay-on-the-device.md`.
-// They arrive here in the handoff and are rendered client-side; nothing about
-// this file is persisted, and no Activity carries a tour.
-//
-// A split is timed by **temps écoulé**, not durée de déplacement, so it always
-// agrees with the timer the rider watched (see `CONTEXT.md`).
+// Splits are timed by temps écoulé, not durée de déplacement, so they agree
+// with the timer the rider watched (CONTEXT.md).
 
 // Below this a trailing lap is an artefact of tapping Tour just before Arrêter,
 // not a lap anyone rode.
 const EMPTY_LAP_DISTANCE = 1
 const EMPTY_LAP_ELAPSED = 1
 
-/**
- * Expand cumulative boundaries plus the ride's totals into per-lap deltas.
- * Always returns at least one split for a recording that covered ground: one
- * that was never lapped is a single lap covering the whole ride.
- */
+/** A ride that was never lapped is a single lap covering the whole ride. */
 export function lapSplits({ boundaries = [], totalDistance = 0, totalElapsed = 0 }) {
   const ordered = [...boundaries].sort((a, b) => a.ordinal - b.ordinal)
 
@@ -28,8 +21,7 @@ export function lapSplits({ boundaries = [], totalDistance = 0, totalElapsed = 0
   for (const boundary of ordered) {
     splits.push({
       ordinal: boundary.ordinal,
-      // The totals and the boundary rows are written a beat apart, so clamp: a
-      // split must never render as a negative distance.
+      // Totals and boundary rows are written a beat apart, so clamp.
       distance: Math.max(boundary.cumulativeDistance - previousDistance, 0),
       elapsed: Math.max(boundary.cumulativeElapsed - previousElapsed, 0),
     })
@@ -52,7 +44,6 @@ export function lapSplits({ boundaries = [], totalDistance = 0, totalElapsed = 0
   return splits
 }
 
-/** Distance over temps écoulé (m/s); 0 for a split with no time on it. */
 export function splitAverageSpeed(split) {
   return split.elapsed > 0 ? split.distance / split.elapsed : 0
 }

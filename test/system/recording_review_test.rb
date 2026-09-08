@@ -1,18 +1,11 @@
 require "application_system_test_case"
 
-# The GPX encoder used to exist twice, in Swift and Kotlin, and the Kotlin half
-# carried the only unit test. #116 moved it into JavaScript
-# (`controllers/lib/gpx_encoder`), so this is what now guards the S0 §2 wire
-# format — the one place where a silent bug corrupts a rider's ride (ADR 0003).
-#
-# It asserts byte-equality with `test/fixtures/files/gpx/native_recording.gpx`,
-# the same fixture `GpxExtractorTest` round-trips through the server, so the two
-# halves of the contract are pinned to a single artifact.
+# Guards the S0 §2 wire format now that the GPX encoder lives in JavaScript
+# (#116). Asserts byte-equality with the same fixture `GpxExtractorTest` round-
+# trips server-side, so both halves of the contract hang on one artifact.
 class RecordingReviewTest < ApplicationSystemTestCase
   FIXTURE = Rails.root.join("test/fixtures/files/gpx/native_recording.gpx")
 
-  # The handoff the shells send for the ride the fixture describes: ten 1 Hz
-  # fixes climbing north, with heart rate, cadence and power on every point.
   def handoff
     points = 10.times.map do |index|
       {
@@ -37,35 +30,33 @@ class RecordingReviewTest < ApplicationSystemTestCase
     }
   end
 
+  # `import()` from an injected script doesn't go through the page's import map
+  # in every browser, so resolve the specifier against it by hand.
+  def encode_gpx(handoff, platform)
+    page.evaluate_async_script(<<~JS, handoff, platform)
+      const [handoff, platform, done] = [arguments[0], arguments[1], arguments[2]]
+      const map = JSON.parse(document.querySelector('script[type="importmap"]').textContent)
+      const url = new URL(map.imports["controllers/lib/gpx_encoder"], document.baseURI).href
+      import(url)
+        .then(({ encodeGpx }) => done(encodeGpx(handoff, platform)))
+        .catch((error) => done(`ERROR: ${error}`))
+    JS
+  end
+
   test "the web GPX encoder reproduces the S0 contract fixture byte for byte" do
     login(users(:one))
     visit new_activity_url
 
-    gpx = page.evaluate_async_script(<<~JS, handoff)
-      const handoff = arguments[0]
-      const done = arguments[arguments.length - 1]
-      import("controllers/lib/gpx_encoder")
-        .then(({ encodeGpx }) => done(encodeGpx(handoff, "ios")))
-        .catch((error) => done(`ERROR: ${error}`))
-    JS
-
-    assert_equal FIXTURE.read, gpx
+    assert_equal FIXTURE.read, encode_gpx(handoff, "ios")
   end
 
-  # `workout` is the one sport with no `<trk><type>` mapping, so it must travel
-  # via the `activity[sport]` param alone (S0 §3). Emitting a bogus type would
-  # have the extractor fall back to `:bike`.
+  # `workout` has no `<trk><type>` mapping, so a bogus one would have the
+  # extractor fall back to `:bike` (S0 §3).
   test "a sport with no GPX mapping omits the track type" do
     login(users(:one))
     visit new_activity_url
 
-    gpx = page.evaluate_async_script(<<~JS, handoff.merge("sport" => "workout"))
-      const handoff = arguments[0]
-      const done = arguments[arguments.length - 1]
-      import("controllers/lib/gpx_encoder")
-        .then(({ encodeGpx }) => done(encodeGpx(handoff, "android")))
-        .catch((error) => done(`ERROR: ${error}`))
-    JS
+    gpx = encode_gpx(handoff.merge("sport" => "workout"), "android")
 
     assert_no_match(/<type>/, gpx)
     assert_match(/creator="Velo Android"/, gpx)

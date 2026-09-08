@@ -104,7 +104,9 @@ tags:
 # DOM-cased on Android, hence the alternation.
 - assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
 - assertVisible: "DÉPLACEMENT|Déplacement"
-- assertVisible: "[0-9]+ tours?"
+# iOS exposes the count badge and the label as separate nodes, Android merges
+# them into one ("1 1 tour"), so match loosely.
+- assertVisible: ".*[0-9]+ tours?.*"
 # The map is a <canvas> with no accessible text, so the proof the handoff landed
 # is the form: the shell's sport preselects it, which an empty form would not.
 - assertVisible: "Sport"

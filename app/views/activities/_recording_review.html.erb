@@ -1,24 +1,19 @@
 <%# locals: (activity:) %>
 
-<%# The native recording review (#116, ADR 0003 — supersedes #66/#67).
-    Rendered only for the native shells: a browser visiting /activities/new gets
-    the plain upload form, with none of this markup. Everything below is filled
-    by `bridge--recording-review` from the handoff the shell sends — the server
-    knows nothing about the ride, and never will (laps in particular stay off the
-    server, see docs/adr/0001-laps-stay-on-the-device.md). %>
+<%# The native recording review (#116, ADR 0003). Everything here is filled by
+    `bridge--recording-review` from the handoff the shell sends — the server
+    knows nothing about the ride, laps included (ADR 0001). %>
 
-<% content_for :head do %>
-  <script>
+<%= content_for :head do %>
+  <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
     window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
-  </script>
+  <% end %>
 <% end %>
 
 <div class="min-h-dvh bg-base-200" data-controller="bridge--recording-review">
-  <%# The route is the hero, full-bleed to the top edge, with the summary riding
-      up over its lower edge — the shape the native screen settled on in #60. %>
-  <%# Everything down to the split list is the review proper. It is hidden
-      wholesale when the shell has no recording to hand over — the tab bar's "+"
-      routes to this same URL, and there it must read as the plain upload form. %>
+  <%# Hidden until a handoff arrives: the tab bar's "+" routes to this same URL,
+      where the page must read as the plain upload form. %>
   <div hidden data-bridge--recording-review-target="review">
     <div class="h-64 w-full bg-base-300" data-bridge--recording-review-target="map"></div>
 
@@ -33,10 +28,9 @@
 
         <div class="divider my-2"></div>
 
-        <%# Both clocks, always. The number a rider reads here must never be
-            mistaken for the stricter one the activity page shows after upload —
-            "Durée de déplacement" is the term (CONTEXT.md), "Déplacement" is the
-            label that fits a third of the card. %>
+        <%# Both clocks: the number here must not be mistaken for the stricter
+            one the activity page shows. "Durée de déplacement" is the term
+            (CONTEXT.md), "Déplacement" the label that fits a third of the card. %>
         <div class="grid grid-cols-3 text-center">
           <div>
             <div class="text-xl font-bold" data-bridge--recording-review-target="elapsed">00:00</div>
@@ -76,7 +70,8 @@
     </div>
   </div>
 
-  <div class="px-3 pt-3 pb-8 space-y-3">
+  <%# Bottom padding clears the pinned action bar. %>
+  <div class="px-3 pt-3 pb-28 space-y-3">
     <p hidden class="alert alert-info text-sm py-2" data-bridge--recording-review-target="status">
       Chargement de l'enregistrement…
     </p>

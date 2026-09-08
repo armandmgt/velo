@@ -8,9 +8,10 @@ class ActivitiesTest < ApplicationSystemTestCase
 
     click_on "Nouvelle activité"
 
-    fill_in "Name", with: "Sortie vélo"
+    fill_in "Nom", with: "Sortie vélo"
     fill_in "Description", with: "Sortie vélo de 10km"
     select "Vélo de route", from: "Sport"
+    attach_file "Fichier (FIT ou GPX)", file_fixture("gpx/ride.gpx").to_s
 
     click_on "Enregistrer"
 

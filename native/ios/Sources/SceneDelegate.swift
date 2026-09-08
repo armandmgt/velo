@@ -84,13 +84,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         return .accept
     }
 
-    /// A review page that cannot load would otherwise trap the rider: the review
-    /// modal is terminal by design (#116, ADR 0003 — on the happy path the only
-    /// ways out are Enregistrer and Supprimer). A ride ends where signal is
-    /// worst, so on a failed visit we hand back the Fermer we otherwise withhold.
-    ///
-    /// The recording stays in the store; nothing surfaces it again yet — that
-    /// hole, and the pre-existing one it widens, are #117.
+    /// The review modal is terminal by design (#116), which would trap a rider
+    /// whose page can't load — and a ride ends where signal is worst. On a failed
+    /// visit, hand back the Fermer we otherwise withhold. The recording stays in
+    /// the store; surfacing it again is #117.
     func visitableDidFailRequest(_ visitable: Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
         let viewController = visitable.visitableViewController
         if let modal = viewController.navigationController,

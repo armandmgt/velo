@@ -122,7 +122,9 @@ tags:
 - assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
 - assertVisible: "DÉPLACEMENT|Déplacement"
 # The splits render from the handoff; laps never reach the server (ADR 0001).
-- assertVisible: "[0-9]+ tours?"
+# iOS exposes the count badge and the label as separate nodes, Android merges
+# them into one ("1 1 tour"), so match loosely.
+- assertVisible: ".*[0-9]+ tours?.*"
 # The map is a <canvas> with no accessible text, so the proof the handoff landed
 # is the form: the shell's sport preselects it, which an empty form would not.
 - assertVisible: "Sport"

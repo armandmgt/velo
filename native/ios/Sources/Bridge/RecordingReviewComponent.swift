@@ -2,19 +2,8 @@ import HotwireNative
 import UIKit
 
 /// The shell's half of the recording review (#116, ADR 0003 — supersedes #66).
-///
 /// The review screen is the web `/activities/new`; this hands it the finished
-/// recording and listens for what the rider does with it:
-/// - **connect** → reply with the compressed handoff, or `null` when there is no
-///   pending recording (the tab bar's "+" routes to the same URL, where the page
-///   must read as the plain upload form).
-/// - **committed** → the page's upload succeeded; clear the local session and
-///   land on the created activity in the Activités tab.
-/// - **discard** → confirm, then drop the recording. Nothing was uploaded.
-///
-/// The shell no longer uploads anything itself: `ActivityUploader` and
-/// `RecordingGPXEncoder` are gone, and the GPX is encoded on the web from the
-/// points this component sends.
+/// recording and acts on what the rider does with it.
 final class RecordingReviewComponent: BridgeComponent {
     override class var name: String { "recording-review" }
 
@@ -37,9 +26,8 @@ final class RecordingReviewComponent: BridgeComponent {
         reply(to: Event.connect.rawValue, with: HandoffData(handoff: encodedHandoff()))
     }
 
-    /// The compressed handoff, or `nil` when there is nothing to hand over — the
-    /// page treats both the same way, so a failure to encode degrades to the
-    /// upload form rather than to a broken review screen.
+    /// `nil` when there is nothing to hand over. The page treats both the same
+    /// way, so a failure to encode degrades to the plain upload form.
     private func encodedHandoff() -> String? {
         guard let handoff = RecordingController.shared.pendingHandoff else { return nil }
         do {
@@ -50,10 +38,7 @@ final class RecordingReviewComponent: BridgeComponent {
         }
     }
 
-    /// The upload landed. Only now is it safe to drop the on-device recording —
-    /// the store is the source of truth until the server has confirmed (S0 §5,
-    /// weakened by ADR 0003 and bought back by the `recording_uuid` the page
-    /// submitted, which makes a replay resolve to this same activity).
+    /// Only now is it safe to drop the on-device recording (S0 §5).
     private func handleCommitted(message: Message) {
         let data: CommittedData? = message.data()
         clearPendingRecording()
@@ -86,8 +71,7 @@ final class RecordingReviewComponent: BridgeComponent {
     }
 
     private func dismissReview(completion: (() -> Void)?) {
-        // The modal navigator is shared with the FAB's own `/activities/new` and
-        // `/planned_routes/new`, so hand it back ordinarily dismissible.
+        // Shared with the FAB's own modals, so hand it back dismissible.
         guard let modal = viewController?.navigationController else {
             completion?()
             return
@@ -100,8 +84,6 @@ final class RecordingReviewComponent: BridgeComponent {
         presenter.dismiss(animated: true) { completion?() }
     }
 
-    /// Land on the created activity in the tab that owns activities, mirroring
-    /// the cross-tab routing the path configuration declares.
     private func routeToActivity(_ url: URL) {
         guard let window = viewController?.view.window ?? UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first,
@@ -127,12 +109,10 @@ private extension RecordingReviewComponent {
 
 private extension RecordingReviewComponent {
     struct HandoffData: Encodable {
-        /// Raw DEFLATE, base64'd. `nil` when there is no pending recording.
         let handoff: String?
     }
 
     struct CommittedData: Decodable {
-        /// Where the form submission landed — the created activity.
         let url: String?
     }
 }

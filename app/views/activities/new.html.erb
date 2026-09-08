@@ -1,9 +1,6 @@
 <% content_for :title, "Nouvelle activité" %>
 
-<%# The native shells reuse this page as the recording review screen (#116,
-    ADR 0003). The review chrome is rendered here rather than hidden
-    client-side, so the web upload form keeps its own HTML and there is no flash
-    of the wrong screen while the bridge connects. %>
+<%# The native shells reuse this page as the recording review screen (#116). %>
 <% if hotwire_native_app? %>
   <%= render "recording_review", activity: @activity %>
 <% else %>
