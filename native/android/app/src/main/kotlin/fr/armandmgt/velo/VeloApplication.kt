@@ -15,6 +15,7 @@ import dev.hotwire.navigation.routing.SystemNavigationRouteDecisionHandler
 import fr.armandmgt.velo.bridge.AuthenticationComponent
 import fr.armandmgt.velo.bridge.NavbarButtonsComponent
 import fr.armandmgt.velo.bridge.NotificationCountComponent
+import fr.armandmgt.velo.bridge.RecordingReviewComponent
 import fr.armandmgt.velo.features.web.WebFragment
 import fr.armandmgt.velo.main.FileDownloadRouteDecisionHandler
 import fr.armandmgt.velo.main.SignOutRouteDecisionHandler
@@ -46,6 +47,7 @@ class VeloApplication : Application() {
             BridgeComponentFactory("authentication", ::AuthenticationComponent),
             BridgeComponentFactory("navbar-buttons", ::NavbarButtonsComponent),
             BridgeComponentFactory("notification-count", ::NotificationCountComponent),
+            BridgeComponentFactory("recording-review", ::RecordingReviewComponent),
         )
 
         // Replaces the library defaults; the custom handlers run first so they

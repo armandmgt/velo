@@ -103,28 +103,35 @@ tags:
 - assertVisible: "Reprendre"
 - tapOn: "Reprendre"
 
-# Arrêter finalizes the recording and pushes the native review/confirm screen
-# (S13 — #66) instead of uploading immediately: a summary, an editable sport, an
-# optional name, and a visibility picker, with Enregistrer / Supprimer.
+# Arrêter finalizes the recording and hands it to the review screen, which since
+# S15 (#116) is the web `/activities/new` presented modally — not a native screen.
+# The assertions below therefore read WebView content; give the modal transition a
+# beat first, or the first query races it and reads as not-visible.
 - tapOn: "Arrêter"
-- assertVisible: "Vérifier la sortie"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
 - assertVisible: "Supprimer"
 
-# S12a (#60): the review screen leads with the route, and carries *both* clocks —
-# temps écoulé beside durée de déplacement — so the number here is never confused
-# with the (stricter) one the activity page shows. The caption is shortened to
-# "Déplacement" to fit a third of the card; the term stays "durée de déplacement".
-- assertVisible: "TEMPS ÉCOULÉ"
-- assertVisible: "DÉPLACEMENT"
-# The laps collapse to one row that opens the same sheet as the dock's Tours cell.
+# The review carries *both* clocks — temps écoulé beside durée de déplacement —
+# so the number here is never confused with the (stricter) one the activity page
+# shows. The caption is shortened to "Déplacement" to fit a third of the card;
+# the term stays "durée de déplacement". These are CSS-uppercased, which iOS
+# surfaces uppercased and Android surfaces DOM-cased, hence the alternation.
+- assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
+- assertVisible: "DÉPLACEMENT|Déplacement"
+# The splits render from the handoff; laps never reach the server (ADR 0001).
 - assertVisible: "[0-9]+ tours?"
+# The map is a <canvas> with no accessible text, so the proof the handoff landed
+# is the form: the shell's sport preselects it, which an empty form would not.
+- assertVisible: "Sport"
 - takeScreenshot: record-review
 
-# Enregistrer serializes the recording to GPX and uploads it via POST /activities.
-# With a single static fix the activity is tiny but valid; on success the app
-# routes the Activités tab to the new activity's show page and dismisses the modal.
-# The dev server (already logged in above) handles the upload — the CSRF JSON
-# exemption lets the out-of-webview POST through.
+# Enregistrer submits the web form. The GPX is encoded in the page from the
+# handoff's points and attached to the real file input via DataTransfer — the
+# thing #66 believed impossible. On 201 the page reports back and the shell
+# dismisses the modal onto the created activity.
 - tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the tab bar shell. The

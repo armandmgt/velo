@@ -62,6 +62,15 @@ final class RecordingController: NSObject {
     /// Current lap ordinal (1-based) while active, else 0. Laps are markers (S3).
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
+    /// The finished recording waiting for the review screen to claim it (#116).
+    ///
+    /// `stop()` releases the controller's own reference to the session, and the
+    /// review is now a web page rather than a view controller that could hold
+    /// one — so the handoff lives here until the page reports the upload
+    /// committed, or the rider discards it. A visit to `/activities/new` with
+    /// none pending is the plain upload form, not a review.
+    var pendingHandoff: RecordingHandoff?
+
     /// Points persisted in the current session so far (debug readout / stats).
     private(set) var pointCount: Int = 0
 
@@ -236,6 +245,10 @@ final class RecordingController: NSObject {
     @discardableResult
     func stop() -> RecordingSession? {
         guard isActive, let finished = session else { return nil }
+        // Snapshot the stats before the clock below resets them: the handoff
+        // carries temps écoulé precomputed, because a paused recording drops its
+        // fixes and nothing downstream can tell a pause from a GPS dropout.
+        let handoff = RecordingHandoff(session: finished, stats: currentStats, sport: sport)
         finished.recordingState = .stopped
         store.save()
         stopTicker()
@@ -246,11 +259,17 @@ final class RecordingController: NSObject {
         accumulatedElapsed = 0
         stretchStart = nil
         state = .idle
+        pendingHandoff = handoff
         return finished
     }
 
-    /// Clear a finalized recording from the store after it uploaded successfully.
+    /// Clear a finalized recording from the store after it uploaded successfully,
+    /// or when the rider discarded it. Drops the pending handoff with it so the
+    /// review screen can't be reopened onto a ride that no longer exists.
     func discard(_ session: RecordingSession) {
+        if pendingHandoff?.session === session {
+            pendingHandoff = nil
+        }
         store.delete(session)
     }
 

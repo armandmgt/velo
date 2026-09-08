@@ -1,9 +1,14 @@
 class ActivitiesController < ApplicationController
-  # Native recorders (#41) upload GPX via `POST /activities` with
-  # `Accept: application/json` from outside the webview, so they carry no CSRF
-  # token. Auth rides the signed `session_id` cookie (not the CSRF-bearing Rails
-  # session), so exempting only the JSON format is safe; the HTML form stays
-  # fully protected. Mirrors ConfigurationsController#skip_forgery_protection.
+  # A `POST /activities` with `Accept: application/json` originates outside the
+  # webview and carries no CSRF token. Auth rides the signed `session_id` cookie
+  # (not the CSRF-bearing Rails session), so exempting only the JSON format is
+  # safe; the HTML form stays fully protected. Mirrors
+  # ConfigurationsController#skip_forgery_protection.
+  #
+  # No client uses this today — #116 moved the recording upload into the review
+  # page, which submits the HTML form with a CSRF token like any other. Kept
+  # because the deferred offline queue (#117) is a native POST and will need it
+  # back, and re-deriving why it was safe is the expensive part.
   protect_from_forgery with: :exception, unless: -> { request.format.json? }
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
@@ -33,6 +38,16 @@ class ActivitiesController < ApplicationController
   end
 
   def create
+    # A native recording carries an idempotency key (#116, ADR 0003). The shell
+    # now hands the ride to the web review form and learns the upload succeeded
+    # only once the page reports back, so a process killed in between would
+    # otherwise upload the same ride twice. Answering the replay with the
+    # activity already created makes the retry indistinguishable from the
+    # original success, which is the whole point of the key.
+    if (replay = replayed_recording)
+      return respond_with_created(replay)
+    end
+
     @activity = Current.user.activities.new(activity_params)
     upload = activity_params[:fit_file]
 
@@ -43,12 +58,7 @@ class ActivitiesController < ApplicationController
     end
 
     if @activity.save
-      respond_to do |format|
-        format.html { redirect_to @activity, notice: "Activité créée avec succès." }
-        # Native recorders (issue #48) upload GPX out-of-band and navigate the
-        # webview to the returned URL — no Turbo redirect to follow.
-        format.json { render json: { id: @activity.id, url: activity_url(@activity) }, status: :created, location: @activity }
-      end
+      respond_with_created(@activity)
     else
       respond_to do |format|
         format.html do
@@ -58,6 +68,10 @@ class ActivitiesController < ApplicationController
         format.json { render json: { errors: @activity.errors.full_messages }, status: :unprocessable_content }
       end
     end
+  rescue ActiveRecord::RecordNotUnique
+    # Two uploads of the same recording raced past the lookup above and the
+    # unique index settled it. Answer with whichever one won.
+    (replay = replayed_recording) ? respond_with_created(replay) : raise
   end
 
   def update
@@ -98,11 +112,30 @@ class ActivitiesController < ApplicationController
 
   private
 
+  # The activity this upload's recording already created, if any. Scoped to the
+  # owner to match the unique index, so a key colliding with another account's
+  # row reads as absent rather than as someone else's ride.
+  def replayed_recording
+    uuid = activity_params[:recording_uuid].presence
+    uuid && Current.user.activities.find_by(recording_uuid: uuid)
+  end
+
+  def respond_with_created(activity)
+    respond_to do |format|
+      format.html { redirect_to activity, notice: "Activité créée avec succès." }
+      # Native recorders (issue #48) upload GPX out-of-band and navigate the
+      # webview to the returned URL — no Turbo redirect to follow. Unused since
+      # #116 moved the upload into the review page, but kept: the deferred
+      # offline queue (#117) is a native POST and will want this contract back.
+      format.json { render json: { id: activity.id, url: activity_url(activity) }, status: :created, location: activity }
+    end
+  end
+
   def set_activity
     @activity = Current.user.activities.find(params[:id])
   end
 
   def activity_params
-    params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file ])
+    params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
   end
 end

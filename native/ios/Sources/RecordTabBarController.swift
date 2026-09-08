@@ -265,6 +265,23 @@ final class RecordTabBarController: HotwireTabBarController {
         }
     }
 
+    /// Present the recording review — the web `/activities/new` (#116, ADR 0003).
+    ///
+    /// The path configuration already presents anything ending in `/new` modally,
+    /// so routing through the active navigator gives the review Hotwire's own
+    /// modal navigator, over whichever tab the rider lands on.
+    /// `isModalInPresentation` makes it terminal, the way the native screen's
+    /// hidden back button did: after Arrêter the only ways out are Enregistrer
+    /// and Supprimer, both driven by `RecordingReviewComponent`. That component
+    /// clears the flag when it dismisses — the modal navigator is shared with the
+    /// FAB's own `/activities/new` and `/planned_routes/new`, which must stay
+    /// ordinarily dismissible.
+    func presentRecordingReview() {
+        let navigator = activeNavigator
+        navigator.route(AppConfig.baseURL.appendingPathComponent("activities/new"))
+        navigator.modalRootViewController.isModalInPresentation = true
+    }
+
     /// Present the recording screen full-screen. `.fullScreen` has no pull-down
     /// dismiss gesture, and `isModalInPresentation` blocks it on any style — the
     /// screen is closeable only via its explicit Fermer/Arrêter buttons, so a

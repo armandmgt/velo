@@ -148,7 +148,8 @@ CREATE TABLE public.activities (
     max_speed numeric,
     path public.geometry(LineString),
     name_pending boolean DEFAULT false NOT NULL,
-    visibility character varying DEFAULT 'private'::character varying NOT NULL
+    visibility character varying DEFAULT 'private'::character varying NOT NULL,
+    recording_uuid uuid
 );
 
 
@@ -583,6 +584,13 @@ CREATE INDEX index_activities_on_user_id ON public.activities USING btree (user_
 
 
 --
+-- Name: index_activities_on_user_id_and_recording_uuid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_activities_on_user_id_and_recording_uuid ON public.activities USING btree (user_id, recording_uuid);
+
+
+--
 -- Name: index_activity_data_points_on_activity_id_and_recorded_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -680,6 +688,8 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260908120000'),
+('20260907190943'),
 ('20260812183644'),
 ('20260812183643'),
 ('20260710142702'),

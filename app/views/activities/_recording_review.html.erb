@@ -1,0 +1,90 @@
+<%# locals: (activity:) %>
+
+<%# The native recording review (#116, ADR 0003 — supersedes #66/#67).
+    Rendered only for the native shells: a browser visiting /activities/new gets
+    the plain upload form, with none of this markup. Everything below is filled
+    by `bridge--recording-review` from the handoff the shell sends — the server
+    knows nothing about the ride, and never will (laps in particular stay off the
+    server, see docs/adr/0001-laps-stay-on-the-device.md). %>
+
+<% content_for :head do %>
+  <script>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  </script>
+<% end %>
+
+<div class="min-h-dvh bg-base-200" data-controller="bridge--recording-review">
+  <%# The route is the hero, full-bleed to the top edge, with the summary riding
+      up over its lower edge — the shape the native screen settled on in #60. %>
+  <%# Everything down to the split list is the review proper. It is hidden
+      wholesale when the shell has no recording to hand over — the tab bar's "+"
+      routes to this same URL, and there it must read as the plain upload form. %>
+  <div hidden data-bridge--recording-review-target="review">
+    <div class="h-64 w-full bg-base-300" data-bridge--recording-review-target="map"></div>
+
+    <div class="-mt-10 px-3 pt-0 space-y-3">
+    <div class="card bg-base-100 shadow-lg">
+      <div class="card-body p-4 gap-0">
+        <div class="flex items-baseline gap-1.5">
+          <span class="text-5xl font-extrabold text-primary"
+                data-bridge--recording-review-target="distance">0.00</span>
+          <span class="text-lg font-semibold opacity-60">km</span>
+        </div>
+
+        <div class="divider my-2"></div>
+
+        <%# Both clocks, always. The number a rider reads here must never be
+            mistaken for the stricter one the activity page shows after upload —
+            "Durée de déplacement" is the term (CONTEXT.md), "Déplacement" is the
+            label that fits a third of the card. %>
+        <div class="grid grid-cols-3 text-center">
+          <div>
+            <div class="text-xl font-bold" data-bridge--recording-review-target="elapsed">00:00</div>
+            <div class="text-xs uppercase opacity-60">Temps écoulé</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold" data-bridge--recording-review-target="moving">00:00</div>
+            <div class="text-xs uppercase opacity-60">Déplacement</div>
+          </div>
+          <div>
+            <div class="text-xl font-bold" data-bridge--recording-review-target="average">0.0</div>
+            <div class="text-xs uppercase opacity-60"
+                 data-bridge--recording-review-target="averageCaption">Moy. km/h</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="collapse collapse-arrow bg-base-100 shadow">
+      <summary class="collapse-title flex items-center gap-3 min-h-0 py-3">
+        <span class="badge badge-primary badge-sm font-bold"
+              data-bridge--recording-review-target="lapCount">1</span>
+        <span class="font-semibold text-sm" data-bridge--recording-review-target="lapSummary">1 tour</span>
+      </summary>
+      <div class="collapse-content">
+        <ul class="divide-y divide-base-300" data-bridge--recording-review-target="splits"></ul>
+        <template data-bridge--recording-review-target="splitRowTemplate">
+          <li class="flex items-center gap-3 py-2 text-sm">
+            <span class="badge badge-ghost badge-sm" data-split-ordinal></span>
+            <span class="font-medium" data-split-distance></span>
+            <span class="opacity-60" data-split-elapsed></span>
+            <span class="ml-auto opacity-60" data-split-speed></span>
+          </li>
+        </template>
+      </div>
+    </details>
+    </div>
+  </div>
+
+  <div class="px-3 pt-3 pb-8 space-y-3">
+    <p hidden class="alert alert-info text-sm py-2" data-bridge--recording-review-target="status">
+      Chargement de l'enregistrement…
+    </p>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body p-4">
+        <%= render "form", activity: activity, recording: true %>
+      </div>
+    </div>
+  </div>
+</div>

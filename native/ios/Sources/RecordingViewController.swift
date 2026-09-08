@@ -658,19 +658,23 @@ final class RecordingViewController: UIViewController {
         dismiss(animated: true)
     }
 
+    /// Finalize the recording and hand it to the review screen, which since #116
+    /// is the web `/activities/new` rather than a native view controller (ADR
+    /// 0003). `stop()` parks the handoff on `RecordingController`; we dismiss
+    /// this modal and let the tab bar present the review over the tab it lands on.
     private func stop() {
-        let stats = controller.currentStats
         guard let session = controller.stop() else {
             dismiss(animated: true)
             return
         }
         guard !session.orderedPoints.isEmpty else {
+            // Nothing was recorded, so there is nothing to review or upload.
             controller.discard(session)
             dismiss(animated: true)
             return
         }
-        let review = RecordingReviewViewController(session: session, stats: stats)
-        navigationController?.pushViewController(review, animated: true)
+        let tabBarController = view.window?.rootViewController as? RecordTabBarController
+        dismiss(animated: true) { tabBarController?.presentRecordingReview() }
     }
 
     // MARK: - Rendering

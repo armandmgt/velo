@@ -60,6 +60,13 @@ data class RecordingUiState(
     val pointCount: Int = 0,
     val lap: Int = 1,
     val elapsedSeconds: Long = 0,
+    /**
+     * Durée de déplacement — the stricter, speed-gated clock the server stores as
+     * the Activity's `active_time`. Carried so the handoff (#116) can send it
+     * precomputed: a paused recording drops its fixes, so nothing downstream can
+     * separate it from temps écoulé.
+     */
+    val movingSeconds: Double = 0.0,
     val distanceMeters: Double = 0.0,
     val currentSpeedMps: Double = 0.0,
     val averageSpeedMps: Double = 0.0,
@@ -355,6 +362,7 @@ class RecordingService : Service() {
             pointCount = pointCount,
             lap = lap,
             elapsedSeconds = elapsedMs() / 1000,
+            movingSeconds = accumulator.movingSeconds,
             distanceMeters = accumulator.distance,
             currentSpeedMps = lastFixSpeed,
             averageSpeedMps = accumulator.averageSpeed(),

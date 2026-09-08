@@ -1,6 +1,16 @@
-<%# locals: (activity:) %>
+<%# locals: (activity:, recording: false) %>
 
-<%= form_with model: activity, class: "max-w-3xl w-full" do |form| %>
+<%# `recording: true` is the native recording review (#116, ADR 0003): the same
+    form, but the file input is filled by `bridge--recording-review` from the
+    handoff instead of by a file picker, so it is hidden and the submit stays
+    disabled until the ride has actually landed in it. %>
+
+<%= form_with model: activity, class: "max-w-3xl w-full",
+              data: recording ? { action: "turbo:submit-end->bridge--recording-review#submitEnd" } : {} do |form| %>
+  <% if recording %>
+    <%= form.hidden_field :recording_uuid, data: { "bridge--recording-review-target": "uuid" } %>
+  <% end %>
+
   <div class="mb-5">
     <%= form.label :name, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
     <%= form.text_field :name, class: class_names("w-full input", { "input-error": activity.errors.include?(:name) }) %>
@@ -28,7 +38,8 @@
     <%= form.select :sport,
           sport_grouped_options(activity.sport),
           { include_blank: true },
-          { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }) } %>
+          { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }),
+            data: recording ? { "bridge--recording-review-target": "sport" } : {} } %>
 
     <% if activity.errors.include?(:sport) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
@@ -37,16 +48,38 @@
     <% end %>
   </div>
 
+  <%# Visibility used to be settable only after creation, via the share section —
+      so a ride was briefly private-by-default whatever the uploader intended.
+      The recording review needs it up front, and there is no reason the web
+      upload form shouldn't have it too. %>
   <div class="mb-5">
+    <%= form.label :visibility, t("activity.visibility.legend"), class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= render "shared/visibility_picker", form: form, model_key: "activity" %>
+  </div>
+
+  <%= tag.div class: "mb-5",
+              data: (recording ? { "bridge--recording-review-target": "fileField" } : {}) do %>
     <%= form.label :fit_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
-    <%= form.file_field :fit_file, accept: ".fit,.gpx", class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }) %>
+    <%= form.file_field :fit_file, accept: ".fit,.gpx",
+          class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }),
+          data: recording ? { "bridge--recording-review-target": "file" } : {} %>
 
     <% if activity.errors.include?(:fit_file) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
         <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:fit_file).to_sentence %>
       </p>
     <% end %>
-  </div>
+  <% end %>
 
-  <%= form.submit "Enregistrer", class: 'btn btn-accent' %>
+  <% if recording %>
+    <div class="flex items-center gap-3">
+      <button type="button" hidden class="btn btn-outline btn-error"
+              data-bridge--recording-review-target="discard"
+              data-action="bridge--recording-review#discard">Supprimer</button>
+      <%= form.submit "Enregistrer", class: "btn btn-accent",
+            data: { "bridge--recording-review-target": "submit" } %>
+    </div>
+  <% else %>
+    <%= form.submit "Enregistrer", class: 'btn btn-accent' %>
+  <% end %>
 <% end %>

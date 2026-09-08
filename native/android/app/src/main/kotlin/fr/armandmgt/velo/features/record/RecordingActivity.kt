@@ -1,7 +1,6 @@
 package fr.armandmgt.velo.features.record
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -22,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.data.RecordingDatabase
 import fr.armandmgt.velo.ui.theme.VeloTheme
 import kotlinx.coroutines.launch
@@ -45,13 +43,6 @@ class RecordingActivity : ComponentActivity() {
 
     /** The sport this recording uploads as; defaults to the last-used sport (#57). */
     private var selectedSport by mutableStateOf(Sport.BIKE)
-
-    /** Optional name + visibility chosen on the review screen before upload (#67). */
-    private var reviewName by mutableStateOf("")
-    private var selectedVisibility by mutableStateOf(Visibility.DEFAULT)
-
-    /** The finalized session under review, carried to its Enregistrer/Supprimer action (#67). */
-    private var pendingSessionId: String? = null
 
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
 
@@ -109,12 +100,6 @@ class RecordingActivity : ComponentActivity() {
                     onResume = { binder?.resume() },
                     onLap = { binder?.markLap() },
                     onOpenSettings = ::openAppSettings,
-                    reviewName = reviewName,
-                    onReviewNameChange = { reviewName = it },
-                    selectedVisibility = selectedVisibility,
-                    onSelectVisibility = { selectedVisibility = it },
-                    onSave = { pendingSessionId?.let(::uploadSession) },
-                    onDiscard = { pendingSessionId?.let(::confirmDiscard) },
                 )
             }
         }
@@ -152,9 +137,10 @@ class RecordingActivity : ComponentActivity() {
 
     /**
      * Arrêter: finalize the session (the service flips it to STOPPED and tears
-     * down), then show the native review/confirm screen (#67) instead of uploading
-     * immediately. The captured final stats feed the review summary; the upload only
-     * runs on Enregistrer.
+     * down), park the handoff, and ask [fr.armandmgt.velo.main.MainActivity] to
+     * open the review — which since #116 is the web `/activities/new`, not a
+     * native screen (ADR 0003). The upload runs from that page; this Activity
+     * never posts anything.
      */
     private fun stopRecording() {
         val id = binder?.sessionId()
@@ -175,73 +161,25 @@ class RecordingActivity : ComponentActivity() {
             }
             return
         }
-        pendingSessionId = id
-        screenState = RecordingScreenState.Reviewing(finalStats ?: RecordingUiState())
-    }
-
-    /**
-     * Enregistrer: serialize the reviewed session to GPX and upload it with the
-     * chosen sport/name/visibility. On success the local session is cleared and we
-     * hand the new activity URL back to [MainActivity] to navigate the webview; on
-     * failure the recording is kept for a retry (#57).
-     */
-    private fun uploadSession(id: String) {
-        screenState = RecordingScreenState.Uploading
-        val sport = selectedSport
-        val name = reviewName
-        val visibility = selectedVisibility
+        val stats = finalStats ?: RecordingUiState()
         lifecycleScope.launch {
             val points = dao.pointsFor(id)
             if (points.isEmpty()) {
-                // A stop with no fixes has nothing to upload — drop it and leave.
                 dao.deleteSession(id)
                 finish()
                 return@launch
             }
 
-            val gpx = RecordingGpxEncoder.gpx(points.first().timestamp, points, sport)
-            when (val result = ActivityUploader.upload(gpx, sport, name, visibility)) {
-                is ActivityUploader.UploadResult.Success -> {
-                    dao.deleteSession(id)
-                    setResult(RESULT_OK, Intent().putExtra(EXTRA_ACTIVITY_URL, result.url))
-                    finish()
-                }
-                is ActivityUploader.UploadResult.Validation ->
-                    showUploadFailure(id, result.messages.joinToString("\n").ifBlank {
-                        getString(R.string.recording_upload_failed_network)
-                    })
-                is ActivityUploader.UploadResult.Network ->
-                    showUploadFailure(id, getString(R.string.recording_upload_failed_network))
-            }
+            RecordingHandoff.pending = RecordingHandoff.build(
+                sessionId = id,
+                startedAt = points.first().timestamp,
+                sport = selectedSport,
+                stats = stats,
+                points = points,
+            )
+            setResult(RESULT_OK, Intent().putExtra(EXTRA_OPEN_REVIEW, true))
+            finish()
         }
-    }
-
-    private fun showUploadFailure(id: String, message: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.recording_upload_failed_title)
-            .setMessage(message)
-            .setCancelable(false)
-            .setPositiveButton(R.string.recording_retry) { _, _ -> uploadSession(id) }
-            .setNegativeButton(R.string.recording_later) { _, _ -> finish() }
-            .show()
-    }
-
-    /**
-     * Supprimer: confirm, then discard the local session — no activity is created
-     * server-side (#67).
-     */
-    private fun confirmDiscard(id: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.recording_discard_confirm_title)
-            .setMessage(R.string.recording_discard_confirm_message)
-            .setPositiveButton(R.string.recording_discard) { _, _ ->
-                lifecycleScope.launch {
-                    dao.deleteSession(id)
-                    finish()
-                }
-            }
-            .setNegativeButton(R.string.recording_discard_cancel, null)
-            .show()
     }
 
     private fun handleBack() {
@@ -285,7 +223,11 @@ class RecordingActivity : ComponentActivity() {
     }
 
     companion object {
-        /** Result extra: the created activity's URL for [fr.armandmgt.velo.main.MainActivity] to open (#57). */
-        const val EXTRA_ACTIVITY_URL = "fr.armandmgt.velo.ACTIVITY_URL"
+        /**
+         * Result extra: a recording is parked in [RecordingHandoff] and
+         * [fr.armandmgt.velo.main.MainActivity] should open the web review for
+         * it (#116).
+         */
+        const val EXTRA_OPEN_REVIEW = "fr.armandmgt.velo.OPEN_REVIEW"
     }
 }

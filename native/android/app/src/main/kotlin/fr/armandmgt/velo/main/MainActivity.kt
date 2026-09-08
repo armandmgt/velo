@@ -22,14 +22,17 @@ class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
     private lateinit var recordFab: FloatingActionButton
 
-    // A finished recording uploads out-of-band and returns the new activity's URL;
-    // open it in the Activités tab's webview (#57).
+    // A finished recording parks its handoff and asks for the review, which since
+    // #116 is the web `/activities/new` — presented modally by the path
+    // configuration, and filled by the `recording-review` bridge component
+    // (ADR 0003). The upload happens on that page; nothing is posted natively.
     private val recordLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != RESULT_OK) return@registerForActivityResult
-            val url = result.data?.getStringExtra(RecordingActivity.EXTRA_ACTIVITY_URL)
-                ?: return@registerForActivityResult
-            openActivity(url)
+            if (!(result.data?.getBooleanExtra(RecordingActivity.EXTRA_OPEN_REVIEW, false) ?: false)) {
+                return@registerForActivityResult
+            }
+            bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,11 +110,6 @@ class MainActivity : HotwireActivity() {
         bottomNavigationController.selectTab(DASHBOARD_TAB_INDEX)
         delegate.findNavigatorHost(R.id.dashboard_navigator_host)
             ?.navigator?.session?.webView?.scrollTo(0, 0)
-    }
-
-    /** Switch to the Activités tab and route its navigator to the freshly created activity (#57). */
-    private fun openActivity(url: String) {
-        routeInTab("activities", url)
     }
 
     /**

@@ -88,19 +88,32 @@ tags:
 - tapOn: "Reprendre"
 - takeScreenshot: record-active
 
-# Arrêter finalizes the recording and shows the native review/confirm screen
-# (#67) instead of uploading immediately: a summary, an editable sport, an
-# optional name, and a visibility picker, with Enregistrer / Supprimer.
+# Arrêter finalizes the recording and hands it to the review screen, which since
+# S15 (#116) is the web `/activities/new` presented modally — not a native screen.
+# The assertions below therefore read WebView content; give the modal transition a
+# beat first, or the first query races it and reads as not-visible. Mirrors the
+# iOS flow.
 - tapOn: "Arrêter"
-- assertVisible: "Vérifier la sortie"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
 - assertVisible: "Supprimer"
+
+# Both clocks, as on iOS. CSS-uppercased strings surface uppercased on iOS and
+# DOM-cased on Android, hence the alternation.
+- assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
+- assertVisible: "DÉPLACEMENT|Déplacement"
+- assertVisible: "[0-9]+ tours?"
+# The map is a <canvas> with no accessible text, so the proof the handoff landed
+# is the form: the shell's sport preselects it, which an empty form would not.
+- assertVisible: "Sport"
 - takeScreenshot: record-review
 
-# Enregistrer serializes the recording to GPX and uploads it via POST /activities
-# (#57): the screen shows "Envoi en cours…", then on 201 the app routes the
-# Activités tab to the new activity's show page and finishes. The dev server
-# (logged in above) handles the upload — the CSRF JSON exemption lets the
-# out-of-webview POST through.
+# Enregistrer submits the web form. The GPX is encoded in the page from the
+# handoff's points and attached to the real file input via DataTransfer — the
+# thing #66/#67 believed impossible. On 201 the page reports back and the shell
+# leaves the modal for the created activity.
 - tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the bottom-nav shell. The
