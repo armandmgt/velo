@@ -5,27 +5,6 @@ import UIKit
 /// The design's flat, light palette (Recording.dc.html): sharp-cornered white
 /// surfaces with thin borders — deliberately *not* native (no Liquid Glass /
 /// system materials), so the native screen matches the web pixel-for-pixel.
-private enum Palette {
-    static func hex(_ v: UInt32) -> UIColor {
-        UIColor(
-            red: CGFloat((v >> 16) & 0xFF) / 255,
-            green: CGFloat((v >> 8) & 0xFF) / 255,
-            blue: CGFloat(v & 0xFF) / 255,
-            alpha: 1
-        )
-    }
-    static let ink = hex(0x161616)        // primary text        — oklch(20% 0 0)
-    static let muted = hex(0x555555)      // captions / secondary — oklch(45% 0 0)
-    static let border = hex(0xCECECE)     // chip / button border — oklch(85% 0 0)
-    static let borderDock = hex(0xD7D7D7) // dock border          — oklch(88% 0 0)
-    static let divider = hex(0xE4E4E4)    // internal dividers    — oklch(92% 0 0)
-    static let grabber = hex(0xC4C4C4)    // grab handle          — oklch(82% 0 0)
-    static let green = hex(0x20C45F)      // Démarrer fill        — oklch(72% 0.19 150)
-    static let greenText = hex(0x08351A)  // Démarrer text        — oklch(24% 0.06 153)
-    static let redBorder = hex(0xFF627E)  // Arrêter border       — oklch(71% 0.194 13.4)
-    static let red = hex(0xDD1B53)        // Arrêter / rec pill   — oklch(58% 0.22 13.4)
-    static let paused = hex(0xD36000)     // paused pill          — oklch(62% 0.18 56)
-}
 
 /// The native recording surface (#41), redesigned map-centric + flat per
 /// `Recording.dc.html`.
@@ -661,9 +640,11 @@ final class RecordingViewController: UIViewController {
     /// Open the split list for the recording in progress.
     @objc private func showLapSplits() {
         guard controller.isActive else { return }
+        let stats = controller.currentStats
         let sheet = LapSplitsViewController(
             splits: controller.lapSplits,
-            usesPace: controller.sport.usesPace
+            usesPace: controller.sport.usesPace,
+            summary: "\(RecordingFormatters.distanceKilometers(stats.distance)) km · \(RecordingFormatters.elapsedString(stats.elapsed))"
         )
         present(sheet, animated: true)
     }

@@ -1,11 +1,14 @@
 import UIKit
 
-/// The list of splits — one row per Tour (S12a — #60).
+/// The split table — one row per Tour (S12a — #60).
 ///
-/// Shared by the in-ride sheet (`LapSplitsViewController`, opened from the dock's
-/// Tours cell) and the review screen, so a split reads identically before and
-/// after Arrêter. Laps are device-local: this list is the only place they are
-/// ever shown (ADR 0001).
+/// Flat like the rest of the recording surfaces: hairline-separated rows,
+/// uppercase muted column heads, monospaced digits. The lap in progress is called
+/// out with an accent rule down its left edge and a tinted row, rather than a
+/// punctuation mark that is easy to miss mid-ride.
+///
+/// Laps are device-local: this table is the only place they are ever shown
+/// (see `docs/adr/0001-laps-stay-on-the-device.md`).
 final class LapSplitsView: UIStackView {
     /// Cycling sports read km/h, running sports min/km. Settable because the review
     /// screen lets the rider change sport after the fact, and the column has to
@@ -29,84 +32,88 @@ final class LapSplitsView: UIStackView {
         }
 
         addArrangedSubview(headerRow())
-        for split in splits {
-            addArrangedSubview(separator())
+        addArrangedSubview(FlatStyle.hairline())
+        for (index, split) in splits.enumerated() {
             addArrangedSubview(row(for: split))
+            if index < splits.count - 1 {
+                addArrangedSubview(FlatStyle.hairline())
+            }
         }
     }
 
     // MARK: - Rows
 
     private func headerRow() -> UIView {
-        let row = makeRow(
-            lap: "TOUR",
-            distance: "DIST.",
-            time: "TEMPS",
-            speed: usesPace ? "ALLURE" : "MOY.",
-            font: .systemFont(ofSize: 10, weight: .semibold),
-            color: .secondaryLabel
+        let row = gridRow(
+            lap: FlatStyle.caption("#"),
+            distance: FlatStyle.caption("Dist."),
+            time: FlatStyle.caption("Temps"),
+            speed: FlatStyle.caption(usesPace ? "Allure" : "Moy.")
         )
+        row.directionalLayoutMargins = .init(top: 0, leading: 20, bottom: 7, trailing: 20)
         return row
     }
 
     private func row(for split: LapSplit) -> UIView {
-        // The lap in progress is called out so a short last split doesn't read as
-        // a slow one.
-        let lap = split.isInProgress ? "\(split.ordinal) ·" : "\(split.ordinal)"
-        return makeRow(
-            lap: lap,
-            distance: "\(RecordingFormatters.distanceKilometers(split.distance)) km",
-            time: RecordingFormatters.elapsedString(split.elapsed),
-            speed: RecordingFormatters.speedOrPace(split.averageSpeed, usesPace: usesPace),
-            font: .monospacedDigitSystemFont(ofSize: 15, weight: split.isInProgress ? .semibold : .regular),
-            color: split.isInProgress ? .label : .label
-        )
+        let weight: UIFont.Weight = split.isInProgress ? .bold : .regular
+        let lap = FlatStyle.number(size: 16, weight: .bold)
+        lap.text = "\(split.ordinal)"
+
+        let distance = FlatStyle.number(size: 18, weight: split.isInProgress ? .bold : .semibold)
+        distance.text = "\(RecordingFormatters.distanceKilometers(split.distance)) km"
+
+        let time = FlatStyle.number(size: 18, weight: weight)
+        time.text = RecordingFormatters.elapsedString(split.elapsed)
+
+        let speed = FlatStyle.number(size: 18, weight: weight, color: Palette.muted)
+        speed.text = RecordingFormatters.speedOrPace(split.averageSpeed, usesPace: usesPace)
+
+        let row = gridRow(lap: lap, distance: distance, time: time, speed: speed)
+        row.directionalLayoutMargins = .init(top: 13, leading: 20, bottom: 13, trailing: 20)
+
+        guard split.isInProgress else { return row }
+
+        // Tinted, with an accent rule down the leading edge.
+        let container = UIView()
+        container.backgroundColor = Palette.accent.withAlphaComponent(0.08)
+        container.translatesAutoresizingMaskIntoConstraints = false
+
+        let rule = UIView()
+        rule.backgroundColor = Palette.accent
+        rule.translatesAutoresizingMaskIntoConstraints = false
+
+        row.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(row)
+        container.addSubview(rule)
+        NSLayoutConstraint.activate([
+            row.topAnchor.constraint(equalTo: container.topAnchor),
+            row.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            row.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            row.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            rule.topAnchor.constraint(equalTo: container.topAnchor),
+            rule.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            rule.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            rule.widthAnchor.constraint(equalToConstant: 3),
+        ])
+        return container
     }
 
-    private func makeRow(
-        lap: String,
-        distance: String,
-        time: String,
-        speed: String,
-        font: UIFont,
-        color: UIColor
-    ) -> UIView {
-        let lapLabel = label(lap, font: font, color: color, alignment: .left)
-        let distanceLabel = label(distance, font: font, color: color, alignment: .right)
-        let timeLabel = label(time, font: font, color: color, alignment: .right)
-        let speedLabel = label(speed, font: font, color: color, alignment: .right)
+    /// Lap number in a fixed column, then three equal right-aligned columns.
+    private func gridRow(lap: UILabel, distance: UILabel, time: UILabel, speed: UILabel) -> UIStackView {
+        lap.textAlignment = .left
+        [distance, time, speed].forEach { $0.textAlignment = .right }
 
-        let stack = UIStackView(arrangedSubviews: [lapLabel, distanceLabel, timeLabel, speedLabel])
+        let stack = UIStackView(arrangedSubviews: [lap, distance, time, speed])
         stack.axis = .horizontal
         stack.alignment = .firstBaseline
         stack.spacing = 8
         stack.isLayoutMarginsRelativeArrangement = true
-        stack.directionalLayoutMargins = .init(top: 10, leading: 4, bottom: 10, trailing: 4)
 
         NSLayoutConstraint.activate([
-            lapLabel.widthAnchor.constraint(equalToConstant: 44),
-            timeLabel.widthAnchor.constraint(equalTo: distanceLabel.widthAnchor),
-            speedLabel.widthAnchor.constraint(equalTo: distanceLabel.widthAnchor),
+            lap.widthAnchor.constraint(equalToConstant: 26),
+            time.widthAnchor.constraint(equalTo: distance.widthAnchor),
+            speed.widthAnchor.constraint(equalTo: distance.widthAnchor),
         ])
         return stack
-    }
-
-    private func label(_ text: String, font: UIFont, color: UIColor, alignment: NSTextAlignment) -> UILabel {
-        let label = UILabel()
-        label.text = text
-        label.font = font
-        label.textColor = color
-        label.textAlignment = alignment
-        label.adjustsFontSizeToFitWidth = true
-        label.minimumScaleFactor = 0.7
-        return label
-    }
-
-    private func separator() -> UIView {
-        let line = UIView()
-        line.backgroundColor = .separator
-        line.translatesAutoresizingMaskIntoConstraints = false
-        line.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
-        return line
     }
 }

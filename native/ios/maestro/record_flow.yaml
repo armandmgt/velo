@@ -110,14 +110,14 @@ tags:
 - assertVisible: "Vérifier la sortie"
 - assertVisible: "Supprimer"
 
-# S12a (#60): the review screen now carries a still preview of the route, the
-# split list, and *both* clocks — temps écoulé beside durée de déplacement, so the
-# number here is never confused with the (stricter) one the activity page shows.
+# S12a (#60): the review screen leads with the route, and carries *both* clocks —
+# temps écoulé beside durée de déplacement — so the number here is never confused
+# with the (stricter) one the activity page shows. The caption is shortened to
+# "Déplacement" to fit a third of the card; the term stays "durée de déplacement".
 - assertVisible: "TEMPS ÉCOULÉ"
-- assertVisible: "DURÉE DE DÉPLACEMENT"
-# The split list: its "DIST." column header appears nowhere else on this screen.
-- assertVisible: "TOURS"
-- assertVisible: "DIST."
+- assertVisible: "DÉPLACEMENT"
+# The laps collapse to one row that opens the same sheet as the dock's Tours cell.
+- assertVisible: "[0-9]+ tours?"
 - takeScreenshot: record-review
 
 # Enregistrer serializes the recording to GPX and uploads it via POST /activities.
