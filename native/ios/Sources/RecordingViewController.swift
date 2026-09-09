@@ -6,8 +6,7 @@ import UIKit
 /// surfaces with thin borders — deliberately *not* native (no Liquid Glass /
 /// system materials), so the native screen matches the web pixel-for-pixel.
 
-/// The native recording surface (#41), redesigned map-centric + flat per
-/// `Recording.dc.html`.
+/// The native recording surface: map-centric and flat, matching the web design.
 ///
 /// A full-bleed live `RecordingMapView` sits behind everything; over it float the
 /// header chips (sport ⟷ GPS), a state pill, and a collapsible bottom dock. Every

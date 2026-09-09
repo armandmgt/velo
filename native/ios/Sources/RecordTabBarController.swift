@@ -1,13 +1,12 @@
 import HotwireNative
 import UIKit
 
-/// The authenticated tab-bar root, extended with a native **Record** entry point
-/// (#41, S1).
+/// The authenticated tab-bar root, extended with a native **Record** entry point.
 ///
 /// The three tabs stay web-backed Hotwire navigators; recording, however, needs
 /// native UIKit (GPS, sensors, an animated indicator), so the entry point is a
-/// `UIButton` *we own* — not a system tab item. Owning the view matters: S2+
-/// will animate it (e.g. blink while a recording is in progress), which system
+/// `UIButton` *we own* — not a system tab item. Owning the view matters: we
+/// animate it (it blinks while a recording is in progress), which system
 /// `UITab`/`UISearchTab` items don't allow since they don't expose their view.
 ///
 /// The button floats just *above* the tab bar, right-aligned, kept understated.
@@ -29,8 +28,8 @@ final class RecordTabBarController: HotwireTabBarController {
     }
 
     /// The floating action button. In record mode the `record.circle` glass capsule
-    /// turns from accent-tinted to red and pulses while a recording is in progress
-    /// (S3, #51); in the `+` modes it opens `/activities/new` or `/planned_routes/new`.
+    /// turns from accent-tinted to red and pulses while a recording is in
+    /// progress; in the `+` modes it opens `/activities/new` or `/planned_routes/new`.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
     /// The FAB action resolved for the current tab + recording state.
@@ -237,7 +236,7 @@ final class RecordTabBarController: HotwireTabBarController {
         config.baseForegroundColor = .white
         // Starts as the `record.circle` outline; `updateFab()` swaps it to `plus`
         // on the non-dashboard tabs and turns the capsule red (and pulses) while
-        // recording (S3).
+        // recording.
         config.image = fabImage("record.circle")
         config.cornerStyle = .capsule
 

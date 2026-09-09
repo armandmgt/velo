@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-/// Live, derived stats for an in-progress recording (#41, S3 — #51).
+/// Live, derived stats for an in-progress recording.
 ///
 /// Reuses the server-side `GpxExtractor` conventions so on-device numbers match
 /// what the eventual upload would compute:

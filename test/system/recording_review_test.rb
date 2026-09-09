@@ -43,7 +43,7 @@ class RecordingReviewTest < ApplicationSystemTestCase
     JS
   end
 
-  test "the web GPX encoder reproduces the S0 contract fixture byte for byte" do
+  test "the web GPX encoder reproduces the contract fixture byte for byte" do
     login(users(:one))
     visit new_activity_url
 

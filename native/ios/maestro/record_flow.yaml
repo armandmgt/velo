@@ -3,17 +3,15 @@ name: Record flow (record → stop → upload → land on the new activity)
 tags:
   - regression
 ---
-# S1 (#49) floated the Record button + native screen; S2 (#50) added the live GPS
-# feed; S3 (#51) makes it statful: the screen opens *armed*, an explicit Démarrer
-# starts recording (Core Data), and live stats + a point count update. S4 (#52)
-# adds sport selection, then on Arrêter serializes the recording to GPX, uploads
-# it via POST /activities, and jumps to the new activity. This flow guards
-# navigation, the start control, that points get recorded, and the upload path.
+# The screen opens *armed*: an explicit Démarrer starts recording, live stats and
+# a point count update, and Arrêter hands the ride to the web review, which
+# uploads it. This flow guards navigation, the start control, that points get
+# recorded, and the upload path.
 - launchApp:
     clearState: true
     clearKeychain: true
     stopApp: true
-    # Pre-grant "While Using" location so the S2 (#50) permission request the
+    # Pre-grant "While Using" location so the permission request the
     # recording screen now fires doesn't pop a system alert over the assertions
     # below. (We only ever request When-In-Use — never "Always".)
     permissions:
@@ -41,7 +39,7 @@ tags:
 - assertVisible: "PRÊT À ENREGISTRER"
 - assertVisible: "Vélo de route"
 - assertVisible: "Démarrer"
-# S12a (#60): pause automatique is configured here, on the armed card — the only
+#: pause automatique is configured here, on the armed card — the only
 # place it's reachable, so the setting can't shift under a ride in progress.
 - assertVisible: "Pause automatique"
 # Regression: the full-screen modal covers the tabs (and can't be swipe-dismissed
@@ -80,7 +78,7 @@ tags:
 # Smoke-test the controls: lap marker, then pause ⇄ resume.
 - tapOn: "Tour"
 
-# S12a (#60): the Tours counter opens the split sheet. Only a smoke test here —
+#: the Tours counter opens the split sheet. Only a smoke test here —
 # Maestro's iOS driver cannot traverse a sheet presented over the full-screen
 # recording modal (its contents are absent from the hierarchy even while plainly
 # on screen), so this proves the tap presents and dismisses without breaking the
@@ -104,7 +102,7 @@ tags:
 - tapOn: "Reprendre"
 
 # Arrêter finalizes the recording and hands it to the review screen, which since
-# S15 (#116) is the web `/activities/new` presented modally — not a native screen.
+# is the web `/activities/new` presented modally — not a native screen.
 # The assertions below therefore read WebView content; give the modal transition a
 # beat first, or the first query races it and reads as not-visible.
 - tapOn: "Arrêter"
@@ -121,7 +119,7 @@ tags:
 # surfaces uppercased and Android surfaces DOM-cased, hence the alternation.
 - assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
 - assertVisible: "DÉPLACEMENT|Déplacement"
-# The splits render from the handoff; laps never reach the server (ADR 0001).
+# The splits render from the handoff; laps never reach the server.
 # iOS exposes the count badge and the label as separate nodes, Android merges
 # them into one ("1 1 tour"), so match loosely.
 - assertVisible: ".*[0-9]+ tours?.*"
@@ -131,9 +129,9 @@ tags:
 - takeScreenshot: record-review
 
 # Enregistrer submits the web form. The GPX is encoded in the page from the
-# handoff's points and attached to the real file input via DataTransfer — the
-# thing #66 believed impossible. On 201 the page reports back and the shell
-# dismisses the modal onto the created activity.
+# handoff's points and attached to the real file input via DataTransfer. On 201
+# the page reports back and the shell dismisses the modal onto the created
+# activity.
 - tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the tab bar shell. The

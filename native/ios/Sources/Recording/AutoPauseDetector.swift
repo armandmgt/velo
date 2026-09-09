@@ -1,11 +1,10 @@
 import CoreLocation
 import Foundation
 
-/// Decides when a recording enters and leaves **pause automatique** (S12a — #60).
+/// Decides when a recording enters and leaves **pause automatique**.
 ///
-/// The rules and the reasoning behind them live in
-/// `docs/adr/0002-auto-pause-is-a-distinct-persisted-state.md`. In short: entering
-/// is deliberately slow (ten consecutive still seconds) and leaving is instant,
+/// Entering is deliberately slow (ten consecutive still seconds) and leaving is
+/// instant,
 /// because a late pause costs a few seconds of temps écoulé while a late resume
 /// loses real track. Leaving keys on **displacement**, not on speed — a stationary
 /// phone reports 0.3–0.8 m/s of Doppler noise, straddling the very threshold used

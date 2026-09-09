@@ -26,7 +26,7 @@ import fr.armandmgt.velo.ui.theme.VeloTheme
 import kotlinx.coroutines.launch
 
 /**
- * Hosts the native recording screen (#54 skeleton; #55 GPS feed; #57 upload).
+ * Hosts the native recording screen.
  *
  * Opening it *arms* GPS: once location permission is granted it starts the
  * [RecordingService] (an ongoing-notification `location` foreground service) and
@@ -41,7 +41,7 @@ import kotlinx.coroutines.launch
 class RecordingActivity : ComponentActivity() {
     private var screenState by mutableStateOf<RecordingScreenState>(RecordingScreenState.RequestingPermission)
 
-    /** The sport this recording uploads as; defaults to the last-used sport (#57). */
+    /** The sport this recording uploads as; defaults to the last-used sport. */
     private var selectedSport by mutableStateOf(Sport.BIKE)
 
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }

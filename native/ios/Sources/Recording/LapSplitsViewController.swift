@@ -1,7 +1,7 @@
 import UIKit
 
 /// The lap sheet — opened from the recording dock's Tours cell while riding, and
-/// from the review screen's lap row afterwards (S12a — #60).
+/// from the review screen's lap row afterwards.
 ///
 /// A sheet rather than a permanent section: riders glance at the dock mid-effort
 /// and read the table when they have a moment, so the splits cost the dock no

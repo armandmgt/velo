@@ -8,9 +8,9 @@ extension Notification.Name {
     static let recordingStateDidChange = Notification.Name("RecordingStateDidChange")
 }
 
-/// The long-lived owner of an in-progress recording (#41, S3 — #51).
+/// The long-lived owner of an in-progress recording.
 ///
-/// This is the "longer-lived owner" the S2 comments anticipated: it owns the
+/// It owns the
 /// `LocationRecorder` and the Core Data `RecordingStore`, so a recording outlives
 /// any one `RecordingViewController` — **Fermer** can leave the screen while GPS
 /// keeps streaming and points keep persisting. A singleton because exactly one
@@ -22,8 +22,7 @@ extension Notification.Name {
 /// the distance segment so the paused gap isn't counted).
 ///
 /// `.autoPaused` is pause automatique — identical in effect to `.paused`,
-/// differing only in who triggered it and who may end it. See
-/// `docs/adr/0002-auto-pause-is-a-distinct-persisted-state.md`.
+/// differing only in who triggered it and who may end it.
 final class RecordingController: NSObject {
     static let shared = RecordingController()
 
@@ -53,13 +52,13 @@ final class RecordingController: NSObject {
 
     var isActive: Bool { state.isActive }
 
-    /// The sport the recording uploads as (S4 — #52). Chosen on the recording
+    /// The sport the recording uploads as. Chosen on the recording
     /// screen; defaults to the last-used sport and becomes the new last-used when
     /// a recording starts. Held here (not on the VC) so it survives Fermer/reopen
     /// while the recording keeps running.
     var sport: Sport = .lastUsed
 
-    /// Current lap ordinal (1-based) while active, else 0. Laps are markers (S3).
+    /// Current lap ordinal (1-based) while active, else 0. Laps are markers.
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
     /// Lives here until the review page reports the upload committed, or the
@@ -71,7 +70,7 @@ final class RecordingController: NSObject {
     private(set) var pointCount: Int = 0
 
     /// Point count of an active session recovered from a previous launch (kill
-    /// recovery). Read-only here; the S5 resume/finish prompt consumes it.
+    /// recovery). Read-only here; the resume/finish prompt consumes it.
     private(set) var recoveredPointCount: Int = 0
 
     private let recorder = LocationRecorder()
@@ -98,8 +97,8 @@ final class RecordingController: NSObject {
         super.init()
         recorder.delegate = self
         // Kill recovery: surface any orphaned active session's point count. We do
-        // NOT resume it (the resume/finish prompt is S5) — the data simply stays
-        // in the store, which is the S3 acceptance.
+        // NOT resume it — the data simply stays in the store for the
+        // resume/finish prompt to deal with.
         if let orphan = store.activeSession() {
             recoveredPointCount = orphan.orderedPoints.count
             NSLog("[RecordingController] recovered active session with \(recoveredPointCount) points")
@@ -128,7 +127,7 @@ final class RecordingController: NSObject {
     func start() {
         guard state == .idle else { return }
         // Preserve the single-active invariant: finalize any orphan recovered from
-        // a kill before opening a new session (S5 will prompt instead of dropping).
+        // a kill before opening a new session; the resume prompt handles it.
         if let orphan = store.activeSession() {
             orphan.recordingState = .stopped
             store.save()
@@ -172,7 +171,7 @@ final class RecordingController: NSObject {
         leavePause()
     }
 
-    /// Ten still seconds: enter pause automatique (ADR 0002).
+    /// Ten still seconds: enter pause automatique.
     private func autoPause() {
         guard state == .recording else { return }
         enterPause(.autoPaused)
@@ -206,7 +205,7 @@ final class RecordingController: NSObject {
         emitStats()
     }
 
-    /// Close the running Tour and open the next one (S12a — #60).
+    /// Close the running Tour and open the next one.
     ///
     /// Snapshots the cumulative totals *before* bumping the counter, so the row
     /// closes the lap that was running; `LapSplits` differences consecutive rows
@@ -236,7 +235,7 @@ final class RecordingController: NSObject {
     }
 
     /// Finalize the recording: mark it stopped, stop streaming, and return the
-    /// finalized session so the caller can serialize and upload it (S4 — #52).
+    /// finalized session so the caller can serialize and upload it.
     /// The session stays in the store until the upload succeeds (`discard`).
     @discardableResult
     func stop() -> RecordingSession? {
@@ -313,7 +312,7 @@ extension RecordingController: LocationRecorderDelegate {
 
     func locationRecorder(_ recorder: LocationRecorder, didUpdate location: CLLocation) {
         // Every fix feeds the detector, including the ones a paused recording drops
-        // — watching them is exactly how the auto-resume is spotted (ADR 0002).
+        // — watching them is exactly how the auto-resume is spotted.
         switch detector.consider(location) {
         case .shouldAutoPause: autoPause()
         case .shouldAutoResume: autoResume()
@@ -327,7 +326,8 @@ extension RecordingController: LocationRecorderDelegate {
             return
         }
 
-        // Keep at most one fix per wall-clock second (the ~1 Hz contract, S0 §2).
+        // Keep at most one fix per wall-clock second — the sampling rate the
+        // GPX ingestion expects.
         // `distanceFilter = kCLDistanceFilterNone` can deliver sub-second bursts;
         // since the GPX emits whole-second `<time>`s, two points in the same second
         // would carry identical timestamps and collide on the server's unique

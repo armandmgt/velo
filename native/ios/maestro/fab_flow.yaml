@@ -4,7 +4,7 @@ tags:
   - regression
 ---
 # Guards the contextual floating action button ("Make the native FAB contextual
-# to the selected tab", #82). The FAB is a floating UIButton owned by
+# to the selected tab"). The FAB is a floating UIButton owned by
 # RecordTabBarController; `updateFab` re-resolves its glyph, accessibilityLabel
 # and tap action from the selected tab: Record on the dashboard, a `+` that
 # opens the web "new" form on Activités / Parcours. Maestro matches the FAB by

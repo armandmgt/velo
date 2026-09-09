@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-/// How the review screen's map should frame a recorded route (S12a — #60).
+/// How the review screen's map should frame a recorded route.
 enum RouteFraming: Equatable {
     /// Nothing was recorded — leave the camera alone.
     case none

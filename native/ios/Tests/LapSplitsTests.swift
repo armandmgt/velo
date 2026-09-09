@@ -4,7 +4,7 @@ import Testing
 
 /// Splits are differences between the cumulative snapshots taken each time the
 /// rider taps Tour, plus whatever the lap in progress has accrued since the last
-/// one. See `CONTEXT.md` for Tour / split, and ADR 0001 for why they stay local.
+/// one. Splits never leave the device.
 @Suite("LapSplits")
 struct LapSplitsTests {
     @Test("a recording with no Tour taps is a single lap in progress")

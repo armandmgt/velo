@@ -2,7 +2,7 @@ import CoreLocation
 import Testing
 @testable import Velo
 
-/// The pause automatique rules from ADR 0002: enter after ten still seconds,
+/// The pause automatique rules: enter after ten still seconds,
 /// leave on fifteen metres of displacement, and never override an explicit
 /// instruction from the rider.
 @Suite("AutoPauseDetector")

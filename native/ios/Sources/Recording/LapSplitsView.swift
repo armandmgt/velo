@@ -1,14 +1,13 @@
 import UIKit
 
-/// The split table — one row per Tour (S12a — #60).
+/// The split table — one row per Tour.
 ///
 /// Flat like the rest of the recording surfaces: hairline-separated rows,
 /// uppercase muted column heads, monospaced digits. The lap in progress is called
 /// out with an accent rule down its left edge and a tinted row, rather than a
 /// punctuation mark that is easy to miss mid-ride.
 ///
-/// Laps are device-local: this table is the only place they are ever shown
-/// (see `docs/adr/0001-laps-stay-on-the-device.md`).
+/// Laps are device-local: this table is the only place they are ever shown.
 final class LapSplitsView: UIStackView {
     /// Cycling sports read km/h, running sports min/km. Settable because the review
     /// screen lets the rider change sport after the fact, and the column has to

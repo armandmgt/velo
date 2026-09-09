@@ -1,7 +1,7 @@
 import CoreData
 import Foundation
 
-/// Core Data managed objects backing an in-progress recording (#41, S3 — #51).
+/// Core Data managed objects backing an in-progress recording.
 ///
 /// Hand-written subclasses so the schema stays fully deterministic under our
 /// xcodegen/xcodebuild workflow — no reliance on Xcode's DerivedSources class
@@ -18,8 +18,7 @@ import Foundation
 ///
 /// `autoPaused` is deliberately **appended at 3** rather than slotted next to
 /// `paused`: Android's mirror enum resolves by ordinal (`entries[value]`), so
-/// renumbering `stopped` would invalidate stored rows on both platforms. See
-/// `docs/adr/0002-auto-pause-is-a-distinct-persisted-state.md`.
+/// renumbering `stopped` would invalidate stored rows on both platforms.
 enum RecordingState: Int16 {
     case recording = 0
     case paused = 1
@@ -67,12 +66,11 @@ final class RecordingSession: NSManagedObject {
 }
 
 /// One closed lap: the cumulative distance and temps écoulé at the instant the
-/// rider tapped Tour (S12a — #60).
+/// rider tapped Tour.
 ///
 /// Storing cumulative snapshots rather than per-lap deltas keeps the write O(1)
 /// and exact; `LapSplits` turns consecutive rows into the splits the UI shows.
-/// Laps never leave the device — see
-/// `docs/adr/0001-laps-stay-on-the-device.md`.
+/// Laps never leave the device.
 @objc(RecordingLap)
 final class RecordingLap: NSManagedObject {
     /// The lap this row closes (1-based).
@@ -96,7 +94,7 @@ final class RecordingPoint: NSManagedObject {
     @NSManaged var speed: Double
     @NSManaged var horizontalAccuracy: Double
     /// The lap ordinal this point belongs to (mirrors `RecordingSession.lapCount`
-    /// at the time it was recorded). Laps are markers for now (S3).
+    /// at the time it was recorded). Laps are markers for now.
     @NSManaged var lap: Int16
     @NSManaged var heartRate: Int16
     @NSManaged var hasHeartRate: Bool

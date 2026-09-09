@@ -3,7 +3,7 @@ package fr.armandmgt.velo.features.record
 import android.location.Location
 
 /**
- * Live, derived stats for an in-progress recording (#56).
+ * Live, derived stats for an in-progress recording.
  *
  * Mirrors the iOS `RecordingStatsAccumulator` (and the server-side `GpxExtractor`
  * conventions) so on-device numbers match the eventual upload:

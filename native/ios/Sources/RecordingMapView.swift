@@ -26,7 +26,7 @@ final class RecordingMapView: UIView {
     private var styleLoaded = false
 
     /// Preview mode: a still, non-interactive rendering of a finished trace for
-    /// the review screen (S12a — #60), rather than the live follow-the-rider map.
+    /// the review screen, rather than the live follow-the-rider map.
     private let isPreview: Bool
     private let startMarker = MLNPointAnnotation()
     private let finishMarker = MLNPointAnnotation()

@@ -6,13 +6,13 @@ import androidx.annotation.StringRes
 import fr.armandmgt.velo.R
 
 /**
- * The sport a recording is uploaded as (#41, S9 — #57). Mirrors the iOS `Sport`.
+ * The sport a recording is uploaded as. Mirrors the iOS `Sport`.
  *
  * [wire] is the authoritative `activity[sport]` value (one of the 14 `Activity`
  * enum cases on the server). [gpxType] is the best-effort `<trk><type>` also
  * emitted into the GPX for self-containedness — the param wins server-side, and
- * `workout` has no GPX mapping (see the S0 contract,
- * `docs/native-recording/s0-gpx-upload-contract.md` §3). [iconRes] is the chip
+ * `workout` has no GPX mapping at all, so it must travel via the param alone.
+ * [iconRes] is the chip
  * glyph (closest Material icon to the iOS SF Symbol); [usesPace] mirrors the
  * server's `SPORT_CATEGORY` running group → the live metrics read as pace (min/km)
  * rather than speed (km/h).

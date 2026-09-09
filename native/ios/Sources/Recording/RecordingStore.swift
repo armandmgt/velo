@@ -1,14 +1,14 @@
 import CoreData
 import Foundation
 
-/// The Core Data stack for in-progress recordings (#41, S3 — #51).
+/// The Core Data stack for in-progress recordings.
 ///
 /// Thin wrapper over an `NSPersistentContainer` loaded from the bundled
 /// `Recording.momd`. Everything runs on the `viewContext` (main queue): at the
 /// recording's ~1 Hz cadence the writes are trivial, and a single context keeps
 /// the live stats and the store trivially consistent.
 ///
-/// Durability (the S3 acceptance: survive a force-quit) comes from saving after
+/// Durability — surviving a force-quit — comes from saving after
 /// every appended point — each `save()` flushes the SQLite WAL, so a kill loses
 /// at most the in-flight fix.
 final class RecordingStore {
@@ -57,7 +57,7 @@ final class RecordingStore {
     // MARK: - Points
 
     /// Append one fix to a session. Sensor fields are left absent (nullable for
-    /// later — S4+); the `has*` flags stay false.
+    /// later); the `has*` flags stay false.
     @discardableResult
     func appendPoint(
         to session: RecordingSession,
@@ -88,7 +88,7 @@ final class RecordingStore {
     // MARK: - Laps
 
     /// Close a lap: snapshot the cumulative totals at the instant Tour was tapped
-    /// (S12a — #60). `LapSplits` differences consecutive rows into splits.
+    /// `LapSplits` differences consecutive rows into splits.
     @discardableResult
     func appendLap(
         to session: RecordingSession,
@@ -108,7 +108,7 @@ final class RecordingStore {
     }
 
     /// Delete a finalized session (its points cascade away) — used to clear the
-    /// local recording after a successful upload (S4 — #52).
+    /// local recording after a successful upload.
     func delete(_ session: RecordingSession) {
         viewContext.delete(session)
         save()

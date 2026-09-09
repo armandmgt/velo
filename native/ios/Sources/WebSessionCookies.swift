@@ -2,10 +2,9 @@ import Foundation
 import WebKit
 
 /// Shares the Hotwire Native webview's logged-in session with native `URLSession`
-/// requests (#41).
+/// requests.
 ///
-/// Both the GPX download (`FileDownloader`) and the recording upload
-/// (`ActivityUploader`) need to ride the same signed `session_id` cookie the
+/// The GPX download (`FileDownloader`) needs to ride the same signed cookie the
 /// WKWebView already holds — opening a bare `URLSession` would go out
 /// unauthenticated and the server would bounce to the login page. We build the
 /// `Cookie` header explicitly: handing cookies to a private `HTTPCookieStorage`

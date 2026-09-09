@@ -66,7 +66,7 @@ import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.data.RecordingState
 import fr.armandmgt.velo.ui.theme.VeloTheme
 
-/** What the recording screen shows (#56) — driven by the permission flow + GPS feed. */
+/** What the recording screen shows — driven by the permission flow + GPS feed. */
 sealed interface RecordingScreenState {
     /** Waiting on the location-permission dialog result. */
     data object RequestingPermission : RecordingScreenState
@@ -108,7 +108,7 @@ private fun Modifier.flatCard(borderColor: Color, elevation: Dp): Modifier =
         .border(1.dp, borderColor)
 
 /**
- * The native recording screen (#56), redesigned map-centric + flat per
+ * The native recording screen, redesigned map-centric + flat per
  * `Recording.dc.html`: a full-bleed live map with floating white chips / pill and a
  * collapsible stats dock over flat sharp-cornered controls.
  */
