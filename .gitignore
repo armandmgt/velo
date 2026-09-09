@@ -93,3 +93,10 @@
 # Google Play service account JSON — never commit
 /native/android/**/play-publisher*.json
 /native/android/**/google-play-*.json
+
+# Design canvas working material (.dc.html artboards, canvas.json, exported
+# canvases and their assets) — local only, never committed.
+/design/
+
+# Maestro takeScreenshot artifacts land in the CWD.
+/record-*.png

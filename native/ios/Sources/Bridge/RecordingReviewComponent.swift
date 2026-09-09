@@ -1,9 +1,8 @@
 import HotwireNative
 import UIKit
 
-/// The shell's half of the recording review (#116, ADR 0003 — supersedes #66).
-/// The review screen is the web `/activities/new`; this hands it the finished
-/// recording and acts on what the rider does with it.
+/// The shell's half of the recording review (#116, supersedes #66): the screen
+/// is the web `/activities/new`, and this hands it the finished recording.
 final class RecordingReviewComponent: BridgeComponent {
     override class var name: String { "recording-review" }
 
@@ -26,8 +25,8 @@ final class RecordingReviewComponent: BridgeComponent {
         reply(to: Event.connect.rawValue, with: HandoffData(handoff: encodedHandoff()))
     }
 
-    /// `nil` when there is nothing to hand over. The page treats both the same
-    /// way, so a failure to encode degrades to the plain upload form.
+    /// `nil` when there is nothing to hand over — the page then reads as the
+    /// plain upload form, which is also the right answer if encoding fails.
     private func encodedHandoff() -> String? {
         guard let handoff = RecordingController.shared.pendingHandoff else { return nil }
         do {

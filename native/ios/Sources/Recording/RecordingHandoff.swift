@@ -2,21 +2,18 @@ import Compression
 import CoreLocation
 import Foundation
 
-/// What a finished recording session gives the review screen (#116, ADR 0003).
-/// See `CONTEXT.md` ("Handoff").
+/// What a finished recording gives the review screen (#116; `CONTEXT.md`).
 ///
-/// Stats travel precomputed rather than derived on the web: a paused recording
-/// drops its fixes, so from the points alone nothing can tell a pause from a GPS
-/// dropout, and temps écoulé is not reconstructible downstream.
+/// Stats travel precomputed: a paused recording drops its fixes, so from the
+/// points alone nothing can tell a pause from a GPS dropout, and temps écoulé is
+/// not reconstructible downstream.
 struct RecordingHandoff {
-    /// Lets a shell newer than the page it talks to be told apart.
     static let version = 1
 
     let session: RecordingSession
     let stats: RecordingStats
     let sport: Sport
-    /// Carried into `activity[recording_uuid]` so an upload replayed after a
-    /// kill resolves to the ride already created (ADR 0003).
+    /// Makes an upload replayed after a kill resolve to the ride already created.
     let recordingUuid: UUID
 
     init(session: RecordingSession, stats: RecordingStats, sport: Sport) {
@@ -106,12 +103,11 @@ extension RecordingHandoff {
         )
     }
 
-    /// Raw DEFLATE, base64'd. The bridge's native→web leg inlines its JSON into
-    /// an `evaluateJavaScript` source string, and a six-hour ride is ~21,600
-    /// points — 1.5 MB raw, ~250 KB compressed, so one message suffices.
-    ///
-    /// Raw DEFLATE rather than gzip because `COMPRESSION_ZLIB` emits exactly
-    /// that and the web reads it with `DecompressionStream("deflate-raw")`.
+    /// Raw DEFLATE, base64'd. The bridge inlines its JSON into an
+    /// `evaluateJavaScript` source string, and a six-hour ride is 1.5 MB raw
+    /// against ~250 KB compressed — so one message suffices. DEFLATE rather than
+    /// gzip because `COMPRESSION_ZLIB` emits exactly what the web's
+    /// `DecompressionStream("deflate-raw")` reads.
     func encoded() throws -> String {
         let json = try JSONEncoder().encode(payload)
         return try Self.deflate(json).base64EncodedString()

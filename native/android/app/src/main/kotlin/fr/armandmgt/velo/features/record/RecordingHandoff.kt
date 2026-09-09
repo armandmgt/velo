@@ -12,24 +12,21 @@ import java.util.zip.Deflater
 import kotlin.io.encoding.Base64
 
 /**
- * What a finished recording session gives the review screen (#116, ADR 0003).
- * Mirrors the iOS `RecordingHandoff`; see `CONTEXT.md` ("Handoff").
+ * What a finished recording gives the review screen (#116; `CONTEXT.md`).
+ * Mirrors the iOS `RecordingHandoff`.
  *
- * Stats travel precomputed rather than derived on the web: a paused recording
- * drops its fixes, so from the points alone nothing can tell a pause from a GPS
- * dropout, and temps écoulé is not reconstructible downstream.
+ * Stats travel precomputed: a paused recording drops its fixes, so from the
+ * points alone nothing can tell a pause from a GPS dropout, and temps écoulé is
+ * not reconstructible downstream.
  */
 object RecordingHandoff {
-    /** Wire version, matching the iOS shell and the web's reader. */
     const val VERSION = 1
 
     /**
      * Lives here between [RecordingActivity] finishing and the bridge component
      * connecting, since the review is a web page rather than an Activity that
-     * could hold the session.
-     *
-     * In memory only: if the process dies the ride stays in Room but nothing
-     * surfaces it again (#117).
+     * could hold the session. In memory only — if the process dies the ride
+     * stays in Room but nothing surfaces it again (#117).
      */
     @Volatile
     var pending: Payload? = null
@@ -123,12 +120,11 @@ object RecordingHandoff {
     }
 
     /**
-     * Raw DEFLATE, base64'd. The bridge's native→web leg inlines its JSON into an
-     * `evaluateJavascript` source string, and a six-hour ride is ~21,600 points —
-     * 1.5 MB raw, ~250 KB compressed, so one message suffices.
-     *
-     * Raw DEFLATE rather than gzip because `Deflater(nowrap = true)` emits
-     * exactly that and the web reads it with `DecompressionStream("deflate-raw")`.
+     * Raw DEFLATE, base64'd. The bridge inlines its JSON into an
+     * `evaluateJavascript` source string, and a six-hour ride is 1.5 MB raw
+     * against ~250 KB compressed — so one message suffices. DEFLATE rather than
+     * gzip because `Deflater(nowrap = true)` emits exactly what the web's
+     * `DecompressionStream("deflate-raw")` reads.
      */
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     fun encode(payload: Payload): String {

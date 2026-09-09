@@ -15,9 +15,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 /**
- * The shell's half of the recording review (#116, ADR 0003 — supersedes #67).
- * Mirrors the iOS `RecordingReviewComponent`: the review screen is the web
- * `/activities/new`, and this hands it the finished recording.
+ * The shell's half of the recording review (#116, supersedes #67): the screen is
+ * the web `/activities/new`, and this hands it the finished recording.
+ * Mirrors the iOS `RecordingReviewComponent`.
  */
 class RecordingReviewComponent(
     name: String,
@@ -40,8 +40,8 @@ class RecordingReviewComponent(
     }
 
     /**
-     * `null` when there is nothing to hand over. The page treats both the same
-     * way, so a failure to encode degrades to the plain upload form.
+     * `null` when there is nothing to hand over — the page then reads as the
+     * plain upload form, which is also the right answer if encoding fails.
      */
     private fun encodedHandoff(): String? {
         val pending = RecordingHandoff.pending ?: return null

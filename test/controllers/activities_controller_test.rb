@@ -120,7 +120,6 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal created.id, response.parsed_body["id"]
   end
 
-  # The key is scoped to its owner.
   test "a recording_uuid belonging to another user does not resolve or collide" do
     uuid = SecureRandom.uuid
     users(:two).activities.create!(activities(:one).attributes.except("id").merge(recording_uuid: uuid))

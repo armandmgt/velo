@@ -1,8 +1,8 @@
 <%# locals: (activity:) %>
 
-<%# The native recording review (#116, ADR 0003). Everything here is filled by
-    `bridge--recording-review` from the handoff the shell sends — the server
-    knows nothing about the ride, laps included (ADR 0001). %>
+<%# The native recording review (#116). Everything here is filled by
+    `bridge--recording-review` from the handoff — the server knows nothing about
+    the ride, laps included (ADR 0001). %>
 
 <%= content_for :head do %>
   <%= stylesheet_link_tag "maplibre-gl" %>
@@ -12,8 +12,8 @@
 <% end %>
 
 <div class="min-h-dvh bg-base-200" data-controller="bridge--recording-review">
-  <%# Hidden until a handoff arrives: the tab bar's "+" routes to this same URL,
-      where the page must read as the plain upload form. %>
+  <%# Hidden until a handoff arrives: the tab bar's "+" routes here too, and
+      must read as the plain upload form. %>
   <div hidden data-bridge--recording-review-target="review">
     <div class="h-64 w-full bg-base-300" data-bridge--recording-review-target="map"></div>
 
@@ -28,9 +28,9 @@
 
         <div class="divider my-2"></div>
 
-        <%# Both clocks: the number here must not be mistaken for the stricter
-            one the activity page shows. "Durée de déplacement" is the term
-            (CONTEXT.md), "Déplacement" the label that fits a third of the card. %>
+        <%# Both clocks, so the number here isn't mistaken for the stricter one
+            the activity page shows. "Déplacement" is the label that fits a third
+            of the card; "durée de déplacement" is the term (CONTEXT.md). %>
         <div class="grid grid-cols-3 text-center">
           <div>
             <div class="text-xl font-bold" data-bridge--recording-review-target="elapsed">00:00</div>

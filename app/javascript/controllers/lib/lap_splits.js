@@ -1,16 +1,12 @@
-// Lap boundaries into one split per Tour, mirroring the shells' LapSplits.
-// Laps arrive in the handoff and are rendered client-side; nothing here is
-// persisted (docs/adr/0001-laps-stay-on-the-device.md).
-//
-// Splits are timed by temps écoulé, not durée de déplacement, so they agree
-// with the timer the rider watched (CONTEXT.md).
+// Mirrors the shells' LapSplits. Timed by temps écoulé, not durée de
+// déplacement, so a split agrees with the timer the rider watched (CONTEXT.md).
+// Nothing here is persisted — docs/adr/0001-laps-stay-on-the-device.md.
 
 // Below this a trailing lap is an artefact of tapping Tour just before Arrêter,
 // not a lap anyone rode.
 const EMPTY_LAP_DISTANCE = 1
 const EMPTY_LAP_ELAPSED = 1
 
-/** A ride that was never lapped is a single lap covering the whole ride. */
 export function lapSplits({ boundaries = [], totalDistance = 0, totalElapsed = 0 }) {
   const ordered = [...boundaries].sort((a, b) => a.ordinal - b.ordinal)
 

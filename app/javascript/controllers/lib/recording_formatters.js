@@ -1,12 +1,10 @@
-// Mirrors the shells' RecordingFormatters, which still format the live dashboard
-// while riding: the numbers must not shift when the screen becomes a web page.
+// Mirrors the shells' RecordingFormatters, which still drive the live dashboard:
+// the numbers must not shift when the screen becomes a web page.
 
-/** `x.xx` km from a distance in metres. */
 export function distanceKilometers(meters) {
   return (meters / 1000).toFixed(2)
 }
 
-/** `H:MM:SS` once past an hour, else `MM:SS`. */
 export function elapsedString(seconds) {
   const total = Math.max(Math.round(seconds || 0), 0)
   const hours = Math.floor(total / 3600)
@@ -16,7 +14,7 @@ export function elapsedString(seconds) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(secs)}` : `${pad(minutes)}:${pad(secs)}`
 }
 
-/** `m:ss/km`. Near-zero speed reads as `—` rather than an absurd figure. */
+/** Near-zero speed reads as `—` rather than an absurd figure. */
 export function pace(metersPerSecond) {
   if (!(metersPerSecond > 0.3)) return "—"
   const secondsPerKm = 1000 / metersPerSecond
@@ -25,7 +23,7 @@ export function pace(metersPerSecond) {
   return `${minutes}:${String(seconds).padStart(2, "0")}/km`
 }
 
-/** km/h, bare — the unit lives in the caption beside it. */
+/** Bare number — the unit lives in the caption beside it. */
 export function speedKmh(metersPerSecond) {
   return (Math.max(metersPerSecond, 0) * 3.6).toFixed(1)
 }

@@ -1,8 +1,7 @@
 class ActivitiesController < ApplicationController
-  # A JSON `POST /activities` originates outside the webview and carries no CSRF
-  # token; auth rides the signed `session_id` cookie instead, so exempting only
-  # that format is safe. No client uses it since #116 moved the upload into the
-  # review page — kept for the offline queue (#117), which will need it back.
+  # A JSON `POST /activities` comes from outside the webview and carries no CSRF
+  # token; auth rides the signed `session_id` cookie instead. Unused since #116
+  # moved the upload into the review page — kept for the offline queue (#117).
   protect_from_forgery with: :exception, unless: -> { request.format.json? }
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
@@ -32,9 +31,8 @@ class ActivitiesController < ApplicationController
   end
 
   def create
-    # The shell learns the upload succeeded only once the review page reports
-    # back, so a process killed in between would otherwise upload the ride twice
-    # (#116, ADR 0003).
+    # The shell learns of success only once the review page reports back, so a
+    # process killed in between would otherwise upload the ride twice (#116).
     if (replay = replayed_recording)
       return respond_with_created(replay)
     end
