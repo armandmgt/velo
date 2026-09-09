@@ -137,8 +137,8 @@ class RecordingActivity : ComponentActivity() {
 
     /**
      * Arrêter: finalize the session, park the handoff, and ask
-     * [fr.armandmgt.velo.main.MainActivity] to open the review — which since #116
-     * is the web `/activities/new`. The upload runs from that page.
+     * [fr.armandmgt.velo.main.MainActivity] to open the review. The upload runs
+     * from that web page, not here.
      */
     private fun stopRecording() {
         val id = binder?.sessionId()
@@ -221,7 +221,7 @@ class RecordingActivity : ComponentActivity() {
     }
 
     companion object {
-        /** A recording is parked in [RecordingHandoff]; open the review (#116). */
+        /** A recording is parked in [RecordingHandoff]; open the review. */
         const val EXTRA_OPEN_REVIEW = "fr.armandmgt.velo.OPEN_REVIEW"
     }
 }

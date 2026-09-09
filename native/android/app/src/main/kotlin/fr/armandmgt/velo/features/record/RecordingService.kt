@@ -62,8 +62,8 @@ data class RecordingUiState(
     val elapsedSeconds: Long = 0,
     /**
      * Durée de déplacement — the stricter, speed-gated clock. Carried so the
-     * handoff (#116) can send it precomputed: a paused recording drops its fixes,
-     * so nothing downstream can separate it from temps écoulé.
+     * handoff can send it precomputed: a paused recording drops its fixes, so
+     * nothing downstream can separate it from temps écoulé.
      */
     val movingSeconds: Double = 0.0,
     val distanceMeters: Double = 0.0,

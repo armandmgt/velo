@@ -1,7 +1,7 @@
 class ActivitiesController < ApplicationController
-  # A JSON `POST /activities` comes from outside the webview and carries no CSRF
-  # token; auth rides the signed `session_id` cookie instead. Unused since #116
-  # moved the upload into the review page — kept for the offline queue (#117).
+  # A JSON create comes from outside the webview and carries no CSRF token; auth
+  # rides the signed `session_id` cookie instead. Nothing calls it today — kept
+  # for the offline upload queue.
   protect_from_forgery with: :exception, unless: -> { request.format.json? }
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
@@ -32,7 +32,7 @@ class ActivitiesController < ApplicationController
 
   def create
     # The shell learns of success only once the review page reports back, so a
-    # process killed in between would otherwise upload the ride twice (#116).
+    # process killed in between would otherwise upload the ride twice.
     if (replay = replayed_recording)
       return respond_with_created(replay)
     end
@@ -58,7 +58,6 @@ class ActivitiesController < ApplicationController
       end
     end
   rescue ActiveRecord::RecordNotUnique
-    # Two uploads raced past the lookup above; the unique index settled it.
     (replay = replayed_recording) ? respond_with_created(replay) : raise
   end
 
@@ -100,8 +99,6 @@ class ActivitiesController < ApplicationController
 
   private
 
-  # Scoped to the owner to match the unique index, so a key colliding with
-  # another account's row reads as absent rather than as someone else's ride.
   def replayed_recording
     uuid = activity_params[:recording_uuid].presence
     uuid && Current.user.activities.find_by(recording_uuid: uuid)
@@ -121,7 +118,7 @@ class ActivitiesController < ApplicationController
   def activity_params
     permitted = params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
     # A form always sends the key, so an unnamed upload arrives as "" — which
-    # defeats the `name ||=` fallback to the file's own track name (S0 §4).
+    # would defeat the `name ||=` fallback to the file's own track name.
     permitted[:name] = nil if permitted.key?(:name) && permitted[:name].blank?
     permitted
   end

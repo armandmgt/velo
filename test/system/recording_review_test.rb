@@ -1,8 +1,8 @@
 require "application_system_test_case"
 
-# Guards the S0 §2 wire format now that the GPX encoder lives in JavaScript
-# (#116). Asserts byte-equality with the same fixture `GpxExtractorTest` round-
-# trips server-side, so both halves of the contract hang on one artifact.
+# Guards the GPX wire format. Byte-equality against the same fixture
+# `GpxExtractorTest` round-trips server-side, so both halves of the contract hang
+# on one artifact.
 class RecordingReviewTest < ApplicationSystemTestCase
   FIXTURE = Rails.root.join("test/fixtures/files/gpx/native_recording.gpx")
 
@@ -50,8 +50,8 @@ class RecordingReviewTest < ApplicationSystemTestCase
     assert_equal FIXTURE.read, encode_gpx(handoff, "ios")
   end
 
-  # `workout` has no `<trk><type>` mapping, so a bogus one would have the
-  # extractor fall back to `:bike` (S0 §3).
+  # `workout` has no `<trk><type>` mapping, so emitting one would have the
+  # extractor fall back to `:bike`.
   test "a sport with no GPX mapping omits the track type" do
     login(users(:one))
     visit new_activity_url

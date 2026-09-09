@@ -84,10 +84,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         return .accept
     }
 
-    /// The review modal is terminal by design (#116), which would trap a rider
-    /// whose page can't load — and a ride ends where signal is worst. On a failed
-    /// visit, hand back the Fermer we otherwise withhold. The recording stays in
-    /// the store; surfacing it again is #117.
+    /// The review modal is terminal by design, which would trap a rider whose
+    /// page can't load — and a ride ends where signal is worst. On a failed visit,
+    /// hand back the Fermer we otherwise withhold.
     func visitableDidFailRequest(_ visitable: Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
         let viewController = visitable.visitableViewController
         if let modal = viewController.navigationController,

@@ -1,8 +1,5 @@
 <%# locals: (activity:, recording: false) %>
 
-<%# `recording: true` is the native recording review (#116): the same form, with
-    `bridge--recording-review` filling the file input from the handoff. %>
-
 <%= form_with model: activity, class: "max-w-3xl w-full",
               data: recording ? { action: "turbo:submit-end->bridge--recording-review#submitEnd" } : {} do |form| %>
   <% if recording %>
@@ -66,8 +63,6 @@
   <% end %>
 
   <% if recording %>
-    <%# Pinned, as the native screen had them: the actions must be reachable
-        without scrolling past the map, the splits and the form. %>
     <div class="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-base-300 bg-base-100 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
       <button type="button" hidden class="btn btn-outline btn-error"
               data-bridge--recording-review-target="discard"

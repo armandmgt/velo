@@ -12,7 +12,6 @@ import {
 } from "controllers/lib/recording_formatters"
 
 // Connects to data-controller="bridge--recording-review"
-// Turns /activities/new into the recording review screen (#116, ADR 0003).
 export default class extends BridgeComponent {
   static component = "recording-review"
   static targets = [
@@ -38,8 +37,8 @@ export default class extends BridgeComponent {
 
   connect() {
     super.connect()
-    // The page ships as the plain upload form and is taken over only once a
-    // handoff is inbound, so a shell without this component still works.
+    // The page ships as the plain upload form, so a shell without this
+    // component still works.
     this.#enterLoadingState()
     this.send("connect", {}, (message) => this.#receive(message.data))
   }
@@ -65,7 +64,7 @@ export default class extends BridgeComponent {
 
     try {
       const handoff = await this.#decode(data.handoff)
-      // Before drawing: MapLibre measures its container at construction.
+      // MapLibre measures its container at construction, so reveal first.
       this.#showReview()
       this.#render(handoff)
       this.#attachGpx(handoff)
@@ -74,8 +73,7 @@ export default class extends BridgeComponent {
     }
   }
 
-  // deflate-raw rather than gzip: it is what both shells' compressors already
-  // emit, so neither has to hand-roll a gzip container and CRC32.
+  // deflate-raw, not gzip: it is what both shells' compressors already emit.
   async #decode(base64) {
     const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0))
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"))
@@ -141,12 +139,11 @@ export default class extends BridgeComponent {
       container: this.mapTarget,
       style: styleUrl(),
       bounds,
-      // A ride that barely moved gives near-zero bounds, which would fit to a
-      // zoom deeper than any tile exists at.
+      // Near-zero bounds would otherwise fit past the deepest tile.
       fitBoundsOptions: { padding: 32, maxZoom: 16 },
       interactive: false,
-      // The summary card covers the map's bottom-right, where the attribution
-      // would default to — and the tile licence requires it stay legible.
+      // The summary card covers the bottom-right, and the tile licence
+      // requires the attribution stay legible.
       attributionControl: false,
     })
 
@@ -188,7 +185,7 @@ export default class extends BridgeComponent {
   #attachGpx(handoff) {
     const gpx = encodeGpx(handoff, document.documentElement.dataset.bridgePlatform)
     const transfer = new DataTransfer()
-    // The filename, not the field name, routes the upload to GpxExtractor (S0 §4).
+    // The filename, not the field name, routes this to GpxExtractor.
     transfer.items.add(new File([gpx], "recording.gpx", { type: "application/gpx+xml" }))
     this.fileTarget.files = transfer.files
   }
@@ -211,7 +208,6 @@ export default class extends BridgeComponent {
     this.submitTarget.disabled = false
   }
 
-  // No fallback to the upload form: there is no file for the rider to pick.
   #fail(error) {
     this.statusTarget.hidden = false
     this.statusTarget.textContent =

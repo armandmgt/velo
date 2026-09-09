@@ -2,25 +2,23 @@ import Compression
 import CoreLocation
 import Foundation
 
-/// What a finished recording gives the review screen (#116; `CONTEXT.md`).
+/// What a finished recording gives the review screen.
 ///
 /// Stats travel precomputed: a paused recording drops its fixes, so from the
-/// points alone nothing can tell a pause from a GPS dropout, and temps écoulé is
-/// not reconstructible downstream.
+/// points alone nothing can tell a pause from a GPS dropout.
 struct RecordingHandoff {
     static let version = 1
 
     let session: RecordingSession
     let stats: RecordingStats
     let sport: Sport
-    /// Makes an upload replayed after a kill resolve to the ride already created.
     let recordingUuid: UUID
 
     init(session: RecordingSession, stats: RecordingStats, sport: Sport) {
         self.session = session
         self.stats = stats
         self.sport = sport
-        // The session id survives a kill, so a replay mints the same key.
+        // Survives a kill, so a replay mints the same key.
         self.recordingUuid = session.id
     }
 }
@@ -28,8 +26,8 @@ struct RecordingHandoff {
 // MARK: - Wire format
 
 extension RecordingHandoff {
-    /// Point keys are terse because at ~1 Hz an hour of riding is ~3,600 of
-    /// them, and the field names would otherwise outweigh the data.
+    /// Terse keys: at ~1 Hz an hour of riding is ~3,600 points, and the field
+    /// names would otherwise outweigh the data.
     private struct Payload: Encodable {
         let version: Int
         let recordingUuid: String
@@ -103,11 +101,10 @@ extension RecordingHandoff {
         )
     }
 
-    /// Raw DEFLATE, base64'd. The bridge inlines its JSON into an
-    /// `evaluateJavaScript` source string, and a six-hour ride is 1.5 MB raw
-    /// against ~250 KB compressed — so one message suffices. DEFLATE rather than
-    /// gzip because `COMPRESSION_ZLIB` emits exactly what the web's
-    /// `DecompressionStream("deflate-raw")` reads.
+    /// The bridge inlines this into an `evaluateJavaScript` source string, and a
+    /// six-hour ride is 1.5 MB raw against ~250 KB compressed, so one message
+    /// suffices. DEFLATE rather than gzip because that is what
+    /// `COMPRESSION_ZLIB` emits and what the web reads back.
     func encoded() throws -> String {
         let json = try JSONEncoder().encode(payload)
         return try Self.deflate(json).base64EncodedString()

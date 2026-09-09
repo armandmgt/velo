@@ -63,8 +63,8 @@ final class RecordingController: NSObject {
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
     /// Lives here until the review page reports the upload committed, or the
-    /// rider discards it: `stop()` releases the controller's own reference and
-    /// the review is a web page rather than a VC that could hold one (#116).
+    /// rider discards it: `stop()` releases the controller's own reference, and
+    /// the review is a web page rather than a VC that could hold one.
     var pendingHandoff: RecordingHandoff?
 
     /// Points persisted in the current session so far (debug readout / stats).
@@ -257,7 +257,6 @@ final class RecordingController: NSObject {
         return finished
     }
 
-    /// Clear a finalized recording from the store, and the handoff with it.
     func discard(_ session: RecordingSession) {
         if pendingHandoff?.session === session {
             pendingHandoff = nil

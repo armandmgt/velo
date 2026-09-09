@@ -265,12 +265,10 @@ final class RecordTabBarController: HotwireTabBarController {
         }
     }
 
-    /// Present the recording review — the web `/activities/new` (#116).
-    ///
-    /// `isModalInPresentation` makes it terminal, the way the native screen's
-    /// hidden back button did: after Arrêter the only ways out are Enregistrer
-    /// and Supprimer. `RecordingReviewComponent` clears the flag when it
-    /// dismisses, since the modal navigator is shared with the FAB's own modals.
+    /// `isModalInPresentation` makes the review terminal: after Arrêter the only
+    /// ways out are Enregistrer and Supprimer. `RecordingReviewComponent` clears
+    /// the flag when it dismisses, since the modal navigator is shared with the
+    /// FAB's own modals.
     func presentRecordingReview() {
         let navigator = activeNavigator
         navigator.route(AppConfig.baseURL.appendingPathComponent("activities/new"))

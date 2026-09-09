@@ -1,5 +1,5 @@
-// Mirrors the shells' RecordingFormatters, which still drive the live dashboard:
-// the numbers must not shift when the screen becomes a web page.
+// Mirrors the shells' RecordingFormatters: the numbers a rider watched while
+// riding must not shift once the screen is a web page.
 
 export function distanceKilometers(meters) {
   return (meters / 1000).toFixed(2)

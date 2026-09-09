@@ -22,8 +22,8 @@ class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
     private lateinit var recordFab: FloatingActionButton
 
-    // A finished recording parks its handoff and asks for the review, which since
-    // #116 is the web `/activities/new`, presented modally by the path config.
+    // A finished recording parks its handoff and asks for the review, which is
+    // the web `/activities/new`, presented modally by the path config.
     private val recordLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != RESULT_OK) return@registerForActivityResult

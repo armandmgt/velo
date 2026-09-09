@@ -12,12 +12,11 @@ import java.util.zip.Deflater
 import kotlin.io.encoding.Base64
 
 /**
- * What a finished recording gives the review screen (#116; `CONTEXT.md`).
- * Mirrors the iOS `RecordingHandoff`.
+ * What a finished recording gives the review screen. Mirrors the iOS
+ * `RecordingHandoff`.
  *
  * Stats travel precomputed: a paused recording drops its fixes, so from the
- * points alone nothing can tell a pause from a GPS dropout, and temps écoulé is
- * not reconstructible downstream.
+ * points alone nothing can tell a pause from a GPS dropout.
  */
 object RecordingHandoff {
     const val VERSION = 1
@@ -25,15 +24,15 @@ object RecordingHandoff {
     /**
      * Lives here between [RecordingActivity] finishing and the bridge component
      * connecting, since the review is a web page rather than an Activity that
-     * could hold the session. In memory only — if the process dies the ride
-     * stays in Room but nothing surfaces it again (#117).
+     * could hold the session. In memory only — if the process dies the ride stays
+     * in Room but nothing surfaces it again.
      */
     @Volatile
     var pending: Payload? = null
 
     /**
-     * Point keys are terse because at ~1 Hz an hour of riding is ~3,600 of them,
-     * and the field names would otherwise outweigh the data.
+     * Terse keys: at ~1 Hz an hour of riding is ~3,600 points, and the field
+     * names would otherwise outweigh the data.
      */
     @Serializable
     data class Payload(
@@ -45,7 +44,6 @@ object RecordingHandoff {
         val laps: List<Lap>,
         val points: List<Point>,
     ) {
-        /** The Room session id, so the row can be deleted on commit. */
         @kotlinx.serialization.Transient
         var sessionId: String = ""
     }
@@ -92,7 +90,7 @@ object RecordingHandoff {
     ): Payload {
         val formatter = iso8601
         return Payload(
-            // The session id survives a kill, so a replay mints the same key.
+            // Survives a kill, so a replay mints the same key.
             recordingUuid = sessionId,
             sport = sport.wire,
             startedAt = formatter.format(Date(startedAt)),
@@ -102,8 +100,8 @@ object RecordingHandoff {
                 movingTime = stats.movingSeconds,
                 averageSpeed = stats.averageSpeedMps,
             ),
-            // Lap boundaries aren't persisted on Android yet (#115); until they
-            // are, the review renders one split covering the whole ride.
+            // Lap boundaries aren't persisted on Android yet, so the review
+            // renders one split covering the whole ride.
             laps = emptyList(),
             points = points.map { point ->
                 Point(
@@ -120,11 +118,10 @@ object RecordingHandoff {
     }
 
     /**
-     * Raw DEFLATE, base64'd. The bridge inlines its JSON into an
-     * `evaluateJavascript` source string, and a six-hour ride is 1.5 MB raw
-     * against ~250 KB compressed — so one message suffices. DEFLATE rather than
-     * gzip because `Deflater(nowrap = true)` emits exactly what the web's
-     * `DecompressionStream("deflate-raw")` reads.
+     * The bridge inlines this into an `evaluateJavascript` source string, and a
+     * six-hour ride is 1.5 MB raw against ~250 KB compressed, so one message
+     * suffices. DEFLATE rather than gzip because that is what
+     * `Deflater(nowrap = true)` emits and what the web reads back.
      */
     @OptIn(kotlin.io.encoding.ExperimentalEncodingApi::class)
     fun encode(payload: Payload): String {

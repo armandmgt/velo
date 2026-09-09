@@ -658,8 +658,8 @@ final class RecordingViewController: UIViewController {
         dismiss(animated: true)
     }
 
-    /// Finalize and hand the recording to the review screen, which since #116 is
-    /// the web `/activities/new` rather than a native view controller.
+    /// Finalize and hand the recording to the review screen, which is the web
+    /// `/activities/new` rather than a native view controller.
     private func stop() {
         guard let session = controller.stop() else {
             dismiss(animated: true)

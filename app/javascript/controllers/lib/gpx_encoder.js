@@ -1,11 +1,11 @@
-// Emits the S0 §2 schema, pinned to test/fixtures/files/gpx/native_recording.gpx.
-// Positions, time and sensors only — GpxExtractor derives everything else
-// server-side, so a <speed> or summary emitted here would be ignored.
+// Pinned to test/fixtures/files/gpx/native_recording.gpx. Positions, time and
+// sensors only — GpxExtractor derives the rest, so a <speed> or summary emitted
+// here would be ignored.
 
 export const DEFAULT_TRACK_NAME = "Sortie enregistrée sur le téléphone"
 
-// Best-effort only: activity[sport] wins server-side, and `workout` is absent
-// here because it has no GPX mapping and must travel via that param (S0 §3).
+// activity[sport] wins server-side. `workout` is absent because it has no GPX
+// mapping and must travel via that param alone.
 const GPX_TYPES = {
   bike: "cycling",
   mountain_bike_ride: "mountainbiking",

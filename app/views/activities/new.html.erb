@@ -1,6 +1,6 @@
 <% content_for :title, "Nouvelle activité" %>
 
-<%# The native shells reuse this page as the recording review screen (#116). %>
+<%# The native shells reuse this page as their recording review screen. %>
 <% if hotwire_native_app? %>
   <%= render "recording_review", activity: @activity %>
 <% else %>

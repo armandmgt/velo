@@ -1,8 +1,7 @@
 <%# locals: (activity:) %>
 
-<%# The native recording review (#116). Everything here is filled by
-    `bridge--recording-review` from the handoff — the server knows nothing about
-    the ride, laps included (ADR 0001). %>
+<%# The server knows nothing about the ride: `bridge--recording-review` fills
+    every value below from the handoff the shell sends. %>
 
 <%= content_for :head do %>
   <%= stylesheet_link_tag "maplibre-gl" %>
@@ -12,8 +11,6 @@
 <% end %>
 
 <div class="min-h-dvh bg-base-200" data-controller="bridge--recording-review">
-  <%# Hidden until a handoff arrives: the tab bar's "+" routes here too, and
-      must read as the plain upload form. %>
   <div hidden data-bridge--recording-review-target="review">
     <div class="h-64 w-full bg-base-300" data-bridge--recording-review-target="map"></div>
 
@@ -28,9 +25,8 @@
 
         <div class="divider my-2"></div>
 
-        <%# Both clocks, so the number here isn't mistaken for the stricter one
-            the activity page shows. "Déplacement" is the label that fits a third
-            of the card; "durée de déplacement" is the term (CONTEXT.md). %>
+        <%# Both clocks, so this number isn't mistaken for the stricter one the
+            activity page shows. "Durée de déplacement" is the term. %>
         <div class="grid grid-cols-3 text-center">
           <div>
             <div class="text-xl font-bold" data-bridge--recording-review-target="elapsed">00:00</div>
@@ -70,7 +66,6 @@
     </div>
   </div>
 
-  <%# Bottom padding clears the pinned action bar. %>
   <div class="px-3 pt-3 pb-28 space-y-3">
     <p hidden class="alert alert-info text-sm py-2" data-bridge--recording-review-target="status">
       Chargement de l'enregistrement…

@@ -16,9 +16,8 @@ class ActivitiesTest < ApplicationSystemTestCase
     click_on "Enregistrer"
 
     assert_text "Sortie vélo"
-    # Guards the MapLibre pin: v6 dropped the default export and split the bundle
-    # into chunks that resolve relative to the module URL, so a bad upgrade
-    # leaves the map silently absent rather than failing anything else.
+    # A bad MapLibre upgrade leaves the map silently absent rather than failing
+    # anything else.
     assert_selector "canvas.maplibregl-canvas", wait: 15
   end
 

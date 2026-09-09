@@ -16,8 +16,8 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  # Rendered server-side for the shells only (#116), so a browser never ships
-  # the markup and there is no flash of the wrong screen.
+  # Rendered server-side for the shells only, so a browser never ships the
+  # markup and there is no flash of the wrong screen.
   test "new renders the recording review chrome for the native shells only" do
     get new_activity_url
     assert_response :success
@@ -88,7 +88,6 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert response.parsed_body["errors"].present?
   end
 
-  # A replay after a kill must resolve to the ride already created (#116).
   test "create replaying a recording_uuid returns the activity already created" do
     uuid = SecureRandom.uuid
 

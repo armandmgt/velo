@@ -1,9 +1,7 @@
-// Mirrors the shells' LapSplits. Timed by temps écoulé, not durée de
-// déplacement, so a split agrees with the timer the rider watched (CONTEXT.md).
-// Nothing here is persisted — docs/adr/0001-laps-stay-on-the-device.md.
+// Timed by temps écoulé, not durée de déplacement, so a split agrees with the
+// timer the rider watched. Laps are never persisted server-side.
 
-// Below this a trailing lap is an artefact of tapping Tour just before Arrêter,
-// not a lap anyone rode.
+// Below this a trailing lap is an artefact of tapping Tour just before Arrêter.
 const EMPTY_LAP_DISTANCE = 1
 const EMPTY_LAP_ELAPSED = 1
 
@@ -17,7 +15,7 @@ export function lapSplits({ boundaries = [], totalDistance = 0, totalElapsed = 0
   for (const boundary of ordered) {
     splits.push({
       ordinal: boundary.ordinal,
-      // Totals and boundary rows are written a beat apart, so clamp.
+      // Totals and boundary rows are written a beat apart.
       distance: Math.max(boundary.cumulativeDistance - previousDistance, 0),
       elapsed: Math.max(boundary.cumulativeElapsed - previousElapsed, 0),
     })

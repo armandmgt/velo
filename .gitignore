@@ -98,5 +98,5 @@
 # canvases and their assets) — local only, never committed.
 /design/
 
-# Maestro takeScreenshot artifacts land in the CWD.
-/record-*.png
+# Maestro takeScreenshot artifacts land in whatever the CWD was.
+record-*.png
