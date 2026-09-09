@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 
 /**
- * An in-progress (or finished) recording session (#56).
+ * An in-progress (or finished) recording session.
  *
  * Mirrors the iOS Core Data `RecordingSession` entity so the two platforms stay
  * in lock-step: exactly one session is active at a time (state != STOPPED), and a

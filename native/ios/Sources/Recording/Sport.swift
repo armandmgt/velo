@@ -1,12 +1,12 @@
 import Foundation
 
-/// The sport a recording is uploaded as (#41, S4 — #52).
+/// The sport a recording is uploaded as.
 ///
 /// The `rawValue` is the authoritative `activity[sport]` wire value (one of the
 /// 14 `Activity` enum cases on the server). `gpxType` is the best-effort
 /// `<trk><type>` we also emit into the GPX for self-containedness — the param
-/// wins server-side, and `workout` has no GPX mapping (see the S0 contract,
-/// `docs/native-recording/s0-gpx-upload-contract.md` §3).
+/// wins server-side, and `workout` has no GPX mapping at all, so it must travel
+/// via the param alone.
 enum Sport: String, CaseIterable {
     case bike
     case mountainBikeRide = "mountain_bike_ride"

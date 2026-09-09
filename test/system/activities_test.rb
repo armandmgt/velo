@@ -8,13 +8,17 @@ class ActivitiesTest < ApplicationSystemTestCase
 
     click_on "Nouvelle activité"
 
-    fill_in "Name", with: "Sortie vélo"
+    fill_in "Nom", with: "Sortie vélo"
     fill_in "Description", with: "Sortie vélo de 10km"
     select "Vélo de route", from: "Sport"
+    attach_file "Fichier (FIT ou GPX)", file_fixture("gpx/ride.gpx").to_s
 
     click_on "Enregistrer"
 
     assert_text "Sortie vélo"
+    # A bad MapLibre upgrade leaves the map silently absent rather than failing
+    # anything else.
+    assert_selector "canvas.maplibregl-canvas", wait: 15
   end
 
   test "naming an auto-imported activity from the dashboard banner" do

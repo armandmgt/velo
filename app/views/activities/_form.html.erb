@@ -1,6 +1,11 @@
-<%# locals: (activity:) %>
+<%# locals: (activity:, recording: false) %>
 
-<%= form_with model: activity, class: "max-w-3xl w-full" do |form| %>
+<%= form_with model: activity, class: "max-w-3xl w-full",
+              data: recording ? { action: "turbo:submit-end->bridge--recording-review#submitEnd" } : {} do |form| %>
+  <% if recording %>
+    <%= form.hidden_field :recording_uuid, data: { "bridge--recording-review-target": "uuid" } %>
+  <% end %>
+
   <div class="mb-5">
     <%= form.label :name, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
     <%= form.text_field :name, class: class_names("w-full input", { "input-error": activity.errors.include?(:name) }) %>
@@ -28,7 +33,8 @@
     <%= form.select :sport,
           sport_grouped_options(activity.sport),
           { include_blank: true },
-          { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }) } %>
+          { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }),
+            data: recording ? { "bridge--recording-review-target": "sport" } : {} } %>
 
     <% if activity.errors.include?(:sport) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
@@ -38,15 +44,33 @@
   </div>
 
   <div class="mb-5">
+    <%= form.label :visibility, t("activity.visibility.legend"), class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= render "shared/visibility_picker", form: form, model_key: "activity" %>
+  </div>
+
+  <%= tag.div class: "mb-5",
+              data: (recording ? { "bridge--recording-review-target": "fileField" } : {}) do %>
     <%= form.label :fit_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
-    <%= form.file_field :fit_file, accept: ".fit,.gpx", class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }) %>
+    <%= form.file_field :fit_file, accept: ".fit,.gpx",
+          class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }),
+          data: recording ? { "bridge--recording-review-target": "file" } : {} %>
 
     <% if activity.errors.include?(:fit_file) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
         <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:fit_file).to_sentence %>
       </p>
     <% end %>
-  </div>
+  <% end %>
 
-  <%= form.submit "Enregistrer", class: 'btn btn-accent' %>
+  <% if recording %>
+    <div class="fixed inset-x-0 bottom-0 z-10 flex items-center gap-3 border-t border-base-300 bg-base-100 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <button type="button" hidden class="btn btn-outline btn-error"
+              data-bridge--recording-review-target="discard"
+              data-action="bridge--recording-review#discard">Supprimer</button>
+      <%= form.submit "Enregistrer", class: "btn btn-accent flex-1",
+            data: { "bridge--recording-review-target": "submit" } %>
+    </div>
+  <% else %>
+    <%= form.submit "Enregistrer", class: 'btn btn-accent' %>
+  <% end %>
 <% end %>

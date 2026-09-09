@@ -4,16 +4,14 @@ tags:
   - regression
 ---
 # Android mirror of native/ios/maestro/record_flow.yaml, adapted to the Jetpack
-# Compose recording screen. S6 (#54) floated the Record FAB + native screen; S7
-# (#55) added the foreground-service GPS feed; S8 (#56) made it stateful (Room).
-# S9 (#57) makes the screen open *armed* (an explicit Démarrer starts recording),
-# adds sport selection, and on Arrêter serializes the recording to GPX, uploads
-# it via POST /activities, and jumps to the new activity. This flow guards
-# navigation, the start control, the live controls, and the upload path.
+# Compose recording screen. The screen opens *armed*: an explicit Démarrer starts
+# recording, and Arrêter hands the ride to the web review, which uploads it. This
+# flow guards navigation, the start control, the live controls, and the upload
+# path.
 - launchApp:
     clearState: true
     stopApp: true
-    # Pre-grant location + notifications so neither the S7 (#55) location request
+    # Pre-grant location + notifications so neither the location request
     # nor the foreground-service POST_NOTIFICATIONS request the recording screen
     # fires pops a system dialog over the assertions below. The app only ever
     # requests While-Using location (fine/coarse) — never background location.
@@ -88,19 +86,33 @@ tags:
 - tapOn: "Reprendre"
 - takeScreenshot: record-active
 
-# Arrêter finalizes the recording and shows the native review/confirm screen
-# (#67) instead of uploading immediately: a summary, an editable sport, an
-# optional name, and a visibility picker, with Enregistrer / Supprimer.
+# Arrêter finalizes the recording and hands it to the review screen, which since
+# is the web `/activities/new` presented modally — not a native screen.
+# The assertions below therefore read WebView content; give the modal transition a
+# beat first, or the first query races it and reads as not-visible. Mirrors the
+# iOS flow.
 - tapOn: "Arrêter"
-- assertVisible: "Vérifier la sortie"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
 - assertVisible: "Supprimer"
+
+# Both clocks, as on iOS. CSS-uppercased strings surface uppercased on iOS and
+# DOM-cased on Android, hence the alternation.
+- assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
+- assertVisible: "DÉPLACEMENT|Déplacement"
+# iOS exposes the count badge and the label as separate nodes, Android merges
+# them into one ("1 1 tour"), so match loosely.
+- assertVisible: ".*[0-9]+ tours?.*"
+# The map is a <canvas> with no accessible text, so the proof the handoff landed
+# is the form: the shell's sport preselects it, which an empty form would not.
+- assertVisible: "Sport"
 - takeScreenshot: record-review
 
-# Enregistrer serializes the recording to GPX and uploads it via POST /activities
-# (#57): the screen shows "Envoi en cours…", then on 201 the app routes the
-# Activités tab to the new activity's show page and finishes. The dev server
-# (logged in above) handles the upload — the CSRF JSON exemption lets the
-# out-of-webview POST through.
+# Enregistrer submits the web form. The GPX is encoded in the page from the
+# handoff's points and attached to the real file input via DataTransfer. On 201
+# the page reports back and the shell leaves the modal for the created activity.
 - tapOn: "Enregistrer"
 
 # Landed on the created activity's show page inside the bottom-nav shell. The

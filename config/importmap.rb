@@ -6,7 +6,10 @@ pin "@hotwired/stimulus", to: "@hotwired--stimulus.js" # @3.2.2
 pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
 pin_all_from "app/javascript/controllers", under: "controllers"
 pin "@hotwired/hotwire-native-bridge", to: "@hotwired--hotwire-native-bridge.js" # @1.2.2
-pin "maplibre-gl" # @5.21.1
+# Served from public/ rather than vendored: v6 is ESM-only and split into
+# chunks, and both the shared chunk and the worker resolve relative to the
+# module's own URL — which a digested asset path breaks.
+pin "maplibre-gl", to: "/maplibre/maplibre-gl.mjs" # @6.7.0
 pin "chart.js" # https://cdn.jsdelivr.net/npm/chart.js@4.5.1/+esm
 pin "kurklecolor" # https://cdn.jsdelivr.net/npm/@kurkle/color@0.3.4/+esm
 pin "@stimulus-components/clipboard", to: "@stimulus-components--clipboard.js" # @5.0.0

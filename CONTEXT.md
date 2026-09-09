@@ -38,6 +38,13 @@ At most one is ever unfinished. Becomes an Activity only on upload; anything it
 knows that the upload doesn't carry is lost at that moment.
 _Avoid_: Recording, session, in-progress activity
 
+**Handoff**:
+Everything a finished recording session gives the review screen — its track, its
+tours, its stats and the sport it was recorded under. Transferred once, in one
+direction, when the screen opens. The review screen knows nothing about the ride
+beyond its handoff, so whatever a handoff leaves out cannot be recovered later.
+_Avoid_: Payload, transfer, export, dump
+
 **Temps écoulé** (elapsed time):
 Wall-clock time since the recording started, minus every paused stretch. What
 the rider watches tick, and the clock that times a lap. Distinct from durée de
@@ -46,13 +53,14 @@ _Avoid_: Temps, duration, total time
 
 **Tour** (lap):
 A stretch of a recording session delimited by the rider tapping Tour. Every
-recorded point belongs to exactly one, numbered from 1. Device-local: laps are
-not uploaded and never appear on an Activity.
+recorded point belongs to exactly one, numbered from 1. Never persisted
+server-side: a tour reaches the review screen, but no Activity ever carries one.
 _Avoid_: Lap, segment, interval
 
 **Split**:
 A tour's own numbers — its distance, its temps écoulé, and its average speed
-(pace for running sports). What the lap list shows; not stored on an Activity.
+(pace for running sports). What the lap list shows, while riding and again on the
+review screen; never stored on an Activity.
 _Avoid_: Lap stats, intermediate time
 
 **Pause automatique** (auto-pause):

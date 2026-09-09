@@ -1,7 +1,11 @@
 require "test_helper"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  driven_by :selenium, using: :headless_chrome, screen_size: [ 1400, 1400 ]
+  # Overridable so a machine without Chrome can run the suite:
+  # SYSTEM_TEST_BROWSER=headless_firefox bin/rails test:system
+  driven_by :selenium,
+            using: ENV.fetch("SYSTEM_TEST_BROWSER", "headless_chrome").to_sym,
+            screen_size: [ 1400, 1400 ]
 
   def login(user, password = "password")
     visit new_session_url

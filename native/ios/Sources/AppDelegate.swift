@@ -22,6 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             AuthenticationComponent.self,
             NavbarButtonsComponent.self,
             NotificationCountComponent.self,
+            RecordingReviewComponent.self,
         ])
 
         // Load the path configuration from the server, falling back to the copy

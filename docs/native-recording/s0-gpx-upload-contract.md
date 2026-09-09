@@ -264,3 +264,44 @@ form behavior is untouched).
   permissions, recording UI, GPX serialization.
 - The CSRF exemption one-liner in §4 (lands with the client that needs it).
 - BLE sensors (HR/cadence/power straps) — the schema already has slots for them.
+
+---
+
+## 7. Superseded: the device no longer uploads (#116)
+
+**Added by [#116](https://github.com/armandmgt/velo/issues/116) / [ADR 0003](../adr/0003-the-recording-review-is-a-web-page.md).
+§§1–3 stand unchanged. §§4–5 no longer describe the live path.**
+
+The review screen is now the web `/activities/new`, prefilled by the shell over
+the `recording-review` bridge component. The shell hands over structured points
+and the *page* builds the GPX and submits the form, so:
+
+- **§4 (upload contract).** The multipart `POST /activities` still happens, but
+  it is an ordinary Turbo form submission from the review page — CSRF comes from
+  the page's `<meta name="csrf-token">`, not from the cookie-only native request
+  §4 describes. The form fields are unchanged, plus one addition:
+  `activity[recording_uuid]`, an idempotency key minted at Arrêter and stored
+  behind a unique index on `(user_id, recording_uuid)`. A replayed upload
+  resolves to the activity already created instead of duplicating the ride.
+  This is what restores §5's invariant (below).
+- **§5 (navigation contract).** The `201 { id, url }` / `422 { errors }` JSON
+  responses still exist and are still tested, but **no client calls them today**.
+  They are kept deliberately: the deferred offline queue
+  ([#117](https://github.com/armandmgt/velo/issues/117)) is a native POST and
+  will want this contract back, along with the CSRF exemption in
+  `ActivitiesController`. The HTML path (302 → activity) is what the review page
+  actually follows.
+- **§5's invariant.** *"The on-device DB is the source of truth until the server
+  confirms `201`"* held because one native method received the 201 and cleared
+  the session on the next line. The confirmation now reaches the *page*, which
+  reports it back over the bridge — so a process killed in between leaves a
+  recording that would upload twice. `activity[recording_uuid]` is what makes
+  that second upload harmless.
+
+**§2 is untouched and is now enforced in one place.** `RecordingGPXEncoder.swift`
+and `RecordingGpxEncoder.kt` are deleted; the sole encoder is
+`app/javascript/controllers/lib/gpx_encoder.js`, pinned byte-for-byte to
+`test/fixtures/files/gpx/native_recording.gpx` by
+`test/system/recording_review_test.rb` — the same fixture `GpxExtractorTest`
+round-trips through the server, so both halves of the contract are held to one
+artifact.

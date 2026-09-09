@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22522" systemVersion="24F74" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="RecordingSession" representedClassName="RecordingSession" syncable="YES">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="lapCount" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="startedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="state" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="laps" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="RecordingLap" inverseName="session" inverseEntity="RecordingLap"/>
+        <relationship name="points" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="RecordingPoint" inverseName="session" inverseEntity="RecordingPoint"/>
+    </entity>
+    <entity name="RecordingPoint" representedClassName="RecordingPoint" syncable="YES">
+        <attribute name="cadence" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="elevation" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="hasCadence" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="hasElevation" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="hasHeartRate" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="hasPower" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="heartRate" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="horizontalAccuracy" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="lap" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <attribute name="latitude" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="longitude" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="power" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="speed" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="timestamp" attributeType="Date" usesScalarValueType="NO"/>
+        <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecordingSession" inverseName="points" inverseEntity="RecordingSession"/>
+    </entity>
+    <entity name="RecordingLap" representedClassName="RecordingLap" syncable="YES">
+        <attribute name="cumulativeDistance" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="cumulativeElapsed" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="endedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="ordinal" attributeType="Integer 16" defaultValueString="1" usesScalarValueType="YES"/>
+        <relationship name="session" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="RecordingSession" inverseName="laps" inverseEntity="RecordingSession"/>
+    </entity>
+</model>

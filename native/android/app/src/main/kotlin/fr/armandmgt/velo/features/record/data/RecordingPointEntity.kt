@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 /**
- * One GPS fix in a recording, stored oldest-first by [timestamp] (#56).
+ * One GPS fix in a recording, stored oldest-first by [timestamp].
  *
  * Mirrors the iOS Core Data `RecordingPoint` shape. iOS marks optional sensors
  * with companion `has*` booleans (Core Data has no nullable scalars); Room does,
@@ -41,7 +41,7 @@ data class RecordingPointEntity(
     val horizontalAccuracy: Double = 0.0,
     /** Lap ordinal this point belongs to (denormalized from the session). */
     val lap: Int = 1,
-    // Sensor fields — nullable, populated when sensors are wired up later (#56).
+    // Sensor fields — nullable, populated when sensors are wired up later.
     val heartRate: Int? = null,
     val cadence: Double? = null,
     val power: Double? = null,

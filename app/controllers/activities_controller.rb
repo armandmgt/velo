@@ -1,9 +1,7 @@
 class ActivitiesController < ApplicationController
-  # Native recorders (#41) upload GPX via `POST /activities` with
-  # `Accept: application/json` from outside the webview, so they carry no CSRF
-  # token. Auth rides the signed `session_id` cookie (not the CSRF-bearing Rails
-  # session), so exempting only the JSON format is safe; the HTML form stays
-  # fully protected. Mirrors ConfigurationsController#skip_forgery_protection.
+  # A JSON create comes from outside the webview and carries no CSRF token; auth
+  # rides the signed `session_id` cookie instead. Nothing calls it today — kept
+  # for the offline upload queue.
   protect_from_forgery with: :exception, unless: -> { request.format.json? }
 
   before_action :set_activity, only: %i[ show edit update update_visibility destroy ]
@@ -33,6 +31,12 @@ class ActivitiesController < ApplicationController
   end
 
   def create
+    # The shell learns of success only once the review page reports back, so a
+    # process killed in between would otherwise upload the ride twice.
+    if (replay = replayed_recording)
+      return respond_with_created(replay)
+    end
+
     @activity = Current.user.activities.new(activity_params)
     upload = activity_params[:fit_file]
 
@@ -43,12 +47,7 @@ class ActivitiesController < ApplicationController
     end
 
     if @activity.save
-      respond_to do |format|
-        format.html { redirect_to @activity, notice: "Activité créée avec succès." }
-        # Native recorders (issue #48) upload GPX out-of-band and navigate the
-        # webview to the returned URL — no Turbo redirect to follow.
-        format.json { render json: { id: @activity.id, url: activity_url(@activity) }, status: :created, location: @activity }
-      end
+      respond_with_created(@activity)
     else
       respond_to do |format|
         format.html do
@@ -58,6 +57,8 @@ class ActivitiesController < ApplicationController
         format.json { render json: { errors: @activity.errors.full_messages }, status: :unprocessable_content }
       end
     end
+  rescue ActiveRecord::RecordNotUnique
+    (replay = replayed_recording) ? respond_with_created(replay) : raise
   end
 
   def update
@@ -98,11 +99,27 @@ class ActivitiesController < ApplicationController
 
   private
 
+  def replayed_recording
+    uuid = activity_params[:recording_uuid].presence
+    uuid && Current.user.activities.find_by(recording_uuid: uuid)
+  end
+
+  def respond_with_created(activity)
+    respond_to do |format|
+      format.html { redirect_to activity, notice: "Activité créée avec succès." }
+      format.json { render json: { id: activity.id, url: activity_url(activity) }, status: :created, location: activity }
+    end
+  end
+
   def set_activity
     @activity = Current.user.activities.find(params[:id])
   end
 
   def activity_params
-    params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file ])
+    permitted = params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
+    # A form always sends the key, so an unnamed upload arrives as "" — which
+    # would defeat the `name ||=` fallback to the file's own track name.
+    permitted[:name] = nil if permitted.key?(:name) && permitted[:name].blank?
+    permitted
   end
 end

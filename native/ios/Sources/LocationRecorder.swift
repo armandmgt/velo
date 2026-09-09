@@ -1,13 +1,12 @@
 import CoreLocation
 
-/// Drives Core Location for an in-progress recording (#41, S2 — #50; S3 — #51).
+/// Drives Core Location for an in-progress recording.
 ///
 /// Deliberately a standalone object, *not* part of `RecordingViewController`:
-/// it owns the `CLLocationManager` and streams fixes to its delegate. S3 lifted
-/// ownership to `RecordingController` (the longer-lived owner) and moved point
-/// storage into Core Data there — so this object is now purely the Core Location
-/// pipe: it forwards every accepted fix and holds no points itself. Nothing here
-/// touches UIKit.
+/// it owns the `CLLocationManager` and streams fixes to its delegate. Ownership
+/// of a recording sits with `RecordingController`, and points are stored in Core
+/// Data there, so this object is purely the Core Location pipe: it forwards every
+/// accepted fix and holds none itself. Nothing here touches UIKit.
 ///
 /// **Permissions:** While-Using ("When In Use") *only* — we never request
 /// "Always". With `allowsBackgroundLocationUpdates` + the `location` background
@@ -38,7 +37,7 @@ final class LocationRecorder: NSObject {
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.activityType = .fitness
         // Deliver every fix the GPS produces (~1 Hz) rather than gating on
-        // distance — matches the ~1 Hz sampling the S0 GPX contract expects.
+        // distance — matches the ~1 Hz sampling the GPX contract expects.
         manager.distanceFilter = kCLDistanceFilterNone
         // We decide when a recording is paused; don't let iOS auto-pause us.
         manager.pausesLocationUpdatesAutomatically = false

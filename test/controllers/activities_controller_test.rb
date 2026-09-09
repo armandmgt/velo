@@ -16,6 +16,19 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  # Rendered server-side for the shells only, so a browser never ships the
+  # markup and there is no flash of the wrong screen.
+  test "new renders the recording review chrome for the native shells only" do
+    get new_activity_url
+    assert_response :success
+    assert_no_match "bridge--recording-review", response.body
+
+    get new_activity_url, headers: { "User-Agent" => "Hotwire Native iOS" }
+    assert_response :success
+    assert_match "bridge--recording-review", response.body
+    assert_match "Temps écoulé", response.body
+  end
+
   test "should create activity" do
     assert_difference("Activity.count") do
       post activities_url, params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport, fit_file: file_fixture_upload("fit/bike.fit") } }
@@ -73,6 +86,52 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_content
     assert response.parsed_body["errors"].present?
+  end
+
+  test "create replaying a recording_uuid returns the activity already created" do
+    uuid = SecureRandom.uuid
+
+    assert_difference("Activity.count") do
+      post activities_url, params: { activity: { name: "Sortie enregistrée", sport: "bike", recording_uuid: uuid, fit_file: file_fixture_upload("gpx/native_recording.gpx") } }
+    end
+    created = Activity.last
+    assert_equal uuid, created.recording_uuid
+
+    assert_no_difference("Activity.count") do
+      post activities_url, params: { activity: { name: "Sortie enregistrée", sport: "bike", recording_uuid: uuid, fit_file: file_fixture_upload("gpx/native_recording.gpx") } }
+    end
+    assert_redirected_to activity_url(created)
+  end
+
+  test "JSON create replaying a recording_uuid answers 201 with the same activity" do
+    uuid = SecureRandom.uuid
+    headers = { "Accept" => "application/json" }
+    params = { activity: { sport: "bike", recording_uuid: uuid, fit_file: file_fixture_upload("gpx/native_recording.gpx") } }
+
+    post activities_url, params: params, headers: headers
+    created = Activity.last
+
+    assert_no_difference("Activity.count") do
+      post activities_url, params: params, headers: headers
+    end
+
+    assert_response :created
+    assert_equal created.id, response.parsed_body["id"]
+  end
+
+  test "a recording_uuid belonging to another user does not resolve or collide" do
+    uuid = SecureRandom.uuid
+    users(:two).activities.create!(activities(:one).attributes.except("id").merge(recording_uuid: uuid))
+
+    assert_difference("Activity.count") do
+      post activities_url, params: { activity: { name: "Ma sortie", sport: "bike", recording_uuid: uuid, fit_file: file_fixture_upload("gpx/native_recording.gpx") } }
+    end
+    assert_equal users(:one), Activity.last.user
+  end
+
+  test "create accepts a visibility from the form" do
+    post activities_url, params: { activity: { name: "Publique", sport: "bike", visibility: "public", fit_file: file_fixture_upload("gpx/ride.gpx") } }
+    assert_equal "public", Activity.last.visibility
   end
 
   test "should show activity" do

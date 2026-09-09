@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-/** Room store for in-progress recordings (#56). Single process-wide instance. */
+/** Room store for in-progress recordings. Single process-wide instance. */
 @Database(
     entities = [RecordingSessionEntity::class, RecordingPointEntity::class],
     version = 1,

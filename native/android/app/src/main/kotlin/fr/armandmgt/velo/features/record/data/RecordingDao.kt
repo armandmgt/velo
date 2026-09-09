@@ -4,7 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 
-/** Reads/writes for the recording store (#56). All suspending — Room runs them off the main thread. */
+/** Reads/writes for the recording store. All suspending — Room runs them off the main thread. */
 @Dao
 interface RecordingDao {
     @Insert
@@ -33,7 +33,7 @@ interface RecordingDao {
     @Query("SELECT COUNT(*) FROM recording_points WHERE sessionId = :sessionId")
     suspend fun pointCountFor(sessionId: String): Int
 
-    /** Clear a session (and its points, via the FK cascade) after a successful upload (#57). */
+    /** Clear a session (and its points, via the FK cascade) after a successful upload. */
     @Query("DELETE FROM recording_sessions WHERE id = :id")
     suspend fun deleteSession(id: String)
 }

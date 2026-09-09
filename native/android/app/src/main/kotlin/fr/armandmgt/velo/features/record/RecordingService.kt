@@ -49,10 +49,10 @@ import java.util.UUID
  *  MapLibre types so the service (and its unit tests) don't depend on the map SDK. */
 data class RoutePoint(val latitude: Double, val longitude: Double)
 
-/** The live state the recording screen renders (#56): GPS readout + derived stats. */
+/** The live state the recording screen renders: GPS readout + derived stats. */
 data class RecordingUiState(
     val recordingState: RecordingState = RecordingState.RECORDING,
-    /** True before Démarrer: GPS is armed for readiness but nothing is recorded yet (#57). */
+    /** True before Démarrer: GPS is armed for readiness but nothing is recorded yet. */
     val armed: Boolean = true,
     val latitude: Double? = null,
     val longitude: Double? = null,
@@ -60,6 +60,12 @@ data class RecordingUiState(
     val pointCount: Int = 0,
     val lap: Int = 1,
     val elapsedSeconds: Long = 0,
+    /**
+     * Durée de déplacement — the stricter, speed-gated clock. Carried so the
+     * handoff can send it precomputed: a paused recording drops its fixes, so
+     * nothing downstream can separate it from temps écoulé.
+     */
+    val movingSeconds: Double = 0.0,
     val distanceMeters: Double = 0.0,
     val currentSpeedMps: Double = 0.0,
     val averageSpeedMps: Double = 0.0,
@@ -68,8 +74,8 @@ data class RecordingUiState(
 )
 
 /**
- * Foreground service that owns an in-progress recording (#54 skeleton; #55 GPS;
- * #56 persistence + live stats).
+ * Foreground service that owns an in-progress recording ( skeleton; GPS;
+ * persistence + live stats).
  *
  * It's the long-lived owner of the recording (the role iOS gives its
  * `RecordingController`): it streams Fused-Location fixes, persists each one to
@@ -138,7 +144,7 @@ class RecordingService : Service() {
         fun markLap() = this@RecordingService.markLap()
         fun stop() = this@RecordingService.stopRecording()
 
-        /** The in-progress session id (main thread), so Stop can locate its points to encode (#57). */
+        /** The in-progress session id (main thread), so Stop can locate its points to encode. */
         fun sessionId(): String? = this@RecordingService.session?.id
     }
 
@@ -161,7 +167,7 @@ class RecordingService : Service() {
         )
 
         // Opening the screen arms GPS for readiness but does NOT record yet — the
-        // session begins only on start() (the Démarrer gate, #57). onFix already
+        // session begins only on start (the Démarrer gate). onFix already
         // no-ops persistence while there's no session, so arming just feeds the
         // GPS-signal indicator. Re-issued start (rotation / redelivery) is a no-op.
         if (!armed) {
@@ -185,7 +191,7 @@ class RecordingService : Service() {
     }
 
     /**
-     * Begin a fresh recording on Démarrer (#57): finalize any orphan from a
+     * Begin a fresh recording on Démarrer: finalize any orphan from a
      * previous kill (keeping its points), insert the new row, reset the live
      * stats, and start the elapsed ticker. GPS is already streaming from arming,
      * and the row exists before the next fix so points always have a session to
@@ -355,6 +361,7 @@ class RecordingService : Service() {
             pointCount = pointCount,
             lap = lap,
             elapsedSeconds = elapsedMs() / 1000,
+            movingSeconds = accumulator.movingSeconds,
             distanceMeters = accumulator.distance,
             currentSpeedMps = lastFixSpeed,
             averageSpeedMps = accumulator.averageSpeed(),
@@ -366,7 +373,7 @@ class RecordingService : Service() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
-    /** Re-post the ongoing notification so its text follows armed → recording (#57). */
+    /** Re-post the ongoing notification so its text follows armed → recording. */
     private fun updateNotification(recording: Boolean) {
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, buildNotification(recording))

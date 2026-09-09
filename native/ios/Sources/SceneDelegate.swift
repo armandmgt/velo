@@ -84,6 +84,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         return .accept
     }
 
+    /// The review modal is terminal by design, which would trap a rider whose
+    /// page can't load — and a ride ends where signal is worst. On a failed visit,
+    /// hand back the Fermer we otherwise withhold.
+    func visitableDidFailRequest(_ visitable: Visitable, error: HotwireNativeError, retryHandler: RetryBlock?) {
+        let viewController = visitable.visitableViewController
+        if let modal = viewController.navigationController,
+           modal.isModalInPresentation,
+           visitable.initialVisitableURL.path == "/activities/new" {
+            modal.isModalInPresentation = false
+            viewController.navigationItem.leftBarButtonItem = UIBarButtonItem(
+                title: "Fermer",
+                primaryAction: UIAction { [weak modal] _ in
+                    modal?.presentingViewController?.dismiss(animated: true)
+                }
+            )
+        }
+
+        if let errorPresenter = visitable as? ErrorPresenter {
+            errorPresenter.presentError(error, retryHandler: retryHandler)
+        }
+    }
+
     // MARK: Auth transitions
 
     @objc private func didSignIn() {

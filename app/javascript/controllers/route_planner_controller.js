@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { FitToBoundsControl, primaryAccentColor, styleUrl } from "controllers/lib/map_helpers"
 
 const PREVIEW_DEBOUNCE_MS = 200
