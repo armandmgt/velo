@@ -21,9 +21,9 @@ fi
 description = "Build and run the app in debug variant"
 depends = ["simulator"]
 run = """
-if [ ! -d Velo.xcodeproj ]; then
-  xcodegen generate
-fi
+# Unconditional: a project generated before a project.yml or Core Data
+# model-version change keeps building the settings that were current then.
+xcodegen generate
 UDID=$(xcrun simctl list devices booted | grep -oE '[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}' | head -n 1)
 xcodebuild -project Velo.xcodeproj -scheme Velo -configuration Debug \\
   -destination "platform=iOS Simulator,id=$UDID" \\

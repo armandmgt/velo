@@ -16,12 +16,17 @@ final class RecordingStore {
 
     var viewContext: NSManagedObjectContext { container.viewContext }
 
-    init() {
+    /// `inMemory` swaps SQLite for an ephemeral store, so tests exercise the real
+    /// bundled model without touching (or inheriting) the app's recordings.
+    init(inMemory: Bool = false) {
         guard let modelURL = Bundle.main.url(forResource: "Recording", withExtension: "momd"),
               let model = NSManagedObjectModel(contentsOf: modelURL) else {
             fatalError("[RecordingStore] Recording.momd not found in bundle")
         }
         container = NSPersistentContainer(name: "Recording", managedObjectModel: model)
+        if inMemory {
+            container.persistentStoreDescriptions = [NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))]
+        }
         container.loadPersistentStores { _, error in
             if let error {
                 // A corrupt/incompatible store is unrecoverable here; fail loudly

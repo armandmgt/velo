@@ -6,7 +6,9 @@ SCHEME = "Velo"
 platform :ios do
   before_all do
     Dir.chdir("..") do
-      sh("xcodegen generate") unless File.exist?(XCODEPROJ)
+      # Unconditional: a project generated before a project.yml or Core Data
+      # model-version change keeps building the settings that were current then.
+      sh("xcodegen generate")
     end
   end
 
