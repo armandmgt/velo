@@ -73,15 +73,15 @@ class StravaImportServiceTest < ActiveSupport::TestCase
   test "retains the FIT source file so the activity can be re-imported" do
     call_service
     activity = @user.activities.find_by!(name: "Récup")
-    assert activity.fit_file.attached?, "expected the source file to be retained"
-    assert activity.fit_file.filename.to_s.downcase.end_with?(".fit")
+    assert activity.source_file.attached?, "expected the source file to be retained"
+    assert activity.source_file.filename.to_s.downcase.end_with?(".fit")
   end
 
   test "retains the GPX source file so the activity can be re-imported" do
     call_service(gpx_zip_path)
     activity = @user.activities.find_by!(name: "Sortie GPX")
-    assert activity.fit_file.attached?, "expected the source file to be retained"
-    assert activity.fit_file.filename.to_s.downcase.end_with?(".gpx")
+    assert activity.source_file.attached?, "expected the source file to be retained"
+    assert activity.source_file.filename.to_s.downcase.end_with?(".gpx")
   end
 
   private

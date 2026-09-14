@@ -31,7 +31,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "should create activity" do
     assert_difference("Activity.count") do
-      post activities_url, params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport, fit_file: file_fixture_upload("fit/bike.fit") } }
+      post activities_url, params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport, source_file: file_fixture_upload("fit/bike.fit") } }
     end
 
     assert_redirected_to activity_url(Activity.last)
@@ -39,7 +39,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
   test "should create activity from a GPX upload" do
     assert_difference("Activity.count") do
-      post activities_url, params: { activity: { name: "GPX upload", sport: "bike", fit_file: file_fixture_upload("gpx/ride.gpx") } }
+      post activities_url, params: { activity: { name: "GPX upload", sport: "bike", source_file: file_fixture_upload("gpx/ride.gpx") } }
     end
 
     assert_redirected_to activity_url(Activity.last)
@@ -51,7 +51,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
   test "JSON create returns the activity id and url with a 201 and Location header" do
     assert_difference("Activity.count") do
       post activities_url,
-           params: { activity: { sport: "bike", fit_file: file_fixture_upload("gpx/native_recording.gpx") } },
+           params: { activity: { sport: "bike", source_file: file_fixture_upload("gpx/native_recording.gpx") } },
            headers: { "Accept" => "application/json" }
     end
 
@@ -63,10 +63,37 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal activity_url(created), response.headers["Location"]
   end
 
+  # activity[fit_file] is an accepted alias for activity[source_file]: no client
+  # in this repo sends it since ADR 0003 retired the native uploader, but builds
+  # predating that change still do. See ADR 0005.
+  test "accepts the legacy activity[fit_file] upload field" do
+    assert_difference("Activity.count") do
+      post activities_url,
+           params: { activity: { sport: "bike", fit_file: file_fixture_upload("gpx/native_recording.gpx") } },
+           headers: { "Accept" => "application/json" }
+    end
+
+    assert_response :created
+    assert Activity.last.source_file.attached?
+    assert_operator Activity.last.activity_data_points.count, :>, 0
+  end
+
+  test "source_file wins when both upload fields are sent" do
+    post activities_url,
+         params: { activity: { name: "Deux champs", sport: "bike",
+                               source_file: file_fixture_upload("gpx/ride.gpx"),
+                               fit_file: file_fixture_upload("gpx/native_recording.gpx") } },
+         headers: { "Accept" => "application/json" }
+
+    assert_response :created
+    # ride.gpx has 5 points; native_recording.gpx has 10.
+    assert_equal 5, Activity.last.activity_data_points.count
+  end
+
   test "JSON create returns 422 with errors when the activity is invalid" do
     assert_no_difference("Activity.count") do
       post activities_url,
-           params: { activity: { fit_file: file_fixture_upload("gpx/empty.gpx") } },
+           params: { activity: { source_file: file_fixture_upload("gpx/empty.gpx") } },
            headers: { "Accept" => "application/json" }
     end
 
@@ -80,7 +107,7 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
   test "JSON create returns 422 for a timeless route gpx rather than raising" do
     assert_no_difference("Activity.count") do
       post activities_url,
-           params: { activity: { name: "Parcours", sport: "bike", fit_file: file_fixture_upload("gpx/route_no_time.gpx") } },
+           params: { activity: { name: "Parcours", sport: "bike", source_file: file_fixture_upload("gpx/route_no_time.gpx") } },
            headers: { "Accept" => "application/json" }
     end
 

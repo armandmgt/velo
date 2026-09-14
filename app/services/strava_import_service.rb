@@ -110,11 +110,8 @@ class StravaImportService
     )
 
     File.open(file_path, "rb") do |file|
-      if format == :gpx
-        activity.parse_gpx_file(file, reverse_geocode: false)
-      else
-        activity.parse_fit_file(file, reverse_geocode: false)
-      end
+      ActivityIngestion.call(activity, file, filename: filename, reverse_geocode: false,
+                                             fallback_start_time: Time.current)
     end
 
     existing = find_duplicate(activity)
@@ -123,17 +120,12 @@ class StravaImportService
       return :skipped
     end
 
-    # Ensure DB-required fields are present
-    activity.start_time ||= Time.current
-    activity.end_time ||= activity.start_time
-    activity.active_time ||= "PT0S"
-
     # Persist even if some optional fields are missing
     return :failed unless activity.save(validate: false)
 
     # Retain the source so the activity can be re-imported later.
     File.open(file_path, "rb") do |file|
-      activity.fit_file.attach(io: file, filename: filename)
+      activity.source_file.attach(io: file, filename: filename)
     end
 
     :imported

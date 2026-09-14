@@ -9,7 +9,7 @@ fr:
         name: Nom
         description: Description
         sport: Sport
-        fit_file: Fichier (FIT ou GPX)
+        source_file: Fichier (FIT ou GPX)
       planned_route:
         name: Nom
         sport: Sport

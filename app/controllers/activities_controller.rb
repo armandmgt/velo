@@ -37,14 +37,13 @@ class ActivitiesController < ApplicationController
       return respond_with_created(replay)
     end
 
-    @activity = Current.user.activities.new(activity_params)
-    upload = activity_params[:fit_file]
+    attrs = activity_params
+    @activity = Current.user.activities.new(attrs)
+    upload = attrs[:source_file]
 
-    if upload.respond_to?(:original_filename) && upload.original_filename.to_s.downcase.end_with?(".gpx")
-      @activity.parse_gpx_file(upload)
-    else
-      @activity.parse_fit_file(upload)
-    end
+    # No time fallbacks: a rider's upload of a timeless file must still fail
+    # validation as a 422 rather than be silently stamped with the current time.
+    ActivityIngestion.call(@activity, upload, filename: upload.try(:original_filename))
 
     if @activity.save
       respond_with_created(@activity)
@@ -115,8 +114,15 @@ class ActivitiesController < ApplicationController
     @activity = Current.user.activities.find(params[:id])
   end
 
+  # `activity[fit_file]` stays accepted as an alias for `activity[source_file]`:
+  # builds predating ADR 0003 still carry the deleted native uploader and POST
+  # the old name. See ADR 0005. `source_file` wins when both are sent.
   def activity_params
-    permitted = params.expect(activity: [ :name, :description, :sport, :visibility, :fit_file, :recording_uuid ])
+    permitted = params.expect(activity: [ :name, :description, :sport, :visibility,
+                                          :source_file, :fit_file, :recording_uuid ])
+    alias_upload = permitted.delete(:fit_file)
+    permitted[:source_file] ||= alias_upload if alias_upload
+
     # A form always sends the key, so an unnamed upload arrives as "" — which
     # would defeat the `name ||=` fallback to the file's own track name.
     permitted[:name] = nil if permitted.key?(:name) && permitted[:name].blank?

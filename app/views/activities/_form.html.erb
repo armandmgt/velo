@@ -50,14 +50,14 @@
 
   <%= tag.div class: "mb-5",
               data: (recording ? { "bridge--recording-review-target": "fileField" } : {}) do %>
-    <%= form.label :fit_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
-    <%= form.file_field :fit_file, accept: ".fit,.gpx",
+    <%= form.label :source_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= form.file_field :source_file, accept: ".fit,.gpx",
           class: class_names("file-input", { 'select-error': activity.errors.include?(:sport) }),
           data: recording ? { "bridge--recording-review-target": "file" } : {} %>
 
-    <% if activity.errors.include?(:fit_file) %>
+    <% if activity.errors.include?(:source_file) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
-        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:fit_file).to_sentence %>
+        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:source_file).to_sentence %>
       </p>
     <% end %>
   <% end %>

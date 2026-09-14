@@ -1,123 +1,112 @@
+# Reads a FIT file into a Track.
+#
+# The RubyFit parser drives an observer object, calling eleven `on_*` / `print_*`
+# methods on it unconditionally (see ext/ruby_fit/ruby_fit.c — they are
+# `rb_funcall`s, not `respond_to?` checks). That protocol is an internal seam:
+# Sink satisfies it, and callers never see it.
 class FitExtractor
-  def initialize(activity, reverse_geocode: true)
-    @rgeo_factory = RGeo::Geographic.spherical_factory(srid: 4326)
-    @activity = activity
-    @data_points = {}
-    @set_location = false
-    @reverse_geocode = reverse_geocode
+  # `file_id.type` for an activity file. Anything else is a device, workout or
+  # course file that happens to be FIT.
+  ACTIVITY_FILE_TYPE = 4
+
+  def initialize(fit_string)
+    @fit_string = fit_string
   end
 
-  def print_msg(msg)
-    Rails.logger.info msg
+  def extract
+    sink = Sink.new
+    RubyFit::Parser.new(sink).parse(@fit_string)
+    sink.to_track
   end
 
-  def print_error_msg(msg)
-    Rails.logger.error msg
-  end
+  # Satisfies the RubyFit observer protocol. Every method here is required by the
+  # C extension; the ones that only log are required by it too.
+  class Sink
+    def initialize
+      @points   = {}
+      @summary  = Track::Summary.empty
+      @problems = []
+    end
 
-  def on_file_id(msg)
-    Rails.logger.info "file id: #{msg.inspect}"
+    def to_track
+      points = @points.values
+      Track.new(
+        points: points,
+        # FIT speed comes from the device (Doppler / wheel sensor) and is already
+        # clean, so it is trusted as-is — just take the maximum.
+        summary: @summary.with(max_speed: points.filter_map(&:speed).max),
+        problems: @problems
+      )
+    end
 
-    @activity.errors.add(:fit_file, :invalid_file_type) if msg["type"] != 4
-  end
+    def print_msg(msg)
+      Rails.logger.info msg
+    end
 
-  def on_activity(msg)
-    Rails.logger.info "activity: #{msg.inspect}"
-  end
+    def print_error_msg(msg)
+      Rails.logger.error msg
+    end
 
-  def on_lap(msg)
-    Rails.logger.info "lap: #{msg.inspect}"
-  end
+    def on_file_id(msg)
+      Rails.logger.info "file id: #{msg.inspect}"
 
-  def on_session(msg)
-    Rails.logger.info "session: #{msg.inspect}"
+      @problems << :invalid_file_type if msg["type"] != ACTIVITY_FILE_TYPE
+    end
 
-    @activity.start_time = Time.at(msg["start_time"]).utc
-    @activity.end_time = Time.at(msg["start_time"] + msg["total_elapsed_time"]).utc
+    def on_session(msg)
+      Rails.logger.info "session: #{msg.inspect}"
 
-    @activity.active_time = ActiveSupport::Duration.build(msg["total_timer_time"].to_i).iso8601
-    @activity.total_elevation_gain = msg["total_ascent"]
-    @activity.distance = msg["total_distance"]
-  end
+      @summary = @summary.with(
+        start_time:     Time.at(msg["start_time"]).utc,
+        end_time:       Time.at(msg["start_time"] + msg["total_elapsed_time"]).utc,
+        moving_seconds: msg["total_timer_time"].to_i,
+        elevation_gain: msg["total_ascent"],
+        distance:       msg["total_distance"]
+      )
+    end
 
-  def on_record(msg)
-    Rails.logger.info "record: #{msg.inspect}"
+    def on_record(msg)
+      Rails.logger.info "record: #{msg.inspect}"
 
-    @data_points[msg["timestamp"]] ||= @activity.activity_data_points.build(recorded_at: Time.at(msg["timestamp"]))
-    data_point = @data_points[msg["timestamp"]]
+      point = (@points[msg["timestamp"]] ||= Track::Point.new(recorded_at: Time.at(msg["timestamp"])))
 
-    if msg["position_lat"] && msg["position_long"]
-      # Skip invalid values
-      if msg["position_lat"].finite? && msg["position_long"].finite?
-        data_point.location = @rgeo_factory.point(
-          msg["position_long"], msg["position_lat"]
-        )
+      if msg["position_lat"] && msg["position_long"] &&
+         msg["position_lat"].finite? && msg["position_long"].finite?
+        point.lat = msg["position_lat"]
+        point.lon = msg["position_long"]
       end
 
-      # Set location once using first valid point
-      if !@set_location
-        @set_location = true
-        if @reverse_geocode
-          @activity.location ||= NominatimClient.new.reverse_geocode(msg["position_lat"], msg["position_long"])
-        end
-      end
+      # The enhanced_* variants carry the wider range; prefer them when present.
+      %w[speed enhanced_speed].each { |name| point.speed = msg[name] if msg[name] }
+      %w[altitude enhanced_altitude].each { |name| point.altitude = msg[name] if msg[name] }
+
+      point.heart_rate = msg["heart_rate"] if msg["heart_rate"]
+      point.cadence    = msg["cadence"]    if msg["cadence"]
+      point.power      = msg["power"]      if msg["power"]
     end
 
-    # max_speed is computed in finalize, once spikes have been filtered out.
-    %w[speed enhanced_speed].each do |name|
-      data_point.speed = msg[name] if msg[name]
+    def on_activity(msg)
+      Rails.logger.info "activity: #{msg.inspect}"
     end
 
-    if msg["heart_rate"]
-      data_point.heart_rate = msg["heart_rate"]
+    def on_lap(msg)
+      Rails.logger.info "lap: #{msg.inspect}"
     end
 
-    if msg["cadence"]
-      data_point.cadence = msg["cadence"]
+    def on_event(msg)
+      Rails.logger.info "event: #{msg.inspect}"
     end
 
-    if msg["power"]
-      data_point.power = msg["power"]
+    def on_device_info(msg)
+      Rails.logger.info "device info: #{msg.inspect}"
     end
 
-    %w[altitude enhanced_altitude].each do |name|
-      data_point.altitude = msg[name] if msg[name]
-    end
-  end
-
-  def on_event(msg)
-    Rails.logger.info "event: #{msg.inspect}"
-  end
-
-  def on_device_info(msg)
-    Rails.logger.info "device info: #{msg.inspect}"
-  end
-
-  def on_user_profile(msg)
-    Rails.logger.info "user profile: #{msg.inspect}"
-  end
-
-  def on_weight_scale_info(msg)
-    Rails.logger.info "weight scale info: #{msg.inspect}"
-  end
-
-  def finalize
-    # FIT speed comes from the device (Doppler / wheel sensor) and is already
-    # clean, so it's trusted as-is — just take the maximum.
-    @activity.max_speed = @data_points.values.filter_map(&:speed).max
-
-    points = @data_points.values.map(&:location).compact
-
-    @data_points.each_value do |dp|
-      next unless dp.location
-      dp.location = "SRID=4326;POINT(#{dp.location.longitude} #{dp.location.latitude})"
+    def on_user_profile(msg)
+      Rails.logger.info "user profile: #{msg.inspect}"
     end
 
-    unless points.empty?
-      coords = points.map { |p| "#{p.longitude} #{p.latitude}" }.join(", ")
-      @activity.path = "SRID=4326;LINESTRING(#{coords})"
+    def on_weight_scale_info(msg)
+      Rails.logger.info "weight scale info: #{msg.inspect}"
     end
-
-    @activity.location ||= "Unknown"
   end
 end

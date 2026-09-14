@@ -6,7 +6,7 @@ class Activity < ApplicationRecord
   belongs_to :user
   has_many :activity_data_points, dependent: :destroy
 
-  has_one_attached :fit_file
+  has_one_attached :source_file
 
   enum :sport, %i[
     bike mountain_bike_ride gravel_ride virtual_ride e_bike_ride
@@ -52,18 +52,6 @@ class Activity < ApplicationRecord
         end
       }
     }.to_json
-  end
-
-  def parse_fit_file(fit_file, reverse_geocode: true)
-    str = fit_file.try(:read) || fit_file.download
-    extractor = FitExtractor.new(self, reverse_geocode: reverse_geocode)
-    RubyFit::Parser.new(extractor).parse(str)
-    extractor.finalize
-  end
-
-  def parse_gpx_file(gpx_file, reverse_geocode: true)
-    str = gpx_file.try(:read) || gpx_file.download
-    GpxExtractor.new(str).to_activity(self, reverse_geocode: reverse_geocode)
   end
 
   def active_time_duration

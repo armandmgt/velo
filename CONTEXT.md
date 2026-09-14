@@ -30,6 +30,28 @@ Time spent actually moving, excluding stationary stretches — segments under
 web shows.
 _Avoid_: Active time, elapsed time, duration
 
+### Ingestion
+
+**Source file**:
+The FIT or GPX file an Activity was derived from, retained so the Activity can be
+re-derived later.
+_Avoid_: Fit file (the name is historical — GPX files are stored under it too)
+
+**Track**:
+What a Source file yields once read: its points, its summary figures, and the
+name and sport the file itself suggests. Not yet an Activity, and independent of
+which format it came from — a rider's own name and sport take precedence over
+the file's.
+_Avoid_: Trace, route (a route is planned, not recorded), path (a path is the
+stored geometry of one Activity)
+
+**Ingestion**:
+Turning a Source file into an Activity: reading it as a Track and filling in the
+figures a rider didn't supply. Covers every origin — an upload, a native
+recording, a Strava archive, an iGPSport sync.
+_Avoid_: Import (reserved for a Strava archive and for seeding a route from
+GPX), sync (reserved for iGPSport), parse (names only the reading half)
+
 ### Recording (native shells)
 
 **Recording session**:

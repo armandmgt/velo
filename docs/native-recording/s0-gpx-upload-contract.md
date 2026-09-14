@@ -172,11 +172,14 @@ shape as the web form):
 
 | Field                   | Required | Notes                                                                                          |
 | ----------------------- | -------- | ---------------------------------------------------------------------------------------------- |
-| `activity[fit_file]`    | **yes**  | The GPX bytes. **The field is named `fit_file` even for GPX** — the controller dispatches on the *filename*: an `original_filename` ending in `.gpx` routes to `GpxExtractor`, otherwise to `FitExtractor`. **The uploaded part's filename MUST end in `.gpx`.** |
+| `activity[source_file]` | **yes**  | The GPX bytes. `ActivityIngestion` dispatches on the *filename*: an `original_filename` ending in `.gpx` is read by `GpxExtractor`, anything else by `FitExtractor`. **The uploaded part's filename MUST end in `.gpx`.** |
+| `activity[fit_file]`    | alias    | Accepted alias for `activity[source_file]`, named `fit_file` even for GPX, historically. No client in this repo sends it since ADR 0003 retired the native uploader, but builds predating that change still do. If both are sent, `source_file` wins. See ADR 0005. |
 | `activity[sport]`       | **yes**  | One of the 14 enum values (§3). Authoritative.                                                  |
 | `activity[name]`        | optional | Overrides `<trk><name>`. If neither is present the activity is unnamed (see naming note below). |
 | `activity[description]` | optional | Free text.                                                                                     |
 | `activity[visibility]`  | optional | `private` (default) \| `shareable` \| `public`.                                                |
+
+Exactly one of `activity[source_file]` / `activity[fit_file]` is required.
 
 **Authentication:** the native HTTP request reuses the signed `session_id`
 cookie that the Hotwire Native webview already holds (set httponly,

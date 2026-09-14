@@ -1,8 +1,11 @@
 require "nokogiri"
 
-# Parses a GPX track into an Activity + ActivityDataPoints, mirroring the
-# output contract of FitExtractor. GPX has no summary block, so distance,
-# elevation gain, moving time and speed are computed from the track points.
+# Reads a GPX file into a Track. GPX has no summary block, so distance,
+# elevation gain, moving time and speed are computed from the track points —
+# unlike FIT, which reads them off the device's session message.
+#
+# Also serves planned-route seeding, which needs the raw waypoints rather than a
+# Track: see `gpx?`, `track_name` and `parse_points`.
 class GpxExtractor
   # Ignore elevation changes below this (meters) to filter GPS jitter.
   ELEVATION_NOISE_THRESHOLD = 3.0
@@ -11,9 +14,8 @@ class GpxExtractor
   # Segments spanning a longer gap (seconds) are treated as paused recording.
   PAUSE_GAP_SECONDS = 30
 
-  # Strava <trk><type> values -> Activity sport. Only used as a fallback when
-  # the activity has no sport yet (e.g. standalone upload); the Strava importer
-  # sets sport from activities.csv before calling us.
+  # Strava <trk><type> values -> Activity sport. Only a suggestion: a rider's own
+  # sport wins, which is how the Strava importer's activities.csv value survives.
   GPX_SPORT_MAP = {
     "cycling" => :bike, "mountainbiking" => :mountain_bike_ride,
     "gravelbiking" => :gravel_ride, "ebiking" => :e_bike_ride,
@@ -31,14 +33,12 @@ class GpxExtractor
     @doc.remove_namespaces!
   end
 
-  def to_activity(activity, reverse_geocode: true)
-    apply_track_metadata(activity)
-    # activity_data_points.recorded_at is NOT NULL and build_data_points does
-    # timestamp arithmetic, so timeless points can never become data points. A
-    # route-style GPX (Komoot, RideWithGPS, our own PlannedRoute#to_gpx) carries
-    # no <time> at all and degrades to an activity with no points — which fails
-    # Activity's start_time validation as a 422, rather than raising.
-    build_data_points(activity, parse_points.select { |pt| pt[:time] }, reverse_geocode:)
+  def extract
+    # Track points carry timestamps by definition, and recorded_at is NOT NULL.
+    # A route-style GPX (Komoot, RideWithGPS, our own PlannedRoute#to_gpx) has no
+    # <time> at all and degrades to an empty Track — which fails Activity's
+    # start_time validation as a 422, rather than raising.
+    build(parse_points.select { |pt| pt[:time] })
   end
 
   # Nokogiri recovers from malformed input rather than raising, so an arbitrary
@@ -84,7 +84,7 @@ class GpxExtractor
   end
 
   # A garbage <time> must not take down the whole parse; the planner doesn't
-  # need timestamps and to_activity drops the point anyway.
+  # need timestamps and #extract drops the point anyway.
   def parse_time(str)
     return nil if str.blank?
     Time.parse(str).utc
@@ -92,34 +92,29 @@ class GpxExtractor
     nil
   end
 
-  def apply_track_metadata(activity)
-    name = track_name
-    activity.name ||= name if name.present?
-
+  def suggested_sport
     type = @doc.at_xpath("//trk/type")&.text
-    activity.sport ||= (GPX_SPORT_MAP[type.downcase.delete(" -_")] || :bike) if type.present?
+    return nil if type.blank?
+
+    GPX_SPORT_MAP[type.downcase.delete(" -_")] || :bike
   end
 
-  def build_data_points(activity, pts, reverse_geocode:)
-    return finalize(activity, [], 0.0, 0.0, 0.0, 0.0, nil, reverse_geocode: false) if pts.empty?
+  def build(pts)
+    return empty_track if pts.empty?
 
     prev = nil
     distance = 0.0
     moving_seconds = 0.0
     elevation_gain = 0.0
     elevation_ref = nil
-    data_points = []
-    coords = []
+    points = []
 
     pts.each do |pt|
-      dp = activity.activity_data_points.build(recorded_at: pt[:time])
-      dp.altitude = pt[:ele] if pt[:ele]
-      dp.heart_rate = pt[:hr] if pt[:hr]
-      dp.cadence = pt[:cad] if pt[:cad]
-      dp.power = pt[:power] if pt[:power]
-      dp.location = "SRID=4326;POINT(#{pt[:lon]} #{pt[:lat]})"
-      data_points << dp
-      coords << "#{pt[:lon]} #{pt[:lat]}"
+      point = Track::Point.new(
+        recorded_at: pt[:time], lat: pt[:lat], lon: pt[:lon],
+        altitude: pt[:ele], heart_rate: pt[:hr], cadence: pt[:cad], power: pt[:power]
+      )
+      points << point
 
       if pt[:ele]
         elevation_ref ||= pt[:ele]
@@ -139,7 +134,7 @@ class GpxExtractor
 
         if dt.positive?
           speed = seg / dt
-          dp.speed = speed
+          point.speed = speed
           moving_seconds += dt if speed >= MOVING_SPEED_THRESHOLD && dt <= PAUSE_GAP_SECONDS
         end
       end
@@ -149,27 +144,30 @@ class GpxExtractor
 
     # GPX speed is derived from GPS positions and prone to spikes, so run it
     # through the Hampel filter and derive max_speed from what survives.
-    max_speed = SpeedFilter.new.filter!(data_points)
+    max_speed = SpeedFilter.new.filter!(points)
 
-    activity.start_time = pts.first[:time]
-    activity.end_time = pts.last[:time]
-    finalize(activity, coords, distance, elevation_gain, moving_seconds, max_speed, pts.first, reverse_geocode:)
+    Track.new(
+      points: points,
+      summary: Track::Summary.new(
+        distance: distance.round(1),
+        elevation_gain: elevation_gain.round(1),
+        moving_seconds: moving_seconds.round,
+        max_speed: (max_speed if max_speed&.positive?),
+        start_time: pts.first[:time],
+        end_time: pts.last[:time]
+      ),
+      suggested_name: track_name,
+      suggested_sport: suggested_sport
+    )
   end
 
-  def finalize(activity, coords, distance, elevation_gain, moving_seconds, max_speed, first_point, reverse_geocode:)
-    activity.distance = distance.round(1)
-    activity.total_elevation_gain = elevation_gain.round(1)
-    activity.max_speed = max_speed if max_speed&.positive?
-    activity.active_time = ActiveSupport::Duration.build(moving_seconds.round).iso8601
-    # A LineString needs at least two vertices; a single-point recording (e.g. a
-    # native recording stopped almost immediately, or one with a single GPS fix)
-    # legitimately has no path — leave it nil rather than build an invalid geometry.
-    activity.path = "SRID=4326;LINESTRING(#{coords.join(', ')})" if coords.size >= 2
-
-    if reverse_geocode && first_point
-      activity.location ||= NominatimClient.new.reverse_geocode(first_point[:lat], first_point[:lon])
-    end
-    activity.location ||= "Unknown"
+  def empty_track
+    Track.new(
+      points: [],
+      summary: Track::Summary.empty,
+      suggested_name: track_name,
+      suggested_sport: suggested_sport
+    )
   end
 
   def float(str)

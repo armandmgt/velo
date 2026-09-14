@@ -71,21 +71,23 @@ class IgpsportSyncService
         location:     "Unknown"
       )
 
-      File.open(tmp.path, "rb") { |file| activity.parse_fit_file(file, reverse_geocode: false) }
+      filename = "igpsport-#{detail.ride_id}.fit"
+      File.open(tmp.path, "rb") do |file|
+        ActivityIngestion.call(activity, file, filename: filename, reverse_geocode: false)
+      end
 
       # Exact dedup by FIT-derived start_time (authoritative, UTC, second-precision).
       return :skipped if Activity.find_by(user: user, start_time: activity.start_time)
 
-      activity.start_time  ||= detail.start_time
-      activity.end_time    ||= detail.end_time
-      activity.active_time ||= "PT0S"
+      # Applied after the dedup above, which depends on the FIT-derived value —
+      # which is why these aren't handed to ActivityIngestion as fallbacks.
+      activity.start_time ||= detail.start_time
+      activity.end_time   ||= detail.end_time
 
       return :failed unless activity.save(validate: false)
 
       # Retain the source so the activity can be re-imported later.
-      File.open(tmp.path, "rb") do |file|
-        activity.fit_file.attach(io: file, filename: "igpsport-#{detail.ride_id}.fit")
-      end
+      File.open(tmp.path, "rb") { |file| activity.source_file.attach(io: file, filename: filename) }
 
       :imported
     end
