@@ -1,5 +1,6 @@
 package fr.armandmgt.velo.features.record
 
+import fr.armandmgt.velo.features.record.data.RecordingLapEntity
 import fr.armandmgt.velo.features.record.data.RecordingPointEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -87,6 +88,7 @@ object RecordingHandoff {
         sport: Sport,
         stats: RecordingUiState,
         points: List<RecordingPointEntity>,
+        laps: List<RecordingLapEntity>,
     ): Payload {
         val formatter = iso8601
         return Payload(
@@ -100,9 +102,13 @@ object RecordingHandoff {
                 movingTime = stats.movingSeconds,
                 averageSpeed = stats.averageSpeedMps,
             ),
-            // Lap boundaries aren't persisted on Android yet, so the review
-            // renders one split covering the whole ride.
-            laps = emptyList(),
+            laps = laps.map { lap ->
+                Lap(
+                    ordinal = lap.ordinal,
+                    cumulativeDistance = lap.cumulativeDistance,
+                    cumulativeElapsed = lap.cumulativeElapsed,
+                )
+            },
             points = points.map { point ->
                 Point(
                     t = formatter.format(Date(point.timestamp)),

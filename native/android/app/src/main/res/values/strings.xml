@@ -9,6 +9,8 @@
     <string name="recording_notification_channel_name">Enregistrement</string>
     <string name="recording_notification_text">Enregistrement en cours</string>
     <string name="recording_notification_text_armed">Prêt à enregistrer</string>
+    <string name="recording_notification_text_paused">Enregistrement en pause</string>
+    <string name="recording_notification_text_auto_paused">En pause automatique</string>
     <string name="recording_waiting_gps">En attente du signal GPS…</string>
     <string name="recording_latitude">Latitude</string>
     <string name="recording_longitude">Longitude</string>
@@ -23,6 +25,7 @@
     <string name="recording_laps">Tours</string>
     <string name="recording_state_recording">Enregistrement</string>
     <string name="recording_state_paused">En pause</string>
+    <string name="recording_state_auto_paused">Pause auto</string>
     <string name="recording_gps_signal">Signal GPS : %1$s</string>
     <string name="recording_gps_searching">recherche…</string>
     <string name="recording_ready_title">Prêt à enregistrer</string>
@@ -32,6 +35,15 @@
     <string name="recording_mark_lap">Tour</string>
     <string name="recording_stop">Arrêter</string>
     <string name="recording_start">Démarrer</string>
+    <string name="recording_auto_pause">Pause automatique</string>
+    <string name="recording_laps_summary">%1$s km · %2$s</string>
+    <string name="recording_laps_column_lap">#</string>
+    <string name="recording_laps_column_distance">Dist.</string>
+    <string name="recording_laps_column_time">Temps</string>
+    <string name="recording_laps_column_speed">Moy.</string>
+    <string name="recording_laps_column_pace">Allure</string>
+    <string name="recording_laps_in_progress">Le tour %1$d est en cours.</string>
+    <string name="recording_laps_close">Fermer</string>
 
     <!-- Review/confirm screen before upload (#67). -->
     <string name="recording_discard">Supprimer</string>

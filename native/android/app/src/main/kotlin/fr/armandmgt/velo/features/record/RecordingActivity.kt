@@ -44,6 +44,9 @@ class RecordingActivity : ComponentActivity() {
     /** The sport this recording uploads as; defaults to the last-used sport. */
     private var selectedSport by mutableStateOf(Sport.BIKE)
 
+    /** Pause automatique, editable only while armed — the service reads it at Démarrer. */
+    private var autoPauseEnabled by mutableStateOf(true)
+
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
 
     private var isBound = false
@@ -80,6 +83,7 @@ class RecordingActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         selectedSport = Sport.lastUsed(this)
+        autoPauseEnabled = AutoPauseSetting.isEnabled(this)
 
         requestNotificationPermissionIfNeeded()
         ensureLocationPermission()
@@ -95,6 +99,8 @@ class RecordingActivity : ComponentActivity() {
                     state = screenState,
                     selectedSport = selectedSport,
                     onSelectSport = ::selectSport,
+                    autoPauseEnabled = autoPauseEnabled,
+                    onToggleAutoPause = ::toggleAutoPause,
                     onStartStop = { checked -> if (checked) binder?.start() else stopRecording() },
                     onPause = { binder?.pause() },
                     onResume = { binder?.resume() },
@@ -108,6 +114,11 @@ class RecordingActivity : ComponentActivity() {
     private fun selectSport(sport: Sport) {
         selectedSport = sport
         Sport.setLastUsed(this, sport)
+    }
+
+    private fun toggleAutoPause(enabled: Boolean) {
+        autoPauseEnabled = enabled
+        AutoPauseSetting.setEnabled(this, enabled)
     }
 
     override fun onDestroy() {
@@ -174,6 +185,9 @@ class RecordingActivity : ComponentActivity() {
                 sport = selectedSport,
                 stats = stats,
                 points = points,
+                // Read back from Room rather than from the (now stopped) service, so
+                // the splits the review renders are the ones that survived to disk.
+                laps = dao.lapsFor(id),
             )
             setResult(RESULT_OK, Intent().putExtra(EXTRA_OPEN_REVIEW, true))
             finish()

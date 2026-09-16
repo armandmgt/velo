@@ -6,8 +6,8 @@ tags:
 # Android mirror of native/ios/maestro/record_flow.yaml, adapted to the Jetpack
 # Compose recording screen. The screen opens *armed*: an explicit Démarrer starts
 # recording, and Arrêter hands the ride to the web review, which uploads it. This
-# flow guards navigation, the start control, the live controls, and the upload
-# path.
+# flow guards navigation, the start control, the live controls, lap splits, pause
+# automatique, and the upload path.
 - launchApp:
     clearState: true
     stopApp: true
@@ -46,29 +46,45 @@ tags:
 - assertVisible: "Démarrer"
 - assertVisible: "Vélo de route"
 - assertVisible: "PRÊT À ENREGISTRER"
+# Pause automatique is configured here, on the armed card — the only place it's
+# reachable, so the setting can't shift under a ride in progress.
+- assertVisible: "Pause automatique"
+#: switch it off for the rest of this flow. The emulator replays its own
+# GPS fix at ~1 Hz with a measured speed of 0, so a recording left armed
+# auto-pauses about ten seconds in — and every step below that needs the recording
+# *running* would then race that window (a single hierarchy query on this device
+# costs seconds). Riding with the toggle off is also the acceptance criterion it
+# proves: nothing below pauses on its own, however long the ride stands still.
+#
+# The hysteresis itself can't be driven from Maestro at all, for a reason of its
+# own that mirrors what the iOS flow records: every fix Maestro injects is a *mock*
+# fix carrying no speed (`hasSpeed()` false), and ADR 0002 is explicit that an
+# unmeasurable speed must break the still run rather than extend it — only positive
+# evidence may pause a recording. AutoPauseDetectorTest covers it instead: entry,
+# exit by distance, exit by speed, the fix-gap restart, and both suppression rules.
+- tapOn: "Pause automatique"
 # Regression: the recording Activity covers the bottom nav, so the only way back
 # is the controls — the dashboard tab must not be visible underneath.
 - assertNotVisible: "Tableau de bord"
 - takeScreenshot: record-armed
 
-# Start recording, then inject a fix: the top GPS indicator leaves "recherche…"
-# for an accuracy readout once a fix arrives (the same delegate path that
-# persists the point to Room). setLocation is a single static fix, so a *moving*
-# distance/speed is verified manually; end-to-end persistence is proven by the
-# created activity at the bottom of this flow.
+# Start recording. The armed card goes with it, taking the toggle: a ride records
+# under the setting it began with, so there is nowhere to change it mid-ride.
 - tapOn: "Démarrer"
 - assertVisible: "Arrêter"
+- assertNotVisible: "Pause automatique"
+
+# Inject a fix: the top GPS indicator leaves "recherche…" for an accuracy readout
+# once one arrives (the same callback that persists the point to Room).
 - setLocation:
     latitude: 48.8566
     longitude: 2.3522
-# A numeric accuracy ("Signal GPS : 5 m") confirms a fix arrived — the indicator
-# leaves "recherche…" only once the location callback fires.
 - assertVisible: "Signal GPS : [0-9]+ m"
 
-# The state now reads from the pill, and the stats live in a collapsible bottom
-# dock over the map — expanded by default (the "DISTANCE" caption shows only when
+# The state reads from the pill, and the stats live in a collapsible bottom dock
+# over the map — expanded by default (the "DISTANCE" caption shows only when
 # expanded). Toggle the grabber to collapse ⇄ expand and confirm it follows.
-- assertVisible: "Enregistrement"
+- assertVisible: "ENREGISTREMENT|Enregistrement"
 - assertVisible: "DISTANCE"
 - takeScreenshot: record-map
 - tapOn: "Réduire ou agrandir les statistiques"
@@ -78,12 +94,26 @@ tags:
 - waitForAnimationToEnd
 - assertVisible: "DISTANCE"
 
-# Smoke-test the live controls: lap marker, then pause ⇄ resume. "^Tour$" anchors
-# the lap button's contentDescription so it doesn't match the "Tour 0" counter.
+# Tour closes the running lap, and the dock's Tours counter opens the split sheet.
+# One tap, with fixes either side of it, means two splits — lap 1 closed, lap 2
+# running — which the sheet's footnote names. "^Tour$" anchors the lap button's
+# label so it doesn't match the "Tours" counter beside it.
 - tapOn: "^Tour$"
+- tapOn: "^Tours$"
+- waitForAnimationToEnd
+- assertVisible: "Le tour 2 est en cours."
+- takeScreenshot: record-laps
+- tapOn: "Fermer"
+- waitForAnimationToEnd
+
+# Manual pause ⇄ resume. Tour is hidden while paused, so a stop at a red light
+# can't mint a zero-distance split — pause automatique shares that state and so
+# hides it too.
 - tapOn: "Pause"
 - assertVisible: "Reprendre"
+- assertNotVisible: "^Tour$"
 - tapOn: "Reprendre"
+- assertVisible: "ENREGISTREMENT|Enregistrement"
 - takeScreenshot: record-active
 
 # Arrêter finalizes the recording and hands it to the review screen, which since
@@ -102,9 +132,11 @@ tags:
 # DOM-cased on Android, hence the alternation.
 - assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
 - assertVisible: "DÉPLACEMENT|Déplacement"
+# The splits reach the review through the handoff — the lap boundaries persisted
+# in Room, read back at Arrêter. Two of them, from the single Tour tap above.
 # iOS exposes the count badge and the label as separate nodes, Android merges
-# them into one ("1 1 tour"), so match loosely.
-- assertVisible: ".*[0-9]+ tours?.*"
+# them into one ("2 2 tours"), so match loosely.
+- assertVisible: ".*2 tours.*"
 # The map is a <canvas> with no accessible text, so the proof the handoff landed
 # is the form: the shell's sport preselects it, which an empty form would not.
 - assertVisible: "Sport"

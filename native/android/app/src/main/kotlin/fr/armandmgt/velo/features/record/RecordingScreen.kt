@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -32,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,12 +44,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -58,7 +59,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -80,34 +80,6 @@ sealed interface RecordingScreenState {
 }
 
 /**
- * The design's flat, light palette (Recording.dc.html): sharp-cornered white
- * surfaces with thin borders — deliberately *not* Material tokens, so the native
- * recording screen matches the web pixel-for-pixel.
- */
-private object Rec {
-    val ink = Color(0xFF161616)        // primary text        — oklch(20% 0 0)
-    val muted = Color(0xFF555555)      // captions / secondary — oklch(45% 0 0)
-    val border = Color(0xFFCECECE)     // chip / button border — oklch(85% 0 0)
-    val borderDock = Color(0xFFD7D7D7) // dock border          — oklch(88% 0 0)
-    val divider = Color(0xFFE4E4E4)    // internal dividers    — oklch(92% 0 0)
-    val grabber = Color(0xFFC4C4C4)    // grab handle          — oklch(82% 0 0)
-    val orange = Color(0xFFF69900)     // distance / speed     — web `--color-primary` resolved
-    val green = Color(0xFF20C45F)      // Démarrer fill        — oklch(72% 0.19 150)
-    val greenText = Color(0xFF08351A)  // Démarrer text        — oklch(24% 0.06 153)
-    val redBorder = Color(0xFFFF627E)  // Arrêter border       — oklch(71% 0.194 13.4)
-    val red = Color(0xFFDD1B53)        // Arrêter / rec pill   — oklch(58% 0.22 13.4)
-    val paused = Color(0xFFD36000)     // paused pill          — oklch(62% 0.18 56)
-    val surface = Color(0xFFFFFFFF)
-}
-
-/** A flat white sharp-cornered card: soft shadow + 1px border, no rounded corners. */
-private fun Modifier.flatCard(borderColor: Color, elevation: Dp): Modifier =
-    this
-        .shadow(elevation, RectangleShape, clip = false)
-        .background(Rec.surface)
-        .border(1.dp, borderColor)
-
-/**
  * The native recording screen, redesigned map-centric + flat per
  * `Recording.dc.html`: a full-bleed live map with floating white chips / pill and a
  * collapsible stats dock over flat sharp-cornered controls.
@@ -117,6 +89,8 @@ fun RecordingScreen(
     state: RecordingScreenState,
     selectedSport: Sport,
     onSelectSport: (Sport) -> Unit,
+    autoPauseEnabled: Boolean,
+    onToggleAutoPause: (Boolean) -> Unit,
     onStartStop: (Boolean) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -132,6 +106,8 @@ fun RecordingScreen(
                 ui = state.state,
                 selectedSport = selectedSport,
                 onSelectSport = onSelectSport,
+                autoPauseEnabled = autoPauseEnabled,
+                onToggleAutoPause = onToggleAutoPause,
                 onStartStop = onStartStop,
                 onPause = onPause,
                 onResume = onResume,
@@ -176,6 +152,8 @@ private fun RecordingMapScreen(
     ui: RecordingUiState,
     selectedSport: Sport,
     onSelectSport: (Sport) -> Unit,
+    autoPauseEnabled: Boolean,
+    onToggleAutoPause: (Boolean) -> Unit,
     onStartStop: (Boolean) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -187,6 +165,7 @@ private fun RecordingMapScreen(
         if (lat != null && lng != null) RoutePoint(lat, lng) else null
     }
     var bottomOverlayHeight by remember { mutableStateOf(0) }
+    var showLapSplits by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
         RecordingMap(
@@ -221,10 +200,20 @@ private fun RecordingMapScreen(
                 .padding(horizontal = 12.dp, vertical = 12.dp)
                 .onSizeChanged { bottomOverlayHeight = it.height },
         ) {
-            RecordingDock(ui, selectedSport.usesPace)
+            RecordingDock(
+                ui = ui,
+                usesPace = selectedSport.usesPace,
+                autoPauseEnabled = autoPauseEnabled,
+                onToggleAutoPause = onToggleAutoPause,
+                onOpenLapSplits = { showLapSplits = true },
+            )
             Spacer(Modifier.size(10.dp))
             Controls(ui, onStartStop, onPause, onResume, onLap)
         }
+    }
+
+    if (showLapSplits) {
+        LapSplitsSheet(ui, selectedSport.usesPace) { showLapSplits = false }
     }
 }
 
@@ -244,7 +233,13 @@ private fun PillCapsule(content: @Composable () -> Unit) {
  * Distance | Temps + Vitesse · Moyenne · Tours layout, toggled by the grabber.
  */
 @Composable
-private fun RecordingDock(ui: RecordingUiState, usesPace: Boolean) {
+private fun RecordingDock(
+    ui: RecordingUiState,
+    usesPace: Boolean,
+    autoPauseEnabled: Boolean,
+    onToggleAutoPause: (Boolean) -> Unit,
+    onOpenLapSplits: () -> Unit,
+) {
     var collapsed by remember { mutableStateOf(false) }
 
     Column(
@@ -268,9 +263,9 @@ private fun RecordingDock(ui: RecordingUiState, usesPace: Boolean) {
         }
 
         when {
-            ui.armed -> IdleDockContent()
+            ui.armed -> IdleDockContent(autoPauseEnabled, onToggleAutoPause)
             collapsed -> CollapsedStats(ui, usesPace)
-            else -> ExpandedStats(ui, usesPace)
+            else -> ExpandedStats(ui, usesPace, onOpenLapSplits)
         }
     }
 }
@@ -285,9 +280,13 @@ private fun GrabHandle() {
     )
 }
 
-/** Dock content before Démarrer: a quiet "ready to record" card. */
+/**
+ * Dock content before Démarrer: a quiet "ready to record" card, carrying the one
+ * pause-automatique toggle. It lives here because this card only exists while
+ * armed — a ride records under the setting it began with.
+ */
 @Composable
-private fun IdleDockContent() {
+private fun IdleDockContent(autoPauseEnabled: Boolean, onToggleAutoPause: (Boolean) -> Unit) {
     Column(
         modifier = Modifier.padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -308,6 +307,23 @@ private fun IdleDockContent() {
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
         )
+        Spacer(Modifier.size(10.dp))
+        Row(
+            modifier = Modifier.toggleable(
+                value = autoPauseEnabled,
+                onValueChange = onToggleAutoPause,
+                role = Role.Switch,
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.recording_auto_pause),
+                color = Rec.ink,
+                fontSize = 14.sp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Switch(checked = autoPauseEnabled, onCheckedChange = null)
+        }
     }
 }
 
@@ -359,7 +375,7 @@ private fun collapsedSpeed(metersPerSecond: Double, usesPace: Boolean): Annotate
 
 /** The expanded dock: Distance | Temps (two big columns) over Vitesse · Moyenne · Tours. */
 @Composable
-private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean) {
+private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean, onOpenLapSplits: () -> Unit) {
     val time = dockElapsed(ui.elapsedSeconds)
     val vitLabel = if (usesPace) "Vit. /km" else "Vit. km/h"
     val moyLabel = if (usesPace) "Moy. /km" else "Moy. km/h"
@@ -408,7 +424,16 @@ private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean) {
             Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
             StatCell(speedNumber(ui.averageSpeedMps, usesPace), Rec.ink, moyLabel)
             Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
-            StatCell(ui.lap.toString(), Rec.ink, stringResource(R.string.recording_laps))
+            // The counter is the way into the splits: the dock stays the glanceable
+            // summary, and the full table lives one tap away in a sheet.
+            StatCell(
+                value = ui.lap.toString(),
+                valueColor = Rec.ink,
+                caption = stringResource(R.string.recording_laps),
+                modifier = Modifier
+                    .clickable(onClick = onOpenLapSplits)
+                    .semantics { contentDescription = "Tours" },
+            )
         }
     }
 }
@@ -425,9 +450,9 @@ private fun CaptionRow(iconRes: Int, text: String) {
 
 /** One bottom-row stat cell: a value over an uppercase caption, centred. */
 @Composable
-private fun RowScope.StatCell(value: String, valueColor: Color, caption: String) {
+private fun RowScope.StatCell(value: String, valueColor: Color, caption: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+        modifier = Modifier.weight(1f).then(modifier).padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(value, color = valueColor, style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"))
@@ -521,7 +546,7 @@ private fun GpsChip(accuracy: Float?) {
 /** State pill contents: a pulsing coloured dot + uppercase coloured word. */
 @Composable
 private fun StatePill(recordingState: RecordingState) {
-    val recording = recordingState != RecordingState.PAUSED
+    val recording = !recordingState.isPaused
     val color = if (recording) Rec.red else Rec.paused
 
     val transition = rememberInfiniteTransition(label = "pill")
@@ -537,8 +562,14 @@ private fun StatePill(recordingState: RecordingState) {
         Box(Modifier.size(9.dp).clip(CircleShape).background(color).alpha(dotAlpha))
         Spacer(Modifier.width(8.dp))
         Text(
+            // Pause auto is named apart from a manual pause so the rider can tell who
+            // stopped the clock — and knows Reprendre will override it.
             text = stringResource(
-                if (recording) R.string.recording_state_recording else R.string.recording_state_paused,
+                when (recordingState) {
+                    RecordingState.AUTO_PAUSED -> R.string.recording_state_auto_paused
+                    RecordingState.PAUSED -> R.string.recording_state_paused
+                    else -> R.string.recording_state_recording
+                },
             ).uppercase(),
             color = color,
             fontSize = 12.sp,
@@ -574,7 +605,9 @@ private fun Controls(
                 fontSize = 16.sp,
             )
         } else {
-            val paused = ui.recordingState == RecordingState.PAUSED
+            // Tour is hidden in both paused states, so a stop at a red light can't
+            // mint a zero-distance split.
+            val paused = ui.recordingState.isPaused
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -614,7 +647,7 @@ private fun Controls(
 
 /** A flat, sharp-cornered button (Box + optional border) — replaces Material buttons. */
 @Composable
-private fun FlatButton(
+internal fun FlatButton(
     text: String,
     onClick: () -> Unit,
     background: Color,
@@ -689,19 +722,11 @@ private fun dockElapsed(totalSeconds: Long): DockTime {
 
 /** The value only (no unit) for the bottom stat cells. */
 private fun speedNumber(metersPerSecond: Double, usesPace: Boolean): String =
-    if (usesPace) formatPace(metersPerSecond).removeSuffix("/km") else "%.1f".format(metersPerSecond * 3.6)
-
-/**
- * `m:ss/km`. Mirrors iOS: instantaneous pace is jumpy, so near-zero speed reads as
- * `—` rather than an absurd figure.
- */
-private fun formatPace(metersPerSecond: Double): String {
-    if (metersPerSecond <= 0.3) return "—"
-    val secondsPerKm = 1000 / metersPerSecond
-    val minutes = (secondsPerKm / 60).toInt()
-    val seconds = (secondsPerKm % 60).toInt()
-    return "%d:%02d/km".format(minutes, seconds)
-}
+    if (usesPace) {
+        RecordingFormatters.pace(metersPerSecond).removeSuffix("/km")
+    } else {
+        "%.1f".format(metersPerSecond * 3.6)
+    }
 
 @Preview(name = "Streaming")
 @Composable
@@ -723,6 +748,8 @@ private fun RecordingScreenStreamingPreview() {
             ),
             selectedSport = Sport.BIKE,
             onSelectSport = {},
+            autoPauseEnabled = true,
+            onToggleAutoPause = {},
             onStartStop = {},
             onPause = {},
             onResume = {},

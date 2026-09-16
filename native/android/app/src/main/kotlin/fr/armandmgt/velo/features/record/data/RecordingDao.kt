@@ -33,7 +33,14 @@ interface RecordingDao {
     @Query("SELECT COUNT(*) FROM recording_points WHERE sessionId = :sessionId")
     suspend fun pointCountFor(sessionId: String): Int
 
-    /** Clear a session (and its points, via the FK cascade) after a successful upload. */
+    @Insert
+    suspend fun insertLap(lap: RecordingLapEntity)
+
+    /** A session's closed laps, oldest first — the boundaries splits are differenced from. */
+    @Query("SELECT * FROM recording_laps WHERE sessionId = :sessionId ORDER BY ordinal ASC")
+    suspend fun lapsFor(sessionId: String): List<RecordingLapEntity>
+
+    /** Clear a session (and its points and laps, via the FK cascade) after a successful upload. */
     @Query("DELETE FROM recording_sessions WHERE id = :id")
     suspend fun deleteSession(id: String)
 }

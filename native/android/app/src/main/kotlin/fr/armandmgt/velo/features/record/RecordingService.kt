@@ -28,6 +28,7 @@ import com.google.android.gms.location.Priority
 import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.data.RecordingDao
 import fr.armandmgt.velo.features.record.data.RecordingDatabase
+import fr.armandmgt.velo.features.record.data.RecordingLapEntity
 import fr.armandmgt.velo.features.record.data.RecordingPointEntity
 import fr.armandmgt.velo.features.record.data.RecordingSessionEntity
 import fr.armandmgt.velo.features.record.data.RecordingState
@@ -71,6 +72,8 @@ data class RecordingUiState(
     val averageSpeedMps: Double = 0.0,
     /** The recorded trace so far, oldest-first, for the live map line (map-centric redesign). */
     val routePoints: List<RoutePoint> = emptyList(),
+    /** Closed laps, oldest first — what the split sheet differences into splits. */
+    val lapBoundaries: List<LapBoundary> = emptyList(),
 )
 
 /**
@@ -119,6 +122,18 @@ class RecordingService : Service() {
     private var lastLongitude: Double? = null
     private var lastAccuracy: Float? = null
 
+    /**
+     * Watches the fix stream for pause automatique. Inert until [startRecording]
+     * arms it from the preference as it stood at Démarrer, so a ride records under
+     * the setting it began with.
+     */
+    private var autoPause = AutoPauseDetector(isEnabled = false)
+
+    // Closed laps, mirrored in memory so the split sheet doesn't wait on Room. A
+    // new immutable snapshot is published on each Tour so StateFlow re-emits.
+    private val lapBoundaries = mutableListOf<LapBoundary>()
+    private var lapBoundarySnapshot: List<LapBoundary> = emptyList()
+
     // The recorded trace, oldest-first, for the live map line. A new immutable
     // snapshot is published whenever a point is appended so StateFlow re-emits.
     private val routePoints = mutableListOf<RoutePoint>()
@@ -162,7 +177,7 @@ class RecordingService : Service() {
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
-            buildNotification(recording = false),
+            buildNotification(),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
         )
 
@@ -199,6 +214,7 @@ class RecordingService : Service() {
      */
     private fun startRecording() {
         if (session != null) return
+        val autoPauseEnabled = AutoPauseSetting.isEnabled(this)
         ioScope.launch {
             dao.activeSession()?.let { orphan ->
                 val recovered = dao.pointCountFor(orphan.id)
@@ -224,10 +240,13 @@ class RecordingService : Service() {
                 lastPersistedSecond = null
                 routePoints.clear()
                 routeSnapshot = emptyList()
+                lapBoundaries.clear()
+                lapBoundarySnapshot = emptyList()
                 accumulatedElapsedMs = 0L
                 stretchStartMs = SystemClock.elapsedRealtime()
+                autoPause = AutoPauseDetector(autoPauseEnabled).also { it.reset() }
                 startTicker()
-                updateNotification(recording = true)
+                updateNotification()
                 emitState()
             }
         }
@@ -238,6 +257,14 @@ class RecordingService : Service() {
         lastLatitude = location.latitude
         lastLongitude = location.longitude
         lastAccuracy = if (location.hasAccuracy()) location.accuracy else null
+
+        // Every fix feeds the detector, including the ones a paused recording drops
+        // — watching them is exactly how the auto-resume is spotted.
+        when (autoPause.consider(location.toAutoPauseFix())) {
+            AutoPauseOutcome.SHOULD_AUTO_PAUSE -> autoPauseRecording()
+            AutoPauseOutcome.SHOULD_AUTO_RESUME -> autoResumeRecording()
+            AutoPauseOutcome.NONE -> Unit
+        }
 
         val current = session
         if (recordingState != RecordingState.RECORDING || current == null) {
@@ -276,35 +303,94 @@ class RecordingService : Service() {
         emitState()
     }
 
+    /**
+     * The rider tapped **Pause**. Also the way out of an automatic pause into a
+     * manual one: an explicit pause outranks the detector, so no amount of movement
+     * will resume it.
+     */
     private fun pause() {
+        if (recordingState != RecordingState.RECORDING && recordingState != RecordingState.AUTO_PAUSED) return
+        autoPause.userDidPause()
+        enterPause(RecordingState.PAUSED)
+    }
+
+    /**
+     * The rider tapped **Reprendre**, from either kind of pause. That also disarms
+     * the detector until they have genuinely moved.
+     */
+    private fun resume() {
+        if (!recordingState.isPaused) return
+        autoPause.userDidResume()
+        leavePause()
+    }
+
+    /** Ten still seconds: enter pause automatique. */
+    private fun autoPauseRecording() {
         if (recordingState != RecordingState.RECORDING) return
+        enterPause(RecordingState.AUTO_PAUSED)
+    }
+
+    /** Genuine movement away from where we paused: back to recording. */
+    private fun autoResumeRecording() {
+        if (recordingState != RecordingState.AUTO_PAUSED) return
+        leavePause()
+    }
+
+    private fun enterPause(target: RecordingState) {
         val current = session ?: return
         accumulatedElapsedMs = elapsedMs()
         stretchStartMs = null
         lastFixSpeed = 0.0
         // Break the segment so the paused gap adds neither distance nor moving time.
         accumulator.breakSegment()
-        recordingState = RecordingState.PAUSED
+        recordingState = target
         stopTicker()
-        ioScope.launch { dao.updateState(current.id, RecordingState.PAUSED.ordinal) }
+        ioScope.launch { dao.updateState(current.id, target.ordinal) }
+        updateNotification()
         emitState()
     }
 
-    private fun resume() {
-        if (recordingState != RecordingState.PAUSED) return
+    private fun leavePause() {
         val current = session ?: return
         stretchStartMs = SystemClock.elapsedRealtime()
         recordingState = RecordingState.RECORDING
         startTicker()
         ioScope.launch { dao.updateState(current.id, RecordingState.RECORDING.ordinal) }
+        updateNotification()
         emitState()
     }
 
+    /**
+     * Close the running Tour and open the next one.
+     *
+     * Snapshots the cumulative totals *before* bumping the counter, so the row
+     * closes the lap that was running; [LapSplits] differences consecutive rows into
+     * splits. Only while actually recording — Tour is hidden in both paused states,
+     * so a zero-distance lap can't be minted at a red light.
+     */
     private fun markLap() {
+        if (recordingState != RecordingState.RECORDING) return
         val current = session ?: return
+        val boundary = LapBoundary(
+            ordinal = lap,
+            cumulativeDistance = accumulator.distance,
+            cumulativeElapsed = elapsedMs() / 1000.0,
+        )
+        lapBoundaries.add(boundary)
+        lapBoundarySnapshot = lapBoundaries.toList()
         lap += 1
         val ordinal = lap
-        ioScope.launch { dao.updateLapCount(current.id, ordinal) }
+        val row = RecordingLapEntity(
+            sessionId = current.id,
+            ordinal = boundary.ordinal,
+            endedAt = System.currentTimeMillis(),
+            cumulativeDistance = boundary.cumulativeDistance,
+            cumulativeElapsed = boundary.cumulativeElapsed,
+        )
+        ioScope.launch {
+            dao.insertLap(row)
+            dao.updateLapCount(current.id, ordinal)
+        }
         emitState()
     }
 
@@ -366,6 +452,7 @@ class RecordingService : Service() {
             currentSpeedMps = lastFixSpeed,
             averageSpeedMps = accumulator.averageSpeed(),
             routePoints = routeSnapshot,
+            lapBoundaries = lapBoundarySnapshot,
         )
     }
 
@@ -373,13 +460,13 @@ class RecordingService : Service() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
-    /** Re-post the ongoing notification so its text follows armed → recording. */
-    private fun updateNotification(recording: Boolean) {
+    /** Re-post the ongoing notification so its text follows the recording state. */
+    private fun updateNotification() {
         getSystemService(NotificationManager::class.java)
-            .notify(NOTIFICATION_ID, buildNotification(recording))
+            .notify(NOTIFICATION_ID, buildNotification())
     }
 
-    private fun buildNotification(recording: Boolean): Notification {
+    private fun buildNotification(): Notification {
         createChannel()
 
         val contentIntent = PendingIntent.getActivity(
@@ -389,10 +476,13 @@ class RecordingService : Service() {
             PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val text = if (recording) {
-            R.string.recording_notification_text
-        } else {
-            R.string.recording_notification_text_armed
+        // Honest about pause automatique: a rider glancing at the shade must not be
+        // told the ride is still recording when the clock is frozen.
+        val text = when {
+            session == null -> R.string.recording_notification_text_armed
+            recordingState == RecordingState.AUTO_PAUSED -> R.string.recording_notification_text_auto_paused
+            recordingState == RecordingState.PAUSED -> R.string.recording_notification_text_paused
+            else -> R.string.recording_notification_text
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
@@ -417,6 +507,14 @@ class RecordingService : Service() {
         )
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
+
+    /** The detector takes plain values, so it stays testable off-device. */
+    private fun android.location.Location.toAutoPauseFix() = AutoPauseFix(
+        timeMs = time,
+        latitude = latitude,
+        longitude = longitude,
+        speedMps = if (hasSpeed()) speed.toDouble() else null,
+    )
 
     companion object {
         private const val TAG = "RecordingService"
