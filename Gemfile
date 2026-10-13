@@ -9,7 +9,7 @@ gem "image_processing", "~> 2.2"
 gem "importmap-rails"
 gem "jbuilder"
 gem "kamal", require: false
-gem "pg", "~> 1.5"
+gem "pg", "~> 1.7"
 gem "propshaft"
 gem "puma", ">= 5.0"
 gem "rack-proxy"
