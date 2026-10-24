@@ -10,10 +10,8 @@ class Heatmap
   EXTENT = 4096
   BUFFER = 64
   MAX_ZOOM = 14
-  # MapLibre draws a vector tile 512 CSS px wide; simplifying to one of those
-  # pixels keeps low-zoom tiles small without visible loss.
-  DISPLAY_TILE_SIZE = 512
-  WEB_MERCATOR_WORLD_METERS = 40_075_016.685_578_49
+  # Deepest zoom of each precomputed Web Mercator path band on `activities`.
+  TILE_PATH_ZOOMS = [ 7, 9, 11, 13, MAX_ZOOM ].freeze
 
   attr_reader :user, :sport_category, :period, :from, :to
 
@@ -82,21 +80,18 @@ class Heatmap
       .map(&:to_s).join("/")
   end
 
+  # Each path is cut to the tile before encoding: a path crossing a deep-zoom
+  # tile mostly lies outside it, and ST_AsMVTGeom would otherwise grid it whole.
   def tile(z, x, y)
-    tolerance = WEB_MERCATOR_WORLD_METERS / 2**z / DISPLAY_TILE_SIZE
-    margin = BUFFER.to_f / EXTENT
-    # Older activities stored their path without an SRID; every path is lon/lat.
+    column = "activities.tile_path_z#{TILE_PATH_ZOOMS.find { |band_zoom| z <= band_zoom }}"
+    envelope = ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?)", z, x, y ])
+    buffered = ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?, margin => ?)", z, x, y, BUFFER.to_f / EXTENT ])
     features = activities
-      .where("activities.path && ST_Transform(ST_TileEnvelope(?, ?, ?, margin => ?), 4326)", z, x, y, margin)
-      .select(ActiveRecord::Base.sanitize_sql_array([ <<~SQL.squish, tolerance, z, x, y, EXTENT, BUFFER ]))
-        ST_AsMVTGeom(
-          ST_Simplify(ST_Transform(ST_SetSRID(activities.path, 4326), 3857), ?),
-          ST_TileEnvelope(?, ?, ?), ?, ?, true
-        ) AS geom
-      SQL
+      .where("#{column} && #{buffered}")
+      .select("ST_AsMVTGeom(ST_ClipByBox2D(#{column}, #{buffered}), #{envelope}, #{EXTENT}, #{BUFFER}, true) AS geom")
 
     sql = ActiveRecord::Base.sanitize_sql_array([ <<~SQL.squish, LAYER, EXTENT ])
-      SELECT ST_AsMVT(features, ?, ?, 'geom') FROM (#{features.to_sql}) AS features WHERE geom IS NOT NULL
+      SELECT ST_AsMVT(features, ?, ?, 'geom') FROM (#{features.to_sql}) AS features
     SQL
     ActiveRecord::Base.connection.select_all(sql).cast_values.first.to_s
   end

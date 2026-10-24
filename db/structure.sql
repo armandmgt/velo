@@ -149,7 +149,12 @@ CREATE TABLE public.activities (
     path public.geometry(LineString),
     name_pending boolean DEFAULT false NOT NULL,
     visibility character varying DEFAULT 'private'::character varying NOT NULL,
-    recording_uuid uuid
+    recording_uuid uuid,
+    tile_path_z7 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (611.5)::double precision)) STORED,
+    tile_path_z9 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (152.9)::double precision)) STORED,
+    tile_path_z11 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (38.2)::double precision)) STORED,
+    tile_path_z13 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (9.6)::double precision)) STORED,
+    tile_path_z14 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (0.6)::double precision)) STORED
 );
 
 
@@ -577,10 +582,38 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
--- Name: index_activities_on_path; Type: INDEX; Schema: public; Owner: -
+-- Name: index_activities_on_tile_path_z11; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_activities_on_path ON public.activities USING gist (path);
+CREATE INDEX index_activities_on_tile_path_z11 ON public.activities USING gist (tile_path_z11);
+
+
+--
+-- Name: index_activities_on_tile_path_z13; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z13 ON public.activities USING gist (tile_path_z13);
+
+
+--
+-- Name: index_activities_on_tile_path_z14; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z14 ON public.activities USING gist (tile_path_z14);
+
+
+--
+-- Name: index_activities_on_tile_path_z7; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z7 ON public.activities USING gist (tile_path_z7);
+
+
+--
+-- Name: index_activities_on_tile_path_z9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z9 ON public.activities USING gist (tile_path_z9);
 
 
 --

@@ -3,6 +3,10 @@ class Activity < ApplicationRecord
   include ActivityMetrics
   include ActivityHeartRateZones
 
+  # Heatmap tile paths are only read in SQL and together outweigh `path`, so
+  # loading an activity leaves them behind.
+  self.ignored_columns += Heatmap::TILE_PATH_ZOOMS.map { "tile_path_z#{it}" }
+
   belongs_to :user
   has_many :activity_data_points, dependent: :destroy
 
