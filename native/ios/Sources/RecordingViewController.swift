@@ -378,6 +378,7 @@ final class RecordingViewController: UIViewController {
         compactElapsedLabel.font = .monospacedDigitSystemFont(ofSize: 20, weight: .bold)
         compactElapsedLabel.textColor = Palette.ink
         compactElapsedLabel.text = "0:00"
+        compactElapsedLabel.accessibilityIdentifier = "elapsedTime"
 
         compactSpeedLabel.font = .monospacedDigitSystemFont(ofSize: 20, weight: .bold)
         compactSpeedLabel.textColor = accentColor
