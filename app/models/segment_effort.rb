@@ -75,4 +75,9 @@ class SegmentEffort < ApplicationRecord
   def speed
     meters / elapsed_seconds
   end
+
+  # Always timed, never held watts — the best-effort helpers render both kinds.
+  def power?
+    false
+  end
 end
