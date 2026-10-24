@@ -150,6 +150,24 @@ fr:
       shareable_hint: "Quiconque a le lien"
       public: "Publique"
       public_hint: "Visible par vos amis"
+  heatmap:
+    nav:
+      label: "Carte de chaleur"
+    show:
+      title: "Carte de chaleur"
+      activity_count:
+        zero: "Aucune activité"
+        one: "1 activité"
+        other: "%{count} activités"
+      empty: "Aucune activité ne correspond à ces filtres."
+    filters:
+      sport: "Sport"
+      period: "Période"
+      all_sports: "Tous les sports"
+      all_time: "Depuis toujours"
+      custom: "Personnalisée"
+      from: "Du"
+      to: "Au"
   date:
     abbr_day_names:
       - dim

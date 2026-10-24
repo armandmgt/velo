@@ -1,0 +1,49 @@
+<% content_for :title, t("heatmap.show.title") %>
+
+<%= content_for :head do %>
+  <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  <% end %>
+<% end %>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-6">
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-4">
+    <div>
+      <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0 hotwire-native:hidden"><%= t("heatmap.show.title") %></h1>
+      <p id="heatmap_activity_count" class="text-sm opacity-60 m-0"><%= t("heatmap.show.activity_count", count: @activity_count) %></p>
+    </div>
+
+    <%= form_with url: heatmap_path, method: :get, class: "flex flex-wrap gap-2",
+                  data: { controller: "auto-submit", turbo_action: "replace" } do |form| %>
+      <%= form.select :sport, heatmap_sport_options(@heatmap), {},
+                      class: "select select-sm w-auto", aria: { label: t("heatmap.filters.sport") },
+                      data: { action: "auto-submit#submit" } %>
+      <%= form.select :period, heatmap_period_options(@heatmap, @years), {},
+                      class: "select select-sm w-auto", aria: { label: t("heatmap.filters.period") },
+                      data: { action: "auto-submit#submit" } %>
+      <% if @heatmap.custom_period? %>
+        <%= form.date_field :from, value: @heatmap.from, class: "input input-sm w-auto",
+                            aria: { label: t("heatmap.filters.from") }, data: { action: "auto-submit#submit" } %>
+        <%= form.date_field :to, value: @heatmap.to, class: "input input-sm w-auto",
+                            aria: { label: t("heatmap.filters.to") }, data: { action: "auto-submit#submit" } %>
+      <% end %>
+    <% end %>
+  </header>
+
+  <div class="relative">
+    <div id="heatmap_map"
+         data-controller="heatmap"
+         data-action="turbo:before-morph-element->heatmap#keepMap"
+         data-heatmap-tiles-url-value="<%= heatmap_tiles_url_template(@heatmap) %>"
+         data-heatmap-bounds-value="<%= (@bounds || []).to_json %>"
+         data-heatmap-max-zoom-value="<%= Heatmap::MAX_ZOOM %>"
+         class="h-[calc(100dvh-14rem)] min-h-[360px] overflow-hidden rounded-box"></div>
+
+    <% if @bounds.nil? %>
+      <p class="absolute inset-x-0 top-4 z-1 mx-auto w-fit max-w-[90%] rounded-box bg-base-100/90 px-4 py-2 text-sm shadow">
+        <%= t("heatmap.show.empty") %>
+      </p>
+    <% end %>
+  </div>
+</main>

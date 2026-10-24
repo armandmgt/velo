@@ -50,6 +50,11 @@ Rails.application.routes.draw do
     patch :visibility, on: :member, action: :update_visibility
   end
 
+  resource :heatmap, only: :show do
+    get "tiles/:z/:x/:y", action: :tile, as: :tile, format: false,
+        constraints: { z: /\d+/, x: /\d+/, y: /\d+/ }
+  end
+
   get "/a/:token", to: "shared/activities#show", as: :shared_activity
   get "/r/:token(.:format)", to: "shared/planned_routes#show",
       as: :shared_planned_route, constraints: { format: /(html|gpx)/ }
