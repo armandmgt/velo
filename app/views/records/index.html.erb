@@ -16,6 +16,7 @@
 
       <%= form_with url: records_path, method: :get, data: { controller: "auto-submit", turbo_action: "replace" } do |form| %>
         <%= form.hidden_field :category, value: category %>
+        <%= form.hidden_field :curve_period, value: @power_curve.period if @power_curve %>
         <%= form.label :year, "Année", class: "sr-only" %>
         <%= form.select :year, options_for_select(@years, @records.year),
                         { include_blank: "Toutes les années" },
@@ -52,28 +53,40 @@
     <h2 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Meilleurs efforts</h2>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
       <% @records.distances.each_key do |distance| %>
-        <% podium = @records.podiums.fetch(distance, []) %>
-        <div id="records_<%= distance %>" class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4">
-          <div class="font-bold text-sm mb-1"><%= best_effort_label(distance) %></div>
-          <% if podium.empty? %>
-            <p class="text-sm opacity-50 py-2 border-t border-base-200">Aucun effort</p>
-          <% end %>
-          <% podium.each do |effort| %>
-            <%= link_to activity_path(effort.activity_id),
-                        class: "grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-3 py-2 border-t border-base-200 hover:opacity-70 transition-opacity" do %>
-              <span><%= best_effort_badge(effort.podium_position) %></span>
-              <span class="min-w-0">
-                <span class="block truncate text-sm"><%= effort.activity_name %></span>
-                <span class="block text-xs opacity-60"><%= l effort.activity_start_time.in_time_zone(PersonalRecords::ZONE).to_date, format: :long %></span>
-              </span>
-              <span class="text-right">
-                <span class="block font-bold text-primary font-mono tabular-nums"><%= best_effort_time(effort) %></span>
-                <span class="block text-xs opacity-60"><%= best_effort_rate(effort, category) %></span>
-              </span>
-            <% end %>
-          <% end %>
-        </div>
+        <%= render "records/podium", key: distance, podium: @records.podiums.fetch(distance, []), category: %>
       <% end %>
     </div>
   </section>
+
+  <% if @power_curve && !@power_curve.empty? %>
+    <section id="power_records" class="mt-8">
+      <h2 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Puissance</h2>
+
+      <div id="power_curve" class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4 mb-3.5"
+           data-controller="power-curve-chart"
+           data-power-curve-chart-data-value="<%= @power_curve.chart_data.to_json %>"
+           data-power-curve-chart-labels-value="<%= { all_time: t("power_curve.all_time"), compared: @power_curve.periods.fetch(@power_curve.period) }.to_json %>">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <h3 class="font-bold text-sm m-0"><%= t("power_curve.title") %></h3>
+          <%= form_with url: records_path, method: :get, data: { controller: "auto-submit", turbo_action: "replace" } do |form| %>
+            <%= form.hidden_field :category, value: category %>
+            <%= form.hidden_field :year, value: @records.year if @records.year %>
+            <%= form.label :curve_period, t("power_curve.compare_label"), class: "text-xs opacity-60 mr-1" %>
+            <%= form.select :curve_period, options_for_select(@power_curve.periods.invert, @power_curve.period), {},
+                            class: "select select-sm w-44", data: { action: "change->auto-submit#submit" } %>
+          <% end %>
+        </div>
+        <div class="relative h-64">
+          <canvas id="power_curve_canvas" data-turbo-permanent data-power-curve-chart-target="canvas" role="img" aria-label="<%= t("power_curve.aria") %>"></canvas>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+        <% @records.power_durations.each_key do |key| %>
+          <%= render "records/podium", key:, podium: @records.podiums.fetch(key, []), category:,
+                                       label: t("best_effort.power_label", duration: best_effort_label(key)) %>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
 </main>

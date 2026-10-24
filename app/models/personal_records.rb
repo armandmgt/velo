@@ -1,6 +1,6 @@
 # A rider's current records in one sport category, optionally within a year:
-# the top 3 kept best efforts per standard distance, plus Strava's two
-# single-value ride records for cycling.
+# the top 3 kept best efforts per standard distance (and, for cycling, per
+# power duration), plus Strava's two single-value ride records for cycling.
 class PersonalRecords
   CATEGORIES = %i[cycling running].freeze
   ZONE = "Europe/Paris".freeze
@@ -18,7 +18,11 @@ class PersonalRecords
     BestEffort::DISTANCES.fetch(category)
   end
 
-  # { distance key => [fastest, 2nd, 3rd] }, each effort carrying
+  def power_durations
+    category == :cycling ? BestEffort::POWER_DURATIONS : {}
+  end
+
+  # { effort key => [best, 2nd, 3rd] }, each effort carrying
   # `activity_name` and `activity_start_time`.
   def podiums
     @podiums ||= BestEffort
@@ -56,7 +60,8 @@ class PersonalRecords
       "activities.name AS activity_name",
       "activities.start_time AS activity_start_time",
       "ROW_NUMBER() OVER (PARTITION BY best_efforts.distance " \
-      "ORDER BY best_efforts.elapsed_seconds, activities.start_time) AS podium_position"
+      "ORDER BY best_efforts.average_power DESC NULLS LAST, best_efforts.elapsed_seconds, " \
+      "activities.start_time) AS podium_position"
     )
   end
 
