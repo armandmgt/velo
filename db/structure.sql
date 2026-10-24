@@ -152,7 +152,9 @@ CREATE TABLE public.activities (
     recording_uuid uuid,
     map_hidden boolean DEFAULT false NOT NULL,
     effort_score numeric(7,1),
-    effort_score_source character varying
+    effort_score_source character varying,
+    normalized_power double precision,
+    power_curve jsonb
 );
 
 
@@ -234,12 +236,13 @@ CREATE TABLE public.best_efforts (
     activity_id bigint NOT NULL,
     distance character varying NOT NULL,
     elapsed_seconds double precision NOT NULL,
-    start_index integer NOT NULL,
-    end_index integer NOT NULL,
+    start_index integer,
+    end_index integer,
     rank integer,
     removed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    average_power double precision
 );
 
 
@@ -441,7 +444,8 @@ CREATE TABLE public.users (
     max_heart_rate integer,
     email_verified_at timestamp(6) without time zone,
     name character varying,
-    map_hide_start_end_distance integer DEFAULT 200 NOT NULL
+    map_hide_start_end_distance integer DEFAULT 200 NOT NULL,
+    ftp integer
 );
 
 
@@ -837,6 +841,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024140000'),
 ('20261024120103'),
 ('20261024120020'),
 ('20261024100100'),

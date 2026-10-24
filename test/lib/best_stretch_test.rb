@@ -34,4 +34,11 @@ class BestStretchTest < ActiveSupport::TestCase
     assert_nil stretch.minimum(11)
     assert_nil BestStretch.new(axis: [], measure: []).maximum(1)
   end
+
+  test "each_stretch yields every window in axis order" do
+    stretch = BestStretch.new(axis: [ 0, 1, 2, 3 ], measure: [ 0, 100, 400, 700 ])
+
+    assert_equal [ 400.0, 600.0 ], stretch.each_stretch(2).map(&:value)
+    assert_empty stretch.each_stretch(4).to_a
+  end
 end

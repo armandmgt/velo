@@ -1,4 +1,7 @@
-# An Activity's fastest stretch over a standard distance (see CONTEXT.md).
+# An Activity's fastest stretch over a standard distance, or its highest
+# average power over a standard duration (see CONTEXT.md). Both kinds share the
+# `distance` column as their key; a power effort's `elapsed_seconds` is its
+# duration and `average_power` what it is ranked on.
 #
 # `rank` is the PR / 2nd / 3rd standing the effort earned against the rider's
 # earlier activities when it was ingested, and never changes afterwards. A
@@ -25,6 +28,13 @@ class BestEffort < ApplicationRecord
 
   METERS = DISTANCES.values.reduce(:merge).freeze
 
+  # Strava's power durations for rides, in seconds.
+  POWER_DURATIONS = {
+    "power_5s" => 5, "power_30s" => 30, "power_1m" => 60, "power_5m" => 300,
+    "power_10m" => 600, "power_20m" => 1_200, "power_30m" => 1_800,
+    "power_1h" => 3_600, "power_2h" => 7_200
+  }.freeze
+
   # Fastest plausible sustained speed per category (m/s): above a world-class
   # sprint on foot, above a fast descent on a bike.
   MAX_SPEED = { running: 12.5, cycling: 28.0 }.freeze
@@ -33,10 +43,12 @@ class BestEffort < ApplicationRecord
 
   belongs_to :activity
 
-  validates :distance, inclusion: { in: METERS.keys }
+  validates :distance, inclusion: { in: METERS.keys + POWER_DURATIONS.keys }
   validates :rank, inclusion: { in: 1..PODIUM }, allow_nil: true
+  validates :average_power, presence: true, if: :power?
 
   scope :kept, -> { where(removed_at: nil) }
+  scope :power, -> { where(distance: POWER_DURATIONS.keys) }
 
   def self.sports_in(category)
     Activity::SPORT_CATEGORY.select { |_, cat| cat == category }.keys.map(&:to_s)
@@ -61,17 +73,51 @@ class BestEffort < ApplicationRecord
     end
   end
 
-  def self.rank_against_earlier(activity, distance, elapsed_seconds)
+  # Builds (without saving) the power efforts a PowerSeries yields. Offsets
+  # index the activity's located points, like distance efforts, so the map can
+  # highlight the stretch; an activity without a path has none.
+  def self.build_power_for(activity, series, located_points)
+    times = located_points.map(&:recorded_at)
+
+    POWER_DURATIONS.filter_map do |key, seconds|
+      best = series.best(seconds) or next
+      start_index, end_index = path_span(times, best.start_time, best.end_time)
+
+      activity.best_efforts.build(
+        distance:        key,
+        elapsed_seconds: seconds,
+        average_power:   best.watts,
+        start_index:,
+        end_index:,
+        rank:            rank_against_earlier(activity, key, best.watts, by: :average_power)
+      )
+    end
+  end
+
+  # First located point at or after each bound; none when the stretch starts
+  # past the last fix.
+  def self.path_span(times, start_time, end_time)
+    start_index = times.bsearch_index { |t| t >= start_time } or return
+    [ start_index, times.bsearch_index { |t| t >= end_time } || times.size - 1 ]
+  end
+
+  # `by: :average_power` ranks the highest first, `:elapsed_seconds` the
+  # fastest first.
+  def self.rank_against_earlier(activity, distance, value, by: :elapsed_seconds)
     return unless activity.user
 
-    faster = kept.joins(:activity)
+    better = kept.joins(:activity)
       .where(distance:, activities: { user_id: activity.user_id, sport: sports_in(activity.sport_category) })
-      .where(elapsed_seconds: ...elapsed_seconds)
+      .where(by == :average_power ? arel_table[:average_power].gt(value) : arel_table[:elapsed_seconds].lt(value))
       .where.not(activity_id: activity.id)
-    faster = faster.where(activities: { start_time: ...activity.start_time }) if activity.start_time
+    better = better.where(activities: { start_time: ...activity.start_time }) if activity.start_time
 
-    position = faster.count + 1
+    position = better.count + 1
     position if position <= PODIUM
+  end
+
+  def power?
+    POWER_DURATIONS.key?(distance)
   end
 
   def meters

@@ -125,6 +125,22 @@ An Activity's training stress — zone-weighted heart-rate time, or TSS when it
 has power and the rider has an FTP. Absent when it has neither.
 _Avoid_: Relative Effort, Suffer Score, load (load is the curve, not the score)
 
+**FTP** (puissance au seuil):
+The power a rider can hold for about an hour, set by the rider in watts. Velo
+suggests 95 % of their best 20-minute power from the last six months but never
+applies it on its own. Anchors the power zones and TSS.
+_Avoid_: Threshold, CP
+
+**Puissance pondérée** (weighted average power):
+An Activity's normalized power: the 30-second rolling average raised to the 4th
+power, averaged, then the 4th root. Rides only.
+_Avoid_: NP in the UI, average power (that's the plain mean)
+
+**Courbe de puissance** (power curve):
+The best average power an Activity held for every duration from 1 s to its
+length. Across a rider's rides, the best per duration forms their curve.
+_Avoid_: Power profile, mean-max
+
 **Forme** (fitness / fatigue / form):
 The rolling curves built from daily effort scores: fitness (~42-day average),
 fatigue (~7-day), and form, their difference.

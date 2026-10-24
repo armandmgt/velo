@@ -5,15 +5,18 @@ class SyntheticTrack
 
   attr_reader :points
 
-  def initialize(start: Time.utc(2026, 6, 1, 8))
+  def initialize(start: Time.utc(2026, 6, 1, 8), power: nil)
     @time   = start
+    @power  = power
     @meters = 0.0
     @points = []
     sample
   end
 
-  # Moves `meters` at `speed` m/s, sampling every `every` metres.
-  def move(meters, speed:, every: speed)
+  # Moves `meters` at `speed` m/s, sampling every `every` metres, each sample
+  # carrying `power` watts when given.
+  def move(meters, speed:, every: speed, power: nil)
+    @power = power
     remaining = meters.to_f
     while remaining > 1e-9
       hop = [ every, remaining ].min
@@ -26,7 +29,8 @@ class SyntheticTrack
   end
 
   # Stays put for `seconds`, still sampling every second.
-  def stop(seconds)
+  def stop(seconds, power: nil)
+    @power = power
     seconds.times do
       @time += 1
       sample
@@ -36,7 +40,8 @@ class SyntheticTrack
 
   def to_gpx(type: "running")
     trkpts = points.map do |point|
-      %(<trkpt lat="#{point.lat}" lon="#{point.lon}"><time>#{point.recorded_at.utc.iso8601(3)}</time></trkpt>)
+      extensions = "<extensions><power>#{point.power}</power></extensions>" if point.power
+      %(<trkpt lat="#{point.lat}" lon="#{point.lon}"><time>#{point.recorded_at.utc.iso8601(3)}</time>#{extensions}</trkpt>)
     end
     %(<?xml version="1.0"?><gpx><trk><type>#{type}</type><trkseg>#{trkpts.join}</trkseg></trk></gpx>)
   end
@@ -44,6 +49,6 @@ class SyntheticTrack
   private
 
   def sample
-    @points << Track::Point.new(recorded_at: @time, lat: 0.0, lon: @meters / METERS_PER_DEGREE)
+    @points << Track::Point.new(recorded_at: @time, lat: 0.0, lon: @meters / METERS_PER_DEGREE, power: @power)
   end
 end

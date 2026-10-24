@@ -84,4 +84,38 @@ class BestEffortTest < ActiveSupport::TestCase
     assert_in_delta 20 * 60, replacement.elapsed_seconds, 1
     assert_equal 1, replacement.rank, "an activity doesn't compete with its own previous efforts"
   end
+  # A 1 Hz ride holding `watts` for 6 minutes.
+  def power_ride(watts, on:, sport: :bike)
+    track = SyntheticTrack.new(start: on, power: watts).move(360 * 8.0, speed: 8.0, power: watts)
+    activity = @user.activities.build(name: "Sortie #{watts} W", sport:)
+    ActivityIngestion.call(activity, StringIO.new(track.to_gpx(type: "cycling")), filename: "ride.gpx",
+                           reverse_geocode: false)
+    activity.save!
+    activity
+  end
+
+  def five_min_power(activity)
+    activity.best_efforts.find_by!(distance: "power_5m")
+  end
+
+  test "power efforts earn PR / 2nd / 3rd by highest average power" do
+    power_ride(250, on: Time.utc(2026, 1, 1))
+    power_ride(240, on: Time.utc(2026, 1, 2))
+
+    third  = power_ride(230, on: Time.utc(2026, 2, 1))
+    second = power_ride(245, on: Time.utc(2026, 3, 1))
+    pr     = power_ride(300, on: Time.utc(2026, 4, 1))
+    off    = power_ride(200, on: Time.utc(2026, 5, 1))
+
+    assert_equal [ 3, 2, 1, nil ], [ third, second, pr, off ].map { five_min_power(it).rank }
+    assert_in_delta 300, five_min_power(pr).average_power, 0.01
+    assert_equal 300, five_min_power(pr).elapsed_seconds
+  end
+
+  test "a removed power effort doesn't rank later ones" do
+    glitch = power_ride(900, on: Time.utc(2026, 1, 1))
+    five_min_power(glitch).remove!
+
+    assert_equal 1, five_min_power(power_ride(250, on: Time.utc(2026, 2, 1))).rank
+  end
 end
