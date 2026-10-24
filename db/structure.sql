@@ -153,7 +153,12 @@ CREATE TABLE public.activities (
     gear_id bigint,
     map_hidden boolean DEFAULT false NOT NULL,
     effort_score numeric(7,1),
-    effort_score_source character varying
+    effort_score_source character varying,
+    tile_path_z7 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (611.5)::double precision)) STORED,
+    tile_path_z9 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (152.9)::double precision)) STORED,
+    tile_path_z11 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (38.2)::double precision)) STORED,
+    tile_path_z13 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (9.6)::double precision)) STORED,
+    tile_path_z14 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (0.6)::double precision)) STORED
 );
 
 
@@ -955,6 +960,41 @@ CREATE INDEX index_activities_on_path_geography ON public.activities USING gist 
 
 
 --
+-- Name: index_activities_on_tile_path_z11; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z11 ON public.activities USING gist (tile_path_z11);
+
+
+--
+-- Name: index_activities_on_tile_path_z13; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z13 ON public.activities USING gist (tile_path_z13);
+
+
+--
+-- Name: index_activities_on_tile_path_z14; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z14 ON public.activities USING gist (tile_path_z14);
+
+
+--
+-- Name: index_activities_on_tile_path_z7; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z7 ON public.activities USING gist (tile_path_z7);
+
+
+--
+-- Name: index_activities_on_tile_path_z9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_tile_path_z9 ON public.activities USING gist (tile_path_z9);
+
+
+--
 -- Name: index_activities_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1254,6 +1294,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20261024150000'),
 ('20261024130000'),
 ('20261024120103'),
+('20261024120024'),
 ('20261024120020'),
 ('20261024100100'),
 ('20261024100000'),

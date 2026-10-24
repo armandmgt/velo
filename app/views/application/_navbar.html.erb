@@ -77,6 +77,12 @@
           <% end %>
         </li>
         <li>
+          <%= link_to heatmap_path, data: bridge_nav_item_data("bridge-ios-image": "flame", "bridge-android-image": "local_fire_department") do %>
+            <%= icon "flame", class: "size-[1.2em]" %>
+            <%= t("heatmap.nav.label") %>
+          <% end %>
+        </li>
+        <li>
           <%= link_to edit_igpsport_connection_path, data: bridge_nav_item_data do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations

@@ -44,6 +44,9 @@ class ConfigurationsController < ApplicationController
     { patterns: [ "^/planned_routes(/|$)" ], properties: { tab: "planned_routes" } }
   ].freeze
 
+  # Full-screen maps: a downward drag pans the map, it must not reload the page.
+  MAP_PATTERNS = [ "^/heatmap(\\?|$)" ].freeze
+
   def ios_v1
     render json: ios_configuration
   end
@@ -70,6 +73,7 @@ class ConfigurationsController < ApplicationController
         rules: [
           { patterns: [ "/.*" ], properties: { context: "default", pull_to_refresh_enabled: true } },
           *TAB_RULES,
+          { patterns: MAP_PATTERNS, properties: { pull_to_refresh_enabled: false } },
           { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
           { patterns: [ "/session/new$", "/users/new$" ], properties: AUTH_OVERRIDE }
         ]
@@ -92,6 +96,7 @@ class ConfigurationsController < ApplicationController
             }
           },
           *TAB_RULES,
+          { patterns: MAP_PATTERNS, properties: { pull_to_refresh_enabled: false } },
           { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
           { patterns: [ "/session/new$", "/users/new$" ], properties: AUTH_OVERRIDE }
         ]

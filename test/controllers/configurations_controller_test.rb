@@ -13,6 +13,7 @@ class ConfigurationsControllerTest < ActionDispatch::IntegrationTest
     assert_kind_of Array, body["rules"]
     assert body["rules"].any? { |rule| rule["patterns"].include?("/.*") }
     assert_cross_tab_rules body["rules"]
+    assert_heatmap_disables_pull_to_refresh body["rules"]
     assert_map_settings body["settings"]
   end
 
@@ -27,10 +28,22 @@ class ConfigurationsControllerTest < ActionDispatch::IntegrationTest
     catch_all = rules.find { |rule| rule["patterns"].include?(".*") }
     assert_equal "hotwire://fragment/web", catch_all.dig("properties", "uri")
     assert_cross_tab_rules rules
+    assert_heatmap_disables_pull_to_refresh rules
     assert_map_settings response.parsed_body["settings"]
   end
 
   private
+    # The heatmap is a full-screen map: dragging down must pan it, not reload it.
+    def assert_heatmap_disables_pull_to_refresh(rules)
+      heatmap = rules.rindex do |rule|
+        rule["patterns"].any? { |pattern| Regexp.new(pattern).match?("/heatmap") } &&
+          rule["properties"].key?("pull_to_refresh_enabled")
+      end
+      assert_equal false, rules[heatmap].dig("properties", "pull_to_refresh_enabled")
+      assert rules[heatmap]["patterns"].any? { |pattern| Regexp.new(pattern).match?("/heatmap?sport=running") }
+      assert rules[heatmap]["patterns"].none? { |pattern| Regexp.new(pattern).match?("/heatmap/tiles/1/0/0") }
+    end
+
     # The native recording screen's MapLibre map reads its style URL + accent from
     # `settings.map` at launch (there's no webview to bridge it over).
     def assert_map_settings(settings)
