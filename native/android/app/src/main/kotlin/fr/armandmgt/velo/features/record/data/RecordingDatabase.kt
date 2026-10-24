@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 /** Room store for in-progress recordings. Single process-wide instance. */
 @Database(
     entities = [RecordingSessionEntity::class, RecordingPointEntity::class, RecordingLapEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class RecordingDatabase : RoomDatabase() {
@@ -46,13 +46,31 @@ abstract class RecordingDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * What an unsent recording needs to rebuild its handoff (#117). Explicit for
+         * the same reason as [MIGRATION_1_2]: a phone may be holding exactly the
+         * recording this exists to rescue.
+         */
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `recording_sessions` ADD COLUMN `sport` TEXT")
+                for (column in listOf("elapsed", "distance", "movingTime", "averageSpeed")) {
+                    db.execSQL("ALTER TABLE `recording_sessions` ADD COLUMN `$column` REAL NOT NULL DEFAULT 0")
+                }
+                db.execSQL("ALTER TABLE `recording_sessions` ADD COLUMN `stoppedAt` INTEGER")
+            }
+        }
+
+        /** Every upgrade path, oldest first — what [get] opens the store with. */
+        internal val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+
         fun get(context: Context): RecordingDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     RecordingDatabase::class.java,
                     "recording.db",
-                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
+                ).addMigrations(*MIGRATIONS).build().also { instance = it }
             }
     }
 }

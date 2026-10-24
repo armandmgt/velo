@@ -122,6 +122,9 @@ class RecordingService : Service() {
     private var lastLongitude: Double? = null
     private var lastAccuracy: Float? = null
 
+    /** The latest point write, so Arrêter's totals land after it. */
+    private var lastPointWrite: Job? = null
+
     /**
      * Watches the fix stream for pause automatique. Inert until [startRecording]
      * arms it from the preference as it stood at Démarrer, so a ride records under
@@ -153,11 +156,12 @@ class RecordingService : Service() {
 
     inner class LocalBinder : Binder() {
         val uiState: StateFlow<RecordingUiState> get() = _uiState.asStateFlow()
-        fun start() = this@RecordingService.startRecording()
+        fun start(sport: Sport) = this@RecordingService.startRecording(sport)
         fun pause() = this@RecordingService.pause()
         fun resume() = this@RecordingService.resume()
         fun markLap() = this@RecordingService.markLap()
-        fun stop() = this@RecordingService.stopRecording()
+        /** Completes once the session's totals are stored, so the handoff can be built from them. */
+        fun stop(): Job = this@RecordingService.stopRecording()
 
         /** The in-progress session id (main thread), so Stop can locate its points to encode. */
         fun sessionId(): String? = this@RecordingService.session?.id
@@ -212,7 +216,7 @@ class RecordingService : Service() {
      * and the row exists before the next fix so points always have a session to
      * attach to. A no-op once a session is open (guards against a double tap).
      */
-    private fun startRecording() {
+    private fun startRecording(sport: Sport) {
         if (session != null) return
         val autoPauseEnabled = AutoPauseSetting.isEnabled(this)
         ioScope.launch {
@@ -227,6 +231,7 @@ class RecordingService : Service() {
                 startedAt = System.currentTimeMillis(),
                 state = RecordingState.RECORDING.ordinal,
                 lapCount = 1,
+                sport = sport.wire,
             )
             dao.insertSession(newSession)
 
@@ -298,7 +303,11 @@ class RecordingService : Service() {
             horizontalAccuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else 0.0,
             lap = lap,
         )
-        ioScope.launch { dao.insertPoint(point) }
+        val elapsed = elapsedMs() / 1000.0
+        lastPointWrite = ioScope.launch {
+            dao.insertPoint(point)
+            dao.updateElapsed(current.id, elapsed)
+        }
 
         emitState()
     }
@@ -345,7 +354,8 @@ class RecordingService : Service() {
         accumulator.breakSegment()
         recordingState = target
         stopTicker()
-        ioScope.launch { dao.updateState(current.id, target.ordinal) }
+        val elapsed = accumulatedElapsedMs / 1000.0
+        ioScope.launch { dao.updateState(current.id, target.ordinal, elapsed) }
         updateNotification()
         emitState()
     }
@@ -355,7 +365,8 @@ class RecordingService : Service() {
         stretchStartMs = SystemClock.elapsedRealtime()
         recordingState = RecordingState.RECORDING
         startTicker()
-        ioScope.launch { dao.updateState(current.id, RecordingState.RECORDING.ordinal) }
+        val elapsed = accumulatedElapsedMs / 1000.0
+        ioScope.launch { dao.updateState(current.id, RecordingState.RECORDING.ordinal, elapsed) }
         updateNotification()
         emitState()
     }
@@ -394,15 +405,27 @@ class RecordingService : Service() {
         emitState()
     }
 
-    /** Finalize the session to STOPPED, then tear the service down. */
-    private fun stopRecording() {
+    /**
+     * Store the session's totals and finalize it to STOPPED, then tear the service
+     * down. With no session (merely armed) it only tears down.
+     */
+    private fun stopRecording(): Job {
         val id = session?.id
+        // Snapshot before the clock below stops.
+        val elapsed = elapsedMs() / 1000.0
+        val distance = accumulator.distance
+        val movingTime = accumulator.movingSeconds
+        val averageSpeed = accumulator.averageSpeed()
+        val pendingPoint = lastPointWrite
         session = null
         recordingState = RecordingState.STOPPED
         stopTicker()
         fusedClient.removeLocationUpdates(locationCallback)
-        ioScope.launch {
-            if (id != null) dao.updateState(id, RecordingState.STOPPED.ordinal)
+        return ioScope.launch {
+            pendingPoint?.join()
+            if (id != null) {
+                dao.finish(id, distance, elapsed, movingTime, averageSpeed, System.currentTimeMillis())
+            }
             withContext(Dispatchers.Main) { stopSelf() }
         }
     }

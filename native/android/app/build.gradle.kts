@@ -117,4 +117,9 @@ dependencies {
 
     // Pure-JVM unit tests (e.g. the GPX encoder's locale-safe formatting, #57).
     testImplementation("junit:junit:4.13.2")
+    // Robolectric gives the JVM tests a real SQLite and `android.location.Location`,
+    // so the Room queries, the store migrations and the stats derived from stored
+    // points run against the code that ships rather than against fakes.
+    testImplementation("org.robolectric:robolectric:4.16")
+    testImplementation("androidx.test:core-ktx:1.7.0")
 }

@@ -25,6 +25,13 @@ class RecordingReviewComponent(
 
     private val fragment get() = delegate.destination.fragment
 
+    /**
+     * The recording this page was opened for, taken when it first connects.
+     * Committing or discarding clears this one, never whatever is pending by then,
+     * so a resent review and a fresh one can't clear each other's.
+     */
+    private var handoff: RecordingHandoff.Payload? = null
+
     override fun onReceive(message: Message) {
         when (message.event) {
             "connect" -> handleConnect()
@@ -43,15 +50,16 @@ class RecordingReviewComponent(
      * right answer if encoding fails.
      */
     private fun encodedHandoff(): String? {
-        val pending = RecordingHandoff.pending ?: return null
-        return runCatching { RecordingHandoff.encode(pending) }
+        val handoff = handoff ?: RecordingHandoff.pending ?: return null
+        this.handoff = handoff
+        return runCatching { RecordingHandoff.encode(handoff) }
             .onFailure { Log.e("RecordingReviewComponent", "handoff encoding failed", it) }
             .getOrNull()
     }
 
     private fun handleCommitted(message: Message) {
         val url = message.data<CommittedData>()?.url
-        clearPendingRecording()
+        clearRecording()
 
         val activity = fragment.activity as? MainActivity
         activity?.onBackPressedDispatcher?.onBackPressed()
@@ -64,20 +72,23 @@ class RecordingReviewComponent(
             .setTitle(R.string.recording_discard_confirm_title)
             .setMessage(R.string.recording_discard_confirm_message)
             .setPositiveButton(R.string.recording_discard) { _, _ ->
-                clearPendingRecording()
+                clearRecording()
                 fragment.activity?.onBackPressedDispatcher?.onBackPressed()
             }
             .setNegativeButton(R.string.recording_discard_cancel, null)
             .show()
     }
 
-    private fun clearPendingRecording() {
-        val pending = RecordingHandoff.pending ?: return
-        RecordingHandoff.pending = null
+    private fun clearRecording() {
+        val handoff = handoff ?: return
+        this.handoff = null
+        if (RecordingHandoff.pending?.sessionId == handoff.sessionId) RecordingHandoff.pending = null
 
-        val context = fragment.context?.applicationContext ?: return
-        val dao = RecordingDatabase.get(context).recordingDao()
-        fragment.lifecycleScope.launch { dao.deleteSession(pending.sessionId) }
+        // The activity's scope, not the fragment's: the review is popped right
+        // after this, which would cancel the delete with it.
+        val activity = fragment.activity ?: return
+        val dao = RecordingDatabase.get(activity.applicationContext).recordingDao()
+        activity.lifecycleScope.launch { dao.deleteSession(handoff.sessionId) }
     }
 
     @Serializable

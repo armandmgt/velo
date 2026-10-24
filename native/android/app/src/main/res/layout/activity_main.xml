@@ -60,4 +60,24 @@
         app:layout_constraintBottom_toTopOf="@id/bottom_nav"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- How many recordings never reached the server, pinned to the FAB's corner.
+         Elevated above the FAB, whose own elevation would otherwise draw over it. -->
+    <TextView
+        android:id="@+id/record_fab_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="20dp"
+        android:minWidth="20dp"
+        android:background="@drawable/badge_background"
+        android:elevation="16dp"
+        android:gravity="center"
+        android:paddingHorizontal="5dp"
+        android:textColor="@android:color/white"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/record_fab"
+        app:layout_constraintTop_toTopOf="@id/record_fab"
+        tools:text="2"
+        tools:visibility="visible" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

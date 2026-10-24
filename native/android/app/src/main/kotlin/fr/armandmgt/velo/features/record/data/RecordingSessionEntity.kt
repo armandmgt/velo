@@ -1,5 +1,6 @@
 package fr.armandmgt.velo.features.record.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -9,7 +10,11 @@ import androidx.room.PrimaryKey
  * Mirrors the iOS Core Data `RecordingSession` entity so the two platforms stay
  * in lock-step: exactly one session is active at a time (state != STOPPED), and a
  * session outlives the recording screen / process — it lives here in Room until
- * it's uploaded and discarded (upload is later work).
+ * the review commits its upload or the rider discards it. Any number of stopped
+ * sessions may wait meanwhile: those are the unsent recordings.
+ *
+ * The totals are stored because only the shell can compute temps écoulé, so a
+ * review rebuilt after the process is gone needs them from here.
  */
 @Entity(tableName = "recording_sessions")
 data class RecordingSessionEntity(
@@ -21,6 +26,23 @@ data class RecordingSessionEntity(
     val state: Int,
     /** Current lap ordinal (1-based); bumped by "Tour". */
     val lapCount: Int = 1,
+    /** [fr.armandmgt.velo.features.record.Sport.wire]; null on sessions recorded before it was stored. */
+    val sport: String? = null,
+    /**
+     * Temps écoulé, seconds. Kept current while recording (on every persisted
+     * point and state change), and final once [stoppedAt] is set.
+     */
+    @ColumnInfo(defaultValue = "0") val elapsed: Double = 0.0,
+    /** Final totals, written at Arrêter alongside [stoppedAt]. Meters, seconds, m/s. */
+    @ColumnInfo(defaultValue = "0") val distance: Double = 0.0,
+    @ColumnInfo(defaultValue = "0") val movingTime: Double = 0.0,
+    @ColumnInfo(defaultValue = "0") val averageSpeed: Double = 0.0,
+    /**
+     * Arrêter, epoch milliseconds. A stopped session without it was finalized some
+     * other way (an orphan, or a recording made before the totals were stored), so
+     * its totals have to be derived from its points.
+     */
+    val stoppedAt: Long? = null,
 )
 
 /**
