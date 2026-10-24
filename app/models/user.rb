@@ -23,6 +23,9 @@ class User < ApplicationRecord
 
   validates :map_hide_start_end_distance, inclusion: { in: MAP_HIDE_DISTANCE_OPTIONS }
 
+  after_update_commit -> { RefreshSegmentEffortPrivacyJob.perform_later(self) },
+                      if: :saved_change_to_map_hide_start_end_distance?
+
   def email_verified?
     email_verified_at.present?
   end

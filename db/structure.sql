@@ -392,6 +392,83 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: segment_efforts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.segment_efforts (
+    id bigint NOT NULL,
+    segment_id bigint NOT NULL,
+    activity_id bigint NOT NULL,
+    start_index integer NOT NULL,
+    end_index integer NOT NULL,
+    elapsed_seconds double precision NOT NULL,
+    private boolean DEFAULT false NOT NULL,
+    rank integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: segment_efforts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.segment_efforts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: segment_efforts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.segment_efforts_id_seq OWNED BY public.segment_efforts.id;
+
+
+--
+-- Name: segments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.segments (
+    id bigint NOT NULL,
+    user_id bigint,
+    name character varying NOT NULL,
+    sport_category character varying NOT NULL,
+    path public.geography(LineString,4326) NOT NULL,
+    start_point public.geography(Point,4326) NOT NULL,
+    end_point public.geography(Point,4326) NOT NULL,
+    altitudes double precision[] DEFAULT '{}'::double precision[] NOT NULL,
+    distance double precision NOT NULL,
+    elevation_gain double precision DEFAULT 0.0 NOT NULL,
+    average_grade double precision DEFAULT 0.0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: segments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.segments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: segments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.segments_id_seq OWNED BY public.segments.id;
+
+
+--
 -- Name: sessions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -526,6 +603,20 @@ ALTER TABLE ONLY public.planned_routes ALTER COLUMN id SET DEFAULT nextval('publ
 
 
 --
+-- Name: segment_efforts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segment_efforts ALTER COLUMN id SET DEFAULT nextval('public.segment_efforts_id_seq'::regclass);
+
+
+--
+-- Name: segments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segments ALTER COLUMN id SET DEFAULT nextval('public.segments_id_seq'::regclass);
+
+
+--
 -- Name: sessions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -636,6 +727,22 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: segment_efforts segment_efforts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segment_efforts
+    ADD CONSTRAINT segment_efforts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: segments segments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segments
+    ADD CONSTRAINT segments_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: sessions sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -677,6 +784,13 @@ CREATE UNIQUE INDEX index_active_storage_blobs_on_key ON public.active_storage_b
 --
 
 CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.active_storage_variant_records USING btree (blob_id, variation_digest);
+
+
+--
+-- Name: index_activities_on_path_geography; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_path_geography ON public.activities USING gist (((path)::public.geography));
 
 
 --
@@ -743,6 +857,55 @@ CREATE INDEX index_planned_routes_on_user_id ON public.planned_routes USING btre
 
 
 --
+-- Name: index_segment_efforts_on_activity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segment_efforts_on_activity_id ON public.segment_efforts USING btree (activity_id);
+
+
+--
+-- Name: index_segment_efforts_on_leaderboard; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segment_efforts_on_leaderboard ON public.segment_efforts USING btree (segment_id, elapsed_seconds) WHERE (NOT private);
+
+
+--
+-- Name: index_segment_efforts_on_segment_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segment_efforts_on_segment_id ON public.segment_efforts USING btree (segment_id);
+
+
+--
+-- Name: index_segments_on_end_point; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segments_on_end_point ON public.segments USING gist (end_point);
+
+
+--
+-- Name: index_segments_on_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segments_on_path ON public.segments USING gist (path);
+
+
+--
+-- Name: index_segments_on_start_point; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segments_on_start_point ON public.segments USING gist (start_point);
+
+
+--
+-- Name: index_segments_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_segments_on_user_id ON public.segments USING btree (user_id);
+
+
+--
 -- Name: index_sessions_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -773,11 +936,35 @@ ALTER TABLE ONLY public.igpsport_connections
 
 
 --
+-- Name: segment_efforts fk_rails_1b0f15ccd5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segment_efforts
+    ADD CONSTRAINT fk_rails_1b0f15ccd5 FOREIGN KEY (activity_id) REFERENCES public.activities(id) ON DELETE CASCADE;
+
+
+--
+-- Name: segments fk_rails_3499ac09b5; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segments
+    ADD CONSTRAINT fk_rails_3499ac09b5 FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
 -- Name: activity_data_points fk_rails_4fe4a431f7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.activity_data_points
     ADD CONSTRAINT fk_rails_4fe4a431f7 FOREIGN KEY (activity_id) REFERENCES public.activities(id);
+
+
+--
+-- Name: segment_efforts fk_rails_5ba8d263cd; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.segment_efforts
+    ADD CONSTRAINT fk_rails_5ba8d263cd FOREIGN KEY (segment_id) REFERENCES public.segments(id) ON DELETE CASCADE;
 
 
 --
@@ -835,6 +1022,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024150000'),
 ('20261024120103'),
 ('20261024100100'),
 ('20261024100000'),

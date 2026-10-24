@@ -81,6 +81,13 @@ class MapVisibility
     owner? || data.nil? ? data : data.merge(coordinates:)
   end
 
+  # Positions, among the located points (the path's vertices), of those the
+  # viewer may not see.
+  def hidden_vertex_indices
+    data_points.select(&:location).each_with_index
+      .filter_map { |point, index| index if hidden_ids.include?(point.id) }.to_set
+  end
+
   private
 
   def data_points
