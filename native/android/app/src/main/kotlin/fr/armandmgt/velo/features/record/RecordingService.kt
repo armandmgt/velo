@@ -100,7 +100,8 @@ class RecordingService : Service() {
 
     private val binder = LocalBinder()
 
-    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // One writer, so the store applies the running snapshots in the order they were taken.
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val dao: RecordingDao by lazy { RecordingDatabase.get(this).recordingDao() }
@@ -364,14 +365,8 @@ class RecordingService : Service() {
             horizontalAccuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else 0.0,
             lap = lap,
         )
-        val elapsed = elapsedMs() / 1000.0
-        val distance = accumulator.distance
-        val movingTime = accumulator.movingSeconds
-        val averageSpeed = accumulator.averageSpeed()
-        lastPointWrite = ioScope.launch {
-            dao.insertPoint(point)
-            dao.updateProgress(current.id, elapsed, distance, movingTime, averageSpeed)
-        }
+        lastPointWrite = ioScope.launch { dao.insertPoint(point) }
+        persistProgress(current)
 
         emitState()
     }
@@ -431,6 +426,14 @@ class RecordingService : Service() {
         persistState(current, RecordingState.RECORDING)
         updateNotification()
         emitState()
+    }
+
+    private fun persistProgress(current: RecordingSessionEntity) {
+        val elapsed = elapsedMs() / 1000.0
+        val distance = accumulator.distance
+        val movingTime = accumulator.movingSeconds
+        val averageSpeed = accumulator.averageSpeed()
+        ioScope.launch { dao.updateProgress(current.id, elapsed, distance, movingTime, averageSpeed) }
     }
 
     private fun persistState(current: RecordingSessionEntity, target: RecordingState) {
@@ -516,6 +519,9 @@ class RecordingService : Service() {
         tickerJob = mainScope.launch {
             while (isActive) {
                 delay(1000)
+                // Not only with points: through a GPS gap the clock would otherwise
+                // restore to the last fix rather than to the kill.
+                session?.let(::persistProgress)
                 emitState()
             }
         }

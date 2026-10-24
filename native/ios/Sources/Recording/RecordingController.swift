@@ -313,7 +313,7 @@ final class RecordingController: NSObject {
     private func startTicker() {
         stopTicker()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            self?.emitStats()
+            self?.tick()
         }
         RunLoop.main.add(timer, forMode: .common)
         ticker = timer
@@ -322,6 +322,13 @@ final class RecordingController: NSObject {
     private func stopTicker() {
         ticker?.invalidate()
         ticker = nil
+    }
+
+    private func tick() {
+        // Not only with points: through a GPS gap the clock would otherwise
+        // restore to the last fix rather than to the kill.
+        if let session { saveProgress(of: session) }
+        emitStats()
     }
 
     private func emitStats() {
