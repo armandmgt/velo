@@ -45,6 +45,7 @@ Rails.application.routes.draw do
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
   end
+  resources :segments, only: :show
   resources :best_efforts, only: [] do
     resource :removal, only: %i[ create destroy ], module: :best_efforts
   end

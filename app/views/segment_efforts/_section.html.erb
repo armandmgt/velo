@@ -1,0 +1,38 @@
+<%# locals: (activity:) %>
+<% efforts = activity.segment_efforts.includes(:segment).sort_by(&:start_index) %>
+<section
+  id="<%= dom_id(activity, :segment_efforts) %>"
+  class="not-prose mb-4"
+  data-controller="best-efforts"
+  <% if activity.path.present? %>data-best-efforts-map-outlet="#<%= dom_id(activity, :map) %>"<% end %>
+>
+  <div class="flex items-center justify-between mb-2">
+    <h3 class="text-sm font-semibold uppercase opacity-60">Segments</h3>
+  </div>
+  <% if efforts.any? %>
+    <ul class="overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">
+      <% efforts.each do |effort| %>
+        <li id="<%= dom_id(effort) %>" class="flex items-center gap-2 pr-2">
+          <button
+            type="button"
+            class="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-left cursor-pointer hover:bg-base-200 aria-pressed:bg-secondary/15"
+            aria-pressed="false"
+            data-best-efforts-target="effort"
+            data-action="best-efforts#select"
+            data-best-efforts-start-param="<%= effort.start_index %>"
+            data-best-efforts-end-param="<%= effort.end_index %>"
+          >
+            <span class="min-w-28 font-semibold"><%= effort.segment.name %></span>
+            <span class="font-mono tabular-nums"><%= best_effort_time(effort) %></span>
+            <span class="text-sm opacity-60"><%= best_effort_rate(effort, activity.sport_category) %></span>
+            <%= best_effort_badge(effort.rank) %>
+            <%= segment_effort_private_tag(effort) %>
+          </button>
+          <%= link_to "Classement", segment_path(effort.segment), class: "btn btn-ghost btn-xs" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm opacity-60">Aucun segment parcouru.</p>
+  <% end %>
+</section>
