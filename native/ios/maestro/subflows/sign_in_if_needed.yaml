@@ -1,0 +1,22 @@
+appId: fr.armandmgt.velo
+---
+# Sign in with the pre-filled dev user unless the session cookie survived, then
+# settle on the dashboard, retrying a tap a slow first page load swallowed. Wait for either screen first: a cold launch shows a
+# spinner while the first page loads, and the condition would read it as signed in.
+- extendedWaitUntil:
+    visible: "Se connecter|ACTIVITÉS RÉCENTES|Activités récentes"
+    timeout: 120000
+- retry:
+    maxRetries: 2
+    commands:
+      - runFlow:
+          when:
+            visible: "Se connecter"
+          commands:
+              - hideKeyboard
+              - tapOn: "Se connecter"
+      - waitForAnimationToEnd:
+          timeout: 10000
+      - extendedWaitUntil:
+          visible: "ACTIVITÉS RÉCENTES|Activités récentes"
+          timeout: 60000

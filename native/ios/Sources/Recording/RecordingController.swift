@@ -6,6 +6,10 @@ extension Notification.Name {
     /// coarse observers — the tab-bar Record button — can refresh. Mirrors the
     /// `.didSignIn` NotificationCenter pattern in `SceneDelegate`.
     static let recordingStateDidChange = Notification.Name("RecordingStateDidChange")
+
+    /// Posted when a recording joins or leaves the unsent ones (Arrêter, a
+    /// commit, a delete), so the Record button's badge and the list refresh.
+    static let unsentRecordingsDidChange = Notification.Name("UnsentRecordingsDidChange")
 }
 
 /// The long-lived owner of an in-progress recording.
@@ -61,9 +65,10 @@ final class RecordingController: NSObject {
     /// Current lap ordinal (1-based) while active, else 0. Laps are markers.
     var currentLap: Int { Int(session?.lapCount ?? 0) }
 
-    /// Lives here until the review page reports the upload committed, or the
-    /// rider discards it: `stop()` releases the controller's own reference, and
-    /// the review is a web page rather than a VC that could hold one.
+    /// The recording the next review page opens on, set by Arrêter or by
+    /// Envoyer on an unsent recording. The review is a web page rather than a VC
+    /// that could be handed it directly; `RecordingReviewComponent` picks it up
+    /// when the page connects.
     var pendingHandoff: RecordingHandoff?
 
     /// Points persisted in the current session so far (debug readout / stats).
@@ -131,12 +136,13 @@ final class RecordingController: NSObject {
         if let orphan = store.activeSession() {
             orphan.recordingState = .stopped
             store.save()
+            NotificationCenter.default.post(name: .unsentRecordingsDidChange, object: self)
         }
         recoveredPointCount = 0
         // Remember this sport so the next recording's picker defaults to it.
         Sport.lastUsed = sport
 
-        session = store.createSession()
+        session = store.createSession(sport: sport)
         pointCount = 0
         accumulator = RecordingStatsAccumulator()
         lastFixSpeed = 0
@@ -191,6 +197,7 @@ final class RecordingController: NSObject {
         accumulator.breakSegment()
         stopTicker()
         session?.recordingState = target == .autoPaused ? .autoPaused : .paused
+        session?.elapsed = accumulatedElapsed
         store.save()
         state = target
         emitStats()
@@ -234,16 +241,14 @@ final class RecordingController: NSObject {
         )
     }
 
-    /// Finalize the recording: mark it stopped, stop streaming, and return the
-    /// finalized session so the caller can serialize and upload it.
+    /// Finalize the recording: store its totals, mark it stopped, stop
+    /// streaming, and park its handoff for the review page.
     /// The session stays in the store until the upload succeeds (`discard`).
     @discardableResult
     func stop() -> RecordingSession? {
         guard isActive, let finished = session else { return nil }
         // Snapshot before the clock below resets it.
-        let handoff = RecordingHandoff(session: finished, stats: currentStats, sport: sport)
-        finished.recordingState = .stopped
-        store.save()
+        store.finish(finished, stats: currentStats)
         stopTicker()
         recorder.stop()
         // A fresh detector starts inert, so no fix can move a finished recording.
@@ -252,15 +257,33 @@ final class RecordingController: NSObject {
         accumulatedElapsed = 0
         stretchStart = nil
         state = .idle
-        pendingHandoff = handoff
+        pendingHandoff = RecordingHandoff(session: finished)
+        NotificationCenter.default.post(name: .unsentRecordingsDidChange, object: self)
         return finished
     }
 
+    /// Delete a recording with its points and laps: after its upload commits, or
+    /// when the rider discards it.
     func discard(_ session: RecordingSession) {
         if pendingHandoff?.session === session {
             pendingHandoff = nil
         }
+        // Already gone if two paths clear the same recording.
+        guard session.managedObjectContext != nil, !session.isDeleted else { return }
         store.delete(session)
+        NotificationCenter.default.post(name: .unsentRecordingsDidChange, object: self)
+    }
+
+    // MARK: - Unsent recordings
+
+    /// Stopped recordings still on the device, newest first.
+    var unsentRecordings: [RecordingSession] { store.stoppedSessions() }
+
+    var unsentRecordingCount: Int { store.stoppedSessionCount() }
+
+    /// Envoyer: point the next review page at a stored recording.
+    func prepareReview(for session: RecordingSession) {
+        pendingHandoff = RecordingHandoff(session: session)
     }
 
     // MARK: - Elapsed clock
@@ -342,6 +365,8 @@ extension RecordingController: LocationRecorderDelegate {
         let segmentSpeed = accumulator.add(location)
         lastFixSpeed = location.speed >= 0 ? location.speed : segmentSpeed
         let elevation = location.verticalAccuracy >= 0 ? location.altitude : nil
+        // Saved with the point below.
+        session.elapsed = elapsed
 
         store.appendPoint(
             to: session,

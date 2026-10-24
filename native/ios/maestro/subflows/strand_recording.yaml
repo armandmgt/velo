@@ -1,0 +1,15 @@
+appId: fr.armandmgt.velo
+---
+# Record, Arrêter, and kill the app while the review page is up: the recording
+# is stopped but never committed.
+- tapOn: "Enregistrer"
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "GPS (bon|correct|moyen|faible)"
+- tapOn: "Arrêter"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- stopApp

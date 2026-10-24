@@ -83,3 +83,16 @@ struct RecordingStatsAccumulator {
         )
     }
 }
+
+extension RecordingStats {
+    /// Totals rebuilt from stored fixes alone, for a session that was stopped
+    /// without them. Distance and durée de déplacement replay the accumulator;
+    /// temps écoulé falls back to the first-to-last fix span, which counts any
+    /// pause as riding because pauses leave no trace in the points.
+    static func derived(from fixes: [CLLocation]) -> RecordingStats {
+        var accumulator = RecordingStatsAccumulator()
+        for fix in fixes { _ = accumulator.add(fix) }
+        let span = fixes.last.map { last in fixes[0].timestamp.distance(to: last.timestamp) } ?? 0
+        return accumulator.snapshot(elapsed: span, currentSpeed: 0)
+    }
+}

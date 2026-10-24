@@ -16,6 +16,8 @@ import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,9 +33,10 @@ import kotlinx.coroutines.launch
  * Opening it *arms* GPS: once location permission is granted it starts the
  * [RecordingService] (an ongoing-notification `location` foreground service) and
  * binds to mirror the live GPS readout, but nothing is recorded until Démarrer.
- * Arrêter finalizes the session, serializes its points to GPX and uploads them,
- * handing the new activity URL back to [fr.armandmgt.velo.main.MainActivity] on
- * success (the recording is kept for a retry on failure). The service keeps
+ * Arrêter finalizes the session, parks its handoff and hands back to
+ * [fr.armandmgt.velo.main.MainActivity] to open the web review. While armed, the
+ * dock also leads to the unsent recordings, whose Envoyer takes the same way out
+ * for a recording already in the store. The service keeps
  * streaming while this Activity is backgrounded; binding is only for the UI, so
  * system back leaves an in-progress recording running (the notification brings
  * the user back) and only tears the service down when merely armed.
@@ -46,6 +49,9 @@ class RecordingActivity : ComponentActivity() {
 
     /** Pause automatique, editable only while armed — the service reads it at Démarrer. */
     private var autoPauseEnabled by mutableStateOf(true)
+
+    /** The unsent-recordings list is showing in place of the recording screen. */
+    private var showingUnsent by mutableStateOf(false)
 
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
 
@@ -93,20 +99,36 @@ class RecordingActivity : ComponentActivity() {
         // "Fermer". While only armed (nothing recorded), tear the service down.
         onBackPressedDispatcher.addCallback(this) { handleBack() }
 
+        val unsentRecordings = dao.unsentRecordings(Sport.lastUsed(this))
+
         setContent {
             VeloTheme {
-                RecordingScreen(
-                    state = screenState,
-                    selectedSport = selectedSport,
-                    onSelectSport = ::selectSport,
-                    autoPauseEnabled = autoPauseEnabled,
-                    onToggleAutoPause = ::toggleAutoPause,
-                    onStartStop = { checked -> if (checked) binder?.start() else stopRecording() },
-                    onPause = { binder?.pause() },
-                    onResume = { binder?.resume() },
-                    onLap = { binder?.markLap() },
-                    onOpenSettings = ::openAppSettings,
-                )
+                val unsent by unsentRecordings.collectAsState(initial = emptyList())
+                // Nothing left to send: the armed card is the only useful place to be.
+                LaunchedEffect(unsent.isEmpty()) { if (unsent.isEmpty()) showingUnsent = false }
+                if (showingUnsent && unsent.isNotEmpty()) {
+                    UnsentRecordingsScreen(
+                        recordings = unsent,
+                        onSend = ::send,
+                        onDelete = { id -> lifecycleScope.launch { dao.deleteSession(id) } },
+                        onBack = { showingUnsent = false },
+                    )
+                } else {
+                    RecordingScreen(
+                        state = screenState,
+                        selectedSport = selectedSport,
+                        onSelectSport = ::selectSport,
+                        autoPauseEnabled = autoPauseEnabled,
+                        onToggleAutoPause = ::toggleAutoPause,
+                        unsentCount = unsent.size,
+                        onOpenUnsent = { showingUnsent = true },
+                        onStartStop = { checked -> if (checked) binder?.start(selectedSport) else stopRecording() },
+                        onPause = { binder?.pause() },
+                        onResume = { binder?.resume() },
+                        onLap = { binder?.markLap() },
+                        onOpenSettings = ::openAppSettings,
+                    )
+                }
             }
         }
     }
@@ -153,10 +175,9 @@ class RecordingActivity : ComponentActivity() {
      */
     private fun stopRecording() {
         val id = binder?.sessionId()
-        // Capture the live stats before the service is torn down — the review screen
-        // shows this snapshot, not the (now stopped) service.
         val finalStats = (screenState as? RecordingScreenState.Streaming)?.state
-        binder?.stop() ?: RecordingService.stop(this)
+        val stopped = binder?.stop()
+        if (stopped == null) RecordingService.stop(this)
         unbindIfNeeded()
         if (id == null) {
             finish()
@@ -170,31 +191,42 @@ class RecordingActivity : ComponentActivity() {
             }
             return
         }
-        val stats = finalStats ?: RecordingUiState()
         lifecycleScope.launch {
-            val points = dao.pointsFor(id)
-            if (points.isEmpty()) {
+            stopped?.join()
+            // Read back from Room rather than from the (now stopped) service, so the
+            // review shows what survived to disk — and so a resent review is the same.
+            val handoff = RecordingHandoff.load(dao, id, selectedSport)
+            if (handoff == null) {
                 dao.deleteSession(id)
                 finish()
                 return@launch
             }
-
-            RecordingHandoff.pending = RecordingHandoff.build(
-                sessionId = id,
-                startedAt = points.first().timestamp,
-                sport = selectedSport,
-                stats = stats,
-                points = points,
-                // Read back from Room rather than from the (now stopped) service, so
-                // the splits the review renders are the ones that survived to disk.
-                laps = dao.lapsFor(id),
-            )
-            setResult(RESULT_OK, Intent().putExtra(EXTRA_OPEN_REVIEW, true))
-            finish()
+            openReview(handoff)
         }
     }
 
+    /** Envoyer: the same way out as Arrêter, for a recording already in the store. */
+    private fun send(sessionId: String) {
+        lifecycleScope.launch {
+            val handoff = RecordingHandoff.load(dao, sessionId, Sport.lastUsed(this@RecordingActivity)) ?: return@launch
+            // Only armed here (the list is out of reach mid-ride): release the GPS.
+            binder?.stop() ?: RecordingService.stop(this@RecordingActivity)
+            unbindIfNeeded()
+            openReview(handoff)
+        }
+    }
+
+    private fun openReview(handoff: RecordingHandoff.Payload) {
+        RecordingHandoff.pending = handoff
+        setResult(RESULT_OK, Intent().putExtra(EXTRA_OPEN_REVIEW, true))
+        finish()
+    }
+
     private fun handleBack() {
+        if (showingUnsent) {
+            showingUnsent = false
+            return
+        }
         if (binder?.sessionId() != null) {
             // Recording in progress: keep it running in the background, just leave.
             unbindIfNeeded()

@@ -32,6 +32,24 @@ final class RecordTabBarController: HotwireTabBarController {
     /// progress; in the `+` modes it opens `/activities/new` or `/planned_routes/new`.
     private(set) lazy var recordButton: UIButton = makeRecordButton()
 
+    /// How many recordings never reached the server, pinned to the Record
+    /// button's corner. A sibling of the button rather than a subview, so the
+    /// recording pulse doesn't fade it.
+    private lazy var unsentBadge: UILabel = {
+        let label = UILabel()
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .bold)
+        label.textColor = .white
+        label.textAlignment = .center
+        label.backgroundColor = .systemRed
+        label.layer.cornerRadius = 10
+        label.layer.masksToBounds = true
+        label.isHidden = true
+        label.isAccessibilityElement = true
+        label.accessibilityIdentifier = "unsentBadge"
+        return label
+    }()
+
     /// The FAB action resolved for the current tab + recording state.
     private var fabMode: FabMode = .record
 
@@ -79,6 +97,12 @@ final class RecordTabBarController: HotwireTabBarController {
             self,
             selector: #selector(syncRecordButton),
             name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(syncRecordButton),
+            name: .unsentRecordingsDidChange,
             object: nil
         )
         updateFab()
@@ -170,10 +194,19 @@ final class RecordTabBarController: HotwireTabBarController {
             recordButton.accessibilityLabel = "Nouveau parcours"
         }
 
+        updateUnsentBadge(visible: mode == .record && !isRecording)
+
         // Only manage the pulse while on-window (see viewDidLoad). When off-window,
         // skip it — `viewDidAppear` re-applies once the button is visible again.
         guard view.window != nil else { return }
         (mode == .record && isRecording) ? startPulsing() : stopPulsing()
+    }
+
+    private func updateUnsentBadge(visible: Bool) {
+        let count = visible ? RecordingController.shared.unsentRecordingCount : 0
+        unsentBadge.isHidden = count == 0
+        unsentBadge.text = "\(count)"
+        unsentBadge.accessibilityLabel = RecordingFormatters.unsentCount(count)
     }
 
     private func fabImage(_ systemName: String) -> UIImage? {
@@ -203,6 +236,7 @@ final class RecordTabBarController: HotwireTabBarController {
 
     private func addRecordButton() {
         view.addSubview(recordButton)
+        view.addSubview(unsentBadge)
 
         // Float the button just above the bottom tab bar on iPhone. On iPad with
         // iOS 18+/26 the tab bar is the floating *top* pill and is NOT a
@@ -219,6 +253,10 @@ final class RecordTabBarController: HotwireTabBarController {
             recordButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
             recordButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
             recordButton.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+            unsentBadge.heightAnchor.constraint(equalToConstant: 20),
+            unsentBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
+            unsentBadge.centerXAnchor.constraint(equalTo: recordButton.trailingAnchor, constant: -6),
+            unsentBadge.centerYAnchor.constraint(equalTo: recordButton.topAnchor, constant: 6),
         ])
     }
 
@@ -258,6 +296,9 @@ final class RecordTabBarController: HotwireTabBarController {
         case .record:
             presentRecording()
         case .newActivity:
+            // The plain upload form, never the review of a recording parked by an
+            // earlier Arrêter whose page failed to load.
+            RecordingController.shared.pendingHandoff = nil
             activeNavigator.route(AppConfig.baseURL.appendingPathComponent("activities/new"))
         case .newRoute:
             activeNavigator.route(AppConfig.baseURL.appendingPathComponent("planned_routes/new"))

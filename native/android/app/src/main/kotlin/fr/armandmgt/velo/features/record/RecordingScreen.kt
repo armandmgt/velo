@@ -47,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -91,6 +92,8 @@ fun RecordingScreen(
     onSelectSport: (Sport) -> Unit,
     autoPauseEnabled: Boolean,
     onToggleAutoPause: (Boolean) -> Unit,
+    unsentCount: Int,
+    onOpenUnsent: () -> Unit,
     onStartStop: (Boolean) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -108,6 +111,8 @@ fun RecordingScreen(
                 onSelectSport = onSelectSport,
                 autoPauseEnabled = autoPauseEnabled,
                 onToggleAutoPause = onToggleAutoPause,
+                unsentCount = unsentCount,
+                onOpenUnsent = onOpenUnsent,
                 onStartStop = onStartStop,
                 onPause = onPause,
                 onResume = onResume,
@@ -154,6 +159,8 @@ private fun RecordingMapScreen(
     onSelectSport: (Sport) -> Unit,
     autoPauseEnabled: Boolean,
     onToggleAutoPause: (Boolean) -> Unit,
+    unsentCount: Int,
+    onOpenUnsent: () -> Unit,
     onStartStop: (Boolean) -> Unit,
     onPause: () -> Unit,
     onResume: () -> Unit,
@@ -205,6 +212,8 @@ private fun RecordingMapScreen(
                 usesPace = selectedSport.usesPace,
                 autoPauseEnabled = autoPauseEnabled,
                 onToggleAutoPause = onToggleAutoPause,
+                unsentCount = unsentCount,
+                onOpenUnsent = onOpenUnsent,
                 onOpenLapSplits = { showLapSplits = true },
             )
             Spacer(Modifier.size(10.dp))
@@ -238,6 +247,8 @@ private fun RecordingDock(
     usesPace: Boolean,
     autoPauseEnabled: Boolean,
     onToggleAutoPause: (Boolean) -> Unit,
+    unsentCount: Int,
+    onOpenUnsent: () -> Unit,
     onOpenLapSplits: () -> Unit,
 ) {
     var collapsed by remember { mutableStateOf(false) }
@@ -263,7 +274,7 @@ private fun RecordingDock(
         }
 
         when {
-            ui.armed -> IdleDockContent(autoPauseEnabled, onToggleAutoPause)
+            ui.armed -> IdleDockContent(autoPauseEnabled, onToggleAutoPause, unsentCount, onOpenUnsent)
             collapsed -> CollapsedStats(ui, usesPace)
             else -> ExpandedStats(ui, usesPace, onOpenLapSplits)
         }
@@ -283,10 +294,16 @@ private fun GrabHandle() {
 /**
  * Dock content before Démarrer: a quiet "ready to record" card, carrying the one
  * pause-automatique toggle. It lives here because this card only exists while
- * armed — a ride records under the setting it began with.
+ * armed — a ride records under the setting it began with. The way back to unsent
+ * recordings lives here too, out of the way once a ride is under way.
  */
 @Composable
-private fun IdleDockContent(autoPauseEnabled: Boolean, onToggleAutoPause: (Boolean) -> Unit) {
+private fun IdleDockContent(
+    autoPauseEnabled: Boolean,
+    onToggleAutoPause: (Boolean) -> Unit,
+    unsentCount: Int,
+    onOpenUnsent: () -> Unit,
+) {
     Column(
         modifier = Modifier.padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 22.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -323,6 +340,24 @@ private fun IdleDockContent(autoPauseEnabled: Boolean, onToggleAutoPause: (Boole
             )
             Spacer(Modifier.width(12.dp))
             Switch(checked = autoPauseEnabled, onCheckedChange = null)
+        }
+        if (unsentCount > 0) {
+            Spacer(Modifier.size(10.dp))
+            Row(
+                modifier = Modifier
+                    .clickable(onClick = onOpenUnsent)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(painterResource(R.drawable.ic_cloud_off), contentDescription = null, tint = Rec.red, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = pluralStringResource(R.plurals.recording_unsent_count, unsentCount, unsentCount),
+                    color = Rec.red,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
     }
 }
@@ -750,6 +785,8 @@ private fun RecordingScreenStreamingPreview() {
             onSelectSport = {},
             autoPauseEnabled = true,
             onToggleAutoPause = {},
+            unsentCount = 0,
+            onOpenUnsent = {},
             onStartStop = {},
             onPause = {},
             onResume = {},

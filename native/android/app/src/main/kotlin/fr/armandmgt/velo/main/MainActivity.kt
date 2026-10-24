@@ -3,9 +3,13 @@ package fr.armandmgt.velo.main
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -17,10 +21,18 @@ import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import fr.armandmgt.velo.BuildConfig
 import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.RecordingActivity
+import fr.armandmgt.velo.features.record.RecordingHandoff
+import fr.armandmgt.velo.features.record.data.RecordingDatabase
+import kotlinx.coroutines.launch
 
 class MainActivity : HotwireActivity() {
     private lateinit var bottomNavigationController: HotwireBottomNavigationController
     private lateinit var recordFab: FloatingActionButton
+    private lateinit var unsentBadge: TextView
+
+    /** Recordings that never reached the server, counted on the Record FAB. */
+    private var unsentCount = 0
+    private var selectedTabIndex = DASHBOARD_TAB_INDEX
 
     // A finished recording parks its handoff and asks for the review, which is
     // the web `/activities/new`, presented modally by the path config.
@@ -43,6 +55,7 @@ class MainActivity : HotwireActivity() {
         // ready (→ onNavigatorReady) as part of that, and the modal listener there
         // touches recordFab.
         recordFab = findViewById(R.id.record_fab)
+        unsentBadge = findViewById(R.id.record_fab_badge)
 
         initializeBottomTabs()
 
@@ -50,6 +63,16 @@ class MainActivity : HotwireActivity() {
         // a "+" that opens the web "new" form on the Activités / Parcours tabs.
         updateFab(DASHBOARD_TAB_INDEX)
         bottomNavigationController.setOnTabSelectedListener { index, _ -> updateFab(index) }
+
+        val dao = RecordingDatabase.get(this).recordingDao()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                dao.stoppedSessions().collect { sessions ->
+                    unsentCount = sessions.size
+                    updateUnsentBadge()
+                }
+            }
+        }
     }
 
     override fun navigatorConfigurations() = mainTabs.navigatorConfigurations
@@ -75,6 +98,7 @@ class MainActivity : HotwireActivity() {
             // ("modal" / "default") the path config sets for MODAL_PATTERNS.
             val presentationContext = arguments?.getString("presentation-context")
             recordFab.isVisible = !presentationContext.equals("modal", ignoreCase = true)
+            updateUnsentBadge()
         }
 
     private fun initializeBottomTabs() {
@@ -85,8 +109,13 @@ class MainActivity : HotwireActivity() {
 
     /** Point the FAB's icon, label and tap action at whatever the selected tab needs. */
     private fun updateFab(selectedTabIndex: Int) {
+        this.selectedTabIndex = selectedTabIndex
+        updateUnsentBadge()
         when (selectedTabIndex) {
             tabIndex("activities") -> configureFab(R.drawable.ic_add, R.string.new_activity) {
+                // The plain upload form, never the review of a recording parked by
+                // an earlier Arrêter whose page failed to load.
+                RecordingHandoff.pending = null
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
             }
             tabIndex("planned_routes") -> configureFab(R.drawable.ic_add, R.string.new_route) {
@@ -96,6 +125,15 @@ class MainActivity : HotwireActivity() {
                 recordLauncher.launch(Intent(this, RecordingActivity::class.java))
             }
         }
+    }
+
+    /** Only on the Record FAB: the "+" modes have nothing to do with recordings. */
+    private fun updateUnsentBadge() {
+        val isRecordFab = selectedTabIndex != tabIndex("activities") && selectedTabIndex != tabIndex("planned_routes")
+        unsentBadge.isVisible = recordFab.isVisible && isRecordFab && unsentCount > 0
+        unsentBadge.text = unsentCount.toString()
+        unsentBadge.contentDescription =
+            resources.getQuantityString(R.plurals.recording_unsent_count, unsentCount, unsentCount)
     }
 
     private fun configureFab(iconResId: Int, contentDescriptionResId: Int, onClick: () -> Unit) {

@@ -1,0 +1,6 @@
+appId: fr.armandmgt.velo
+---
+# Relaunch after a kill, signing in again only if the session didn't survive.
+- launchApp:
+    stopApp: true
+- runFlow: sign_in_if_needed.yaml

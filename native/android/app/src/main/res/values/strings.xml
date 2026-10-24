@@ -50,6 +50,16 @@
     <string name="recording_discard_confirm_title">Supprimer cet enregistrement ?</string>
     <string name="recording_discard_confirm_message">Cette action est définitive. L\'enregistrement ne sera pas envoyé.</string>
     <string name="recording_discard_cancel">Annuler</string>
+    <plurals name="recording_unsent_count">
+        <item quantity="one">%1$d enregistrement non envoyé</item>
+        <item quantity="many">%1$d enregistrements non envoyés</item>
+        <item quantity="other">%1$d enregistrements non envoyés</item>
+    </plurals>
+    <string name="recording_unsent_title">Non envoyés</string>
+    <string name="recording_unsent_intro">Ces enregistrements sont restés sur le téléphone. Envoyez-les pour créer l\'activité.</string>
+    <string name="recording_unsent_send">Envoyer</string>
+    <string name="recording_unsent_elapsed">Temps écoulé</string>
+    <string name="recording_unsent_back">Retour</string>
 
     <!-- Visibility — match the web app's fr.yml activity.visibility.* labels (#67). -->
 

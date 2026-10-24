@@ -1,7 +1,10 @@
 package fr.armandmgt.velo.features.record
 
+import android.location.Location
+import fr.armandmgt.velo.features.record.data.RecordingDao
 import fr.armandmgt.velo.features.record.data.RecordingLapEntity
 import fr.armandmgt.velo.features.record.data.RecordingPointEntity
+import fr.armandmgt.velo.features.record.data.RecordingSessionEntity
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -18,15 +21,18 @@ import kotlin.io.encoding.Base64
  *
  * Stats travel precomputed: a paused recording drops its fixes, so from the
  * points alone nothing can tell a pause from a GPS dropout.
+ *
+ * Always built from the stored session ([load]) — at Arrêter just after the
+ * totals are written, and later for an unsent recording — so a resent review is
+ * the same handoff the first one was.
  */
 object RecordingHandoff {
     const val VERSION = 1
 
     /**
-     * Lives here between [RecordingActivity] finishing and the bridge component
-     * connecting, since the review is a web page rather than an Activity that
-     * could hold the session. In memory only — if the process dies the ride stays
-     * in Room but nothing surfaces it again.
+     * The recording the next review page opens on, set by Arrêter or by Envoyer on
+     * an unsent recording. The review is a web page rather than an Activity that
+     * could be handed it directly; the bridge component picks it up on connect.
      */
     @Volatile
     var pending: Payload? = null
@@ -82,26 +88,31 @@ object RecordingHandoff {
             timeZone = TimeZone.getTimeZone("UTC")
         }
 
+    /**
+     * The handoff for a stored session, or null when there is nothing to review
+     * (no such session, or no points). [fallbackSport] covers sessions recorded
+     * before the sport was stored.
+     */
+    suspend fun load(dao: RecordingDao, sessionId: String, fallbackSport: Sport): Payload? {
+        val session = dao.session(sessionId) ?: return null
+        val points = dao.pointsFor(sessionId)
+        if (points.isEmpty()) return null
+        return build(session, points, dao.lapsFor(sessionId), fallbackSport)
+    }
+
     fun build(
-        sessionId: String,
-        startedAt: Long,
-        sport: Sport,
-        stats: RecordingUiState,
+        session: RecordingSessionEntity,
         points: List<RecordingPointEntity>,
         laps: List<RecordingLapEntity>,
+        fallbackSport: Sport,
     ): Payload {
         val formatter = iso8601
         return Payload(
             // Survives a kill, so a replay mints the same key.
-            recordingUuid = sessionId,
-            sport = sport.wire,
-            startedAt = formatter.format(Date(startedAt)),
-            stats = Stats(
-                distance = stats.distanceMeters,
-                elapsed = stats.elapsedSeconds.toDouble(),
-                movingTime = stats.movingSeconds,
-                averageSpeed = stats.averageSpeedMps,
-            ),
+            recordingUuid = session.id,
+            sport = sportOf(session, fallbackSport).wire,
+            startedAt = formatter.format(Date(points.first().timestamp)),
+            stats = finalStats(session, points),
             laps = laps.map { lap ->
                 Lap(
                     ordinal = lap.ordinal,
@@ -120,7 +131,43 @@ object RecordingHandoff {
                     pw = point.power,
                 )
             },
-        ).also { it.sessionId = sessionId }
+        ).also { it.sessionId = session.id }
+    }
+
+    fun sportOf(session: RecordingSessionEntity, fallback: Sport): Sport =
+        Sport.entries.firstOrNull { it.wire == session.sport } ?: fallback
+
+    /**
+     * The totals a recording ended with: the ones stored at Arrêter, or, for a
+     * session stopped without them, totals derived from its [points]. A running
+     * temps écoulé snapshot beats the point span when one was kept.
+     */
+    fun finalStats(session: RecordingSessionEntity, points: List<RecordingPointEntity>): Stats {
+        if (session.stoppedAt != null) {
+            return Stats(session.distance, session.elapsed, session.movingTime, session.averageSpeed)
+        }
+        val derived = derivedStats(points)
+        return if (session.elapsed > 0) derived.copy(elapsed = session.elapsed) else derived
+    }
+
+    /**
+     * Distance and durée de déplacement replay the accumulator over the stored
+     * points; temps écoulé falls back to the first-to-last span, which counts any
+     * pause as riding because pauses leave no trace in the points.
+     */
+    fun derivedStats(points: List<RecordingPointEntity>): Stats {
+        val accumulator = RecordingStatsAccumulator()
+        for (point in points) {
+            accumulator.add(
+                Location("recording").apply {
+                    latitude = point.latitude
+                    longitude = point.longitude
+                    time = point.timestamp
+                },
+            )
+        }
+        val span = if (points.isEmpty()) 0.0 else (points.last().timestamp - points.first().timestamp) / 1000.0
+        return Stats(accumulator.distance, span, accumulator.movingSeconds, accumulator.averageSpeed())
     }
 
     /**
