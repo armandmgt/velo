@@ -186,6 +186,19 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "edit offers to hide the map" do
+    get edit_activity_url(@activity)
+
+    assert_select "input[type=checkbox][name='activity[map_hidden]']"
+  end
+
+  test "hides an activity's map" do
+    patch activity_url(@activity), params: { activity: { map_hidden: "1" } }
+
+    assert_redirected_to activity_url(@activity)
+    assert_predicate @activity.reload, :map_hidden?
+  end
+
   test "should update activity" do
     patch activity_url(@activity), params: { activity: { description: @activity.description, name: @activity.name, sport: @activity.sport } }
     assert_redirected_to activity_url(@activity)

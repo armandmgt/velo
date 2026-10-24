@@ -1,0 +1,34 @@
+<%# locals: (zone:) %>
+
+<%= content_for :head do %>
+  <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  <% end %>
+<% end %>
+
+<%= form_with model: zone, class: "not-prose max-w-3xl w-full space-y-4",
+              data: { controller: "zone-picker" } do |form| %>
+  <fieldset>
+    <%= form.label :name, "Nom (facultatif)", class: "block mb-2 text-sm font-medium" %>
+    <%= form.text_field :name, placeholder: "Domicile, travail…", maxlength: 50,
+          class: class_names("w-full input", { "input-error": zone.errors.include?(:name) }) %>
+  </fieldset>
+
+  <fieldset>
+    <%= form.label :radius, "Rayon", class: "block mb-2 text-sm font-medium" %>
+    <%= form.select :radius, MapPrivacyZone::RADIUS_OPTIONS.map { [ map_distance_label(it), it ] }, {},
+          class: "w-full select", data: { zone_picker_target: "radius", action: "zone-picker#redraw" } %>
+  </fieldset>
+
+  <fieldset>
+    <p class="mb-2 text-sm font-medium">Emplacement</p>
+    <p class="mb-2 text-xs opacity-60">Touchez la carte pour placer le centre de la zone.</p>
+    <div data-zone-picker-target="map"
+         class="<%= class_names("h-[360px] overflow-hidden rounded-box", { "outline-2 outline-error": zone.errors.include?(:latitude) }) %>"></div>
+    <%= form.hidden_field :latitude, data: { zone_picker_target: "latitude" } %>
+    <%= form.hidden_field :longitude, data: { zone_picker_target: "longitude" } %>
+  </fieldset>
+
+  <%= form.submit "Enregistrer", class: "btn btn-accent" %>
+<% end %>

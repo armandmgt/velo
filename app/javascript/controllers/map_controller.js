@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import * as maplibregl from "maplibre-gl"
-import { primaryAccentColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
+import { primaryAccentColor, resolveCssColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
 
 export default class extends Controller {
   static values = {
@@ -9,8 +9,14 @@ export default class extends Controller {
     route: Object,
   }
 
+  #accentColor
+  #marker
+  #coordinates
+  #styleReady = false
+  #pendingStretch = null
+
   connect() {
-    this._accentColor = primaryAccentColor()
+    this.#accentColor = primaryAccentColor()
 
     // Compute initial bounds from route to avoid post-load zoom animation
     let initialBounds = null
@@ -23,7 +29,12 @@ export default class extends Controller {
       }
 
       if (route && route.geometry && route.geometry.coordinates?.length) {
-        const coords = route.geometry.coordinates
+        // A non-owner's track arrives as a MultiLineString once its hidden
+        // portion is cut out.
+        const coords = route.geometry.type === "MultiLineString"
+          ? route.geometry.coordinates.flat()
+          : route.geometry.coordinates
+        this.#coordinates = coords
         initialGeojson = { type: "FeatureCollection", features: [route] }
         initialBounds = coords.reduce(
           (b, c) => b.extend(c),
@@ -50,6 +61,7 @@ export default class extends Controller {
     this.map.addControl(new FitToBoundsControl(initialBounds))
 
     this.map.on("load", () => {
+      this.#styleReady = true
       if (!this.hasRouteValue) return
 
       const geojson = initialGeojson || {
@@ -67,7 +79,7 @@ export default class extends Controller {
         type: "line",
         source: "route",
         paint: {
-          "line-color": this._accentColor,
+          "line-color": this.#accentColor,
           "line-width": 3,
         },
       })
@@ -82,12 +94,14 @@ export default class extends Controller {
           "line-opacity": 0.9
         }
       }, "geojson-line")
+
+      if (this.#pendingStretch) this.highlightStretch(...this.#pendingStretch)
     })
   }
 
   disconnect() {
-    this._marker?.remove()
-    this._marker = undefined
+    this.#marker?.remove()
+    this.#marker = undefined
     this.map?.remove()
     this.map = undefined
   }
@@ -95,23 +109,62 @@ export default class extends Controller {
   // Outlet API: move a marker to the given [lng, lat] (used by the charts to
   // highlight the route position under the hovered data point).
   showPoint(coordinate) {
-    if (!this.map || !coordinate) return
+    if (!this.map) return
+    if (!coordinate) return this.hidePoint()
 
-    if (!this._marker) {
+    if (!this.#marker) {
       const el = document.createElement("div")
       el.style.width = "14px"
       el.style.height = "14px"
       el.style.borderRadius = "9999px"
-      el.style.background = this._accentColor
+      el.style.background = this.#accentColor
       el.style.border = "2px solid #ffffff"
       el.style.boxShadow = "0 0 0 1px rgba(0, 0, 0, 0.25)"
-      this._marker = new maplibregl.Marker({ element: el })
+      this.#marker = new maplibregl.Marker({ element: el })
     }
 
-    this._marker.setLngLat(coordinate).addTo(this.map)
+    this.#marker.setLngLat(coordinate).addTo(this.map)
   }
 
   hidePoint() {
-    this._marker?.remove()
+    this.#marker?.remove()
+  }
+
+  // Outlet API: draw the route vertices [startIndex..endIndex] over the route
+  // (a best effort's stretch) and frame them.
+  highlightStretch(startIndex, endIndex) {
+    const coordinates = this.#coordinates?.slice(startIndex, endIndex + 1)
+    if (!this.map || !coordinates || coordinates.length < 2) return
+    if (!this.#styleReady) {
+      this.#pendingStretch = [ startIndex, endIndex ]
+      return
+    }
+
+    const data = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }
+    const source = this.map.getSource("stretch")
+    if (source) {
+      source.setData(data)
+    } else {
+      const secondary = getComputedStyle(document.documentElement).getPropertyValue("--color-secondary").trim()
+      this.map.addSource("stretch", { type: "geojson", data })
+      this.map.addLayer({
+        id: "stretch-line",
+        type: "line",
+        source: "stretch",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": resolveCssColor(secondary) || "#f97316", "line-width": 6 },
+      })
+    }
+
+    const bounds = coordinates.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
+    )
+    this.map.fitBounds(bounds, { padding: 60, maxZoom: 16 })
+  }
+
+  clearStretch() {
+    this.#pendingStretch = null
+    this.map?.getSource("stretch")?.setData({ type: "FeatureCollection", features: [] })
   }
 }

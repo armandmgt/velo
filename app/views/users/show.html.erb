@@ -32,6 +32,40 @@
     <%= link_to "Gérer mon matériel", gears_path, class: "btn not-prose" %>
   </section>
 
+  <section id="map-visibility">
+    <h2>Visibilité de la carte</h2>
+    <p class="text-sm opacity-70">Ces réglages s'appliquent aux activités que vous partagez, y compris celles déjà partagées. Vous voyez toujours vos propres cartes en entier, et les statistiques restent complètes.</p>
+
+    <%= form_with model: @user, url: user_path, method: :patch, class: "not-prose max-w-xs space-y-4" do |form| %>
+      <fieldset>
+        <%= form.label :map_hide_start_end_distance, "Masquer le début et la fin", class: "block mb-2 text-sm font-medium" %>
+        <%= form.select :map_hide_start_end_distance,
+              User::MAP_HIDE_DISTANCE_OPTIONS.map { [ map_distance_label(it), it ] },
+              {}, class: "w-full select" %>
+        <p class="mt-1 text-xs opacity-60">Distance masquée le long du tracé, au départ et à l'arrivée de chaque activité.</p>
+      </fieldset>
+
+      <%= form.submit "Enregistrer", class: "btn btn-primary" %>
+    <% end %>
+
+    <h3>Zones masquées</h3>
+    <p class="text-sm opacity-70">Tout passage dans une de ces zones est masqué, y compris en milieu d'activité.</p>
+
+    <ul class="not-prose flex flex-col gap-2 mb-4">
+      <% @map_privacy_zones.each do |zone| %>
+        <li id="<%= dom_id zone %>" class="flex items-center justify-between gap-3 rounded-box bg-base-200 px-4 py-3">
+          <span>
+            <span class="font-medium"><%= zone.name || "Zone sans nom" %></span>
+            <span class="text-sm opacity-60">· rayon <%= map_distance_label(zone.radius) %></span>
+          </span>
+          <%= link_to "Modifier", edit_map_privacy_zone_path(zone), class: "btn btn-sm" %>
+        </li>
+      <% end %>
+    </ul>
+
+    <%= link_to "Ajouter une zone", new_map_privacy_zone_path, class: "btn not-prose" %>
+  </section>
+
   <section>
     <h2 class="text-error">Zone dangereuse</h2>
 

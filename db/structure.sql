@@ -150,7 +150,8 @@ CREATE TABLE public.activities (
     name_pending boolean DEFAULT false NOT NULL,
     visibility character varying DEFAULT 'private'::character varying NOT NULL,
     recording_uuid uuid,
-    gear_id bigint
+    gear_id bigint,
+    map_hidden boolean DEFAULT false NOT NULL
 );
 
 
@@ -221,6 +222,43 @@ CREATE TABLE public.ar_internal_metadata (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
+
+
+--
+-- Name: best_efforts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.best_efforts (
+    id bigint NOT NULL,
+    activity_id bigint NOT NULL,
+    distance character varying NOT NULL,
+    elapsed_seconds double precision NOT NULL,
+    start_index integer NOT NULL,
+    end_index integer NOT NULL,
+    rank integer,
+    removed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: best_efforts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.best_efforts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: best_efforts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.best_efforts_id_seq OWNED BY public.best_efforts.id;
 
 
 --
@@ -378,6 +416,40 @@ ALTER SEQUENCE public.igpsport_connections_id_seq OWNED BY public.igpsport_conne
 
 
 --
+-- Name: map_privacy_zones; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.map_privacy_zones (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    name character varying,
+    center public.geography(Point,4326) NOT NULL,
+    radius integer DEFAULT 200 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: map_privacy_zones_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.map_privacy_zones_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: map_privacy_zones_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.map_privacy_zones_id_seq OWNED BY public.map_privacy_zones.id;
+
+
+--
 -- Name: planned_routes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -473,7 +545,8 @@ CREATE TABLE public.users (
     admin boolean DEFAULT false NOT NULL,
     max_heart_rate integer,
     email_verified_at timestamp(6) without time zone,
-    name character varying
+    name character varying,
+    map_hide_start_end_distance integer DEFAULT 200 NOT NULL
 );
 
 
@@ -532,6 +605,13 @@ ALTER TABLE ONLY public.activity_data_points ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: best_efforts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.best_efforts ALTER COLUMN id SET DEFAULT nextval('public.best_efforts_id_seq'::regclass);
+
+
+--
 -- Name: gear_components id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -557,6 +637,13 @@ ALTER TABLE ONLY public.gears ALTER COLUMN id SET DEFAULT nextval('public.gears_
 --
 
 ALTER TABLE ONLY public.igpsport_connections ALTER COLUMN id SET DEFAULT nextval('public.igpsport_connections_id_seq'::regclass);
+
+
+--
+-- Name: map_privacy_zones id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.map_privacy_zones ALTER COLUMN id SET DEFAULT nextval('public.map_privacy_zones_id_seq'::regclass);
 
 
 --
@@ -629,6 +716,14 @@ ALTER TABLE ONLY public.ar_internal_metadata
 
 
 --
+-- Name: best_efforts best_efforts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.best_efforts
+    ADD CONSTRAINT best_efforts_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: data_migrations data_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -666,6 +761,14 @@ ALTER TABLE ONLY public.gears
 
 ALTER TABLE ONLY public.igpsport_connections
     ADD CONSTRAINT igpsport_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: map_privacy_zones map_privacy_zones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.map_privacy_zones
+    ADD CONSTRAINT map_privacy_zones_pkey PRIMARY KEY (id);
 
 
 --
@@ -757,6 +860,27 @@ CREATE UNIQUE INDEX index_activity_data_points_on_activity_id_and_recorded_at ON
 
 
 --
+-- Name: index_best_efforts_on_activity_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_best_efforts_on_activity_id ON public.best_efforts USING btree (activity_id);
+
+
+--
+-- Name: index_best_efforts_on_activity_id_and_distance; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_best_efforts_on_activity_id_and_distance ON public.best_efforts USING btree (activity_id, distance);
+
+
+--
+-- Name: index_best_efforts_on_distance_and_elapsed_seconds; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_best_efforts_on_distance_and_elapsed_seconds ON public.best_efforts USING btree (distance, elapsed_seconds) WHERE (removed_at IS NULL);
+
+
+--
 -- Name: index_gear_components_on_gear_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -792,6 +916,13 @@ CREATE UNIQUE INDEX index_igpsport_connections_on_user_id ON public.igpsport_con
 
 
 --
+-- Name: index_map_privacy_zones_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_map_privacy_zones_on_user_id ON public.map_privacy_zones USING btree (user_id);
+
+
+--
 -- Name: index_planned_routes_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -810,6 +941,14 @@ CREATE INDEX index_sessions_on_user_id ON public.sessions USING btree (user_id);
 --
 
 CREATE UNIQUE INDEX index_users_on_email_address ON public.users USING btree (email_address);
+
+
+--
+-- Name: map_privacy_zones fk_rails_03658e8520; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.map_privacy_zones
+    ADD CONSTRAINT fk_rails_03658e8520 FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -893,6 +1032,14 @@ ALTER TABLE ONLY public.active_storage_attachments
 
 
 --
+-- Name: best_efforts fk_rails_cbd8dcb843; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.best_efforts
+    ADD CONSTRAINT fk_rails_cbd8dcb843 FOREIGN KEY (activity_id) REFERENCES public.activities(id) ON DELETE CASCADE;
+
+
+--
 -- Name: planned_routes fk_rails_dda957683d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -915,6 +1062,9 @@ ALTER TABLE ONLY public.gears
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024130000'),
+('20261024120103'),
+('20261024100100'),
 ('20261024100000'),
 ('20260908120000'),
 ('20260907190943'),

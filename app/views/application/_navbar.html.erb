@@ -53,6 +53,12 @@
           <% end %>
         </li>
         <li>
+          <%= link_to records_path do %>
+            <%= icon "trophy", class: "size-[1.2em]" %>
+            Records
+          <% end %>
+        </li>
+        <li>
           <%= link_to planned_routes_path do %>
             <%= icon "route", class: "size-[1.2em]" %>
             <%= t("planned_route.nav.label") %>

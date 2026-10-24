@@ -3,6 +3,7 @@ class UsersController < ApplicationController
 
   def show
     @user = Current.user
+    @map_privacy_zones = @user.map_privacy_zones.order(:created_at)
   end
 
   def update
@@ -11,6 +12,7 @@ class UsersController < ApplicationController
       redirect_to user_path, notice: "Profil mis à jour."
     else
       flash.now[:alert] = "Enregistrement impossible : #{@user.errors.full_messages.to_sentence}."
+      @map_privacy_zones = @user.map_privacy_zones.order(:created_at)
       render :show, status: :unprocessable_content
     end
   end
@@ -43,6 +45,6 @@ class UsersController < ApplicationController
   end
 
   def profile_params
-    params.expect(user: [ :name, :max_heart_rate ])
+    params.expect(user: [ :name, :max_heart_rate, :map_hide_start_end_distance ])
   end
 end

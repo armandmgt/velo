@@ -6,7 +6,8 @@
 <% end %>
 
 <% max_hr = activity.user.max_heart_rate %>
-<% chart_data = activity.chart_data(max_heart_rate: max_hr) %>
+<% map_visibility = MapVisibility.new(activity, viewer: local_assigns.fetch(:viewer) { Current.user }) %>
+<% chart_data = map_visibility.chart_data(max_heart_rate: max_hr) %>
 <% hr_zones = activity.heart_rate_zone_distribution(max_hr) %>
 <% map_id = dom_id(activity, :map) %>
 
@@ -41,19 +42,20 @@
 
   <%= render "shared/summary_metrics", metrics: activity_summary_metrics(activity) %>
 
-  <% if activity.path.present? %>
+  <% if map_visibility.show_map? %>
+    <% map_lng, map_lat = map_visibility.center %>
     <div
       id="<%= map_id %>"
       data-controller="map"
-      data-map-lng-value="<%= activity.path.points.first.x %>"
-      data-map-lat-value="<%= activity.path.points.first.y %>"
-      data-map-route-value="<%= activity.path_geojson %>"
+      data-map-lng-value="<%= map_lng %>"
+      data-map-lat-value="<%= map_lat %>"
+      data-map-route-value="<%= map_visibility.path_geojson %>"
       class="map my-4 h-[400px] overflow-hidden rounded-box"
     ></div>
   <% end %>
 
-  <% if (elevation_data = activity.elevation_chart_data) %>
-    <%= render "activities/elevation_profile", elevation_data: elevation_data, map_target: (activity.path.present? ? "##{map_id}" : nil) %>
+  <% if (elevation_data = map_visibility.elevation_chart_data) %>
+    <%= render "activities/elevation_profile", elevation_data: elevation_data, map_target: (map_visibility.show_map? ? "##{map_id}" : nil) %>
   <% end %>
 
   <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>

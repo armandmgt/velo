@@ -12,15 +12,17 @@ export default class extends Controller {
 
   static outlets = [ "map", "route-planner" ]
 
-  connect() {
-    this._buildChart(this.dataValue)
+  #onMouseLeave
 
-    this._onMouseLeave = () => this._hideHighlight()
-    this.element.addEventListener("mouseleave", this._onMouseLeave)
+  connect() {
+    this.#buildChart(this.dataValue)
+
+    this.#onMouseLeave = () => this.#hideHighlight()
+    this.element.addEventListener("mouseleave", this.#onMouseLeave)
   }
 
   disconnect() {
-    this.element.removeEventListener("mouseleave", this._onMouseLeave)
+    this.element.removeEventListener("mouseleave", this.#onMouseLeave)
     this.chart?.destroy()
     this.chart = undefined
   }
@@ -42,7 +44,7 @@ export default class extends Controller {
       return
     }
 
-    this._buildChart(data)
+    this.#buildChart(data)
     this.element.classList.remove("hidden")
   }
 
@@ -58,7 +60,7 @@ export default class extends Controller {
 
   // --- chart ---
 
-  _buildChart(data) {
+  #buildChart(data) {
     if (!data?.labels?.length) return
 
     this.chart = new Chart(this.element.getContext("2d"), {
@@ -79,7 +81,7 @@ export default class extends Controller {
       options: {
         animation: false,
         interaction: { mode: "index", intersect: false },
-        onHover: (_event, active) => this._onHover(active),
+        onHover: (_event, active) => this.#onHover(active),
         plugins: {
           legend: { display: false },
           tooltip: {
@@ -87,7 +89,7 @@ export default class extends Controller {
               label: (ctx) => ctx.parsed.y !== null
                 ? `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(ctx.parsed.y)} m`
                 : "",
-              title: (items) => this._formatX(items[0]?.label, items[0]?.dataIndex),
+              title: (items) => this.#formatX(items[0]?.label, items[0]?.dataIndex),
             },
           },
         },
@@ -95,7 +97,7 @@ export default class extends Controller {
           x: {
             ticks: {
               callback: (_value, index) =>
-                this._formatX(this.chart?.data.labels[index], index),
+                this.#formatX(this.chart?.data.labels[index], index),
             },
           },
           y: { ticks: { callback: (v) => `${v} m` } },
@@ -104,7 +106,7 @@ export default class extends Controller {
     })
   }
 
-  _formatX(rawLabel, _index) {
+  #formatX(rawLabel, _index) {
     if (rawLabel == null) return ""
     if (this.xModeValue === "distance") {
       const meters = Number(rawLabel)
@@ -123,8 +125,8 @@ export default class extends Controller {
     return new Intl.DurationFormat(undefined, { style: "narrow" }).format({ hours, minutes, seconds })
   }
 
-  _onHover(active) {
-    const target = this._hoverTarget()
+  #onHover(active) {
+    const target = this.#hoverTarget()
     if (!target) return
 
     if (active.length > 0) {
@@ -137,11 +139,11 @@ export default class extends Controller {
     target.hidePoint?.()
   }
 
-  _hideHighlight() {
-    this._hoverTarget()?.hidePoint?.()
+  #hideHighlight() {
+    this.#hoverTarget()?.hidePoint?.()
   }
 
-  _hoverTarget() {
+  #hoverTarget() {
     if (this.hasMapOutlet) return this.mapOutlet
     if (this.hasRoutePlannerOutlet) return this.routePlannerOutlet
     return null

@@ -76,6 +76,16 @@
     <%= render "shared/visibility_picker", form: form, model_key: "activity" %>
   </div>
 
+  <% unless recording %>
+    <div class="mb-5">
+      <label class="flex items-center gap-3 text-sm font-medium">
+        <%= form.check_box :map_hidden, class: "toggle toggle-primary" %>
+        Masquer la carte
+      </label>
+      <p class="mt-1 text-xs opacity-60">Les personnes avec qui vous partagez cette activité ne verront pas la carte. Les statistiques restent visibles.</p>
+    </div>
+  <% end %>
+
   <%= tag.div class: "mb-5",
               data: (recording ? { "bridge--recording-review-target": "fileField" } : {}) do %>
     <%= form.label :source_file, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>

@@ -36,6 +36,7 @@ Rails.application.routes.draw do
 
   resources :users, only: %i[ new create ]
   resource :user, only: %i[ show update destroy ]
+  resources :map_privacy_zones, only: %i[ new create edit update destroy ]
   resource :session, only: %i[ show new create destroy ]
   resource :email_verification, only: %i[ show create ]
   resources :passwords, param: :token
@@ -53,6 +54,10 @@ Rails.application.routes.draw do
       post :replace, on: :member
     end
   end
+  resources :best_efforts, only: [] do
+    resource :removal, only: %i[ create destroy ], module: :best_efforts
+  end
+  resources :records, only: :index
   resources :planned_routes, only: %i[ index new create edit update show destroy ] do
     post :preview, on: :collection
     post :import_gpx, on: :collection
