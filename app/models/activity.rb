@@ -5,6 +5,7 @@ class Activity < ApplicationRecord
 
   belongs_to :user
   has_many :activity_data_points, dependent: :destroy
+  has_many :best_efforts, dependent: :delete_all, autosave: true
 
   has_one_attached :source_file
 
