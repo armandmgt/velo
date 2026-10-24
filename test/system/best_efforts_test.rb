@@ -14,17 +14,17 @@ class BestEffortsTest < ApplicationSystemTestCase
     activity
   end
 
-  # Vertices of the map's best-effort highlight. Without a MapTiler key the
-  # test map's style never loads, so the highlight waits as pending instead.
+  # Vertices of the map's best-effort highlight, as the map controller exposes
+  # it on its element — set even while the style is still loading, which it
+  # never finishes without a MapTiler key.
   def highlighted_vertices(activity)
     page.evaluate_script(<<~JS)
       (() => {
         const element = document.getElementById("map_activity_#{activity.id}")
-        const map = window.Stimulus.getControllerForElementAndIdentifier(element, "map")
-        const source = map?.map?.getSource("stretch")
-        if (source) return source.serialize().data.geometry.coordinates.length
-        const pending = map?._pendingStretch
-        return pending ? pending[1] - pending[0] + 1 : 0
+        const stretch = element?.dataset.highlightedStretch
+        if (!stretch) return 0
+        const [start, end] = stretch.split("-").map(Number)
+        return end - start + 1
       })()
     JS
   end

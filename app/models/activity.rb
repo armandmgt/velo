@@ -8,6 +8,7 @@ class Activity < ApplicationRecord
   belongs_to :gear, optional: true
   has_many :activity_data_points, dependent: :destroy
   has_many :best_efforts, dependent: :delete_all, autosave: true
+  has_many :segment_efforts, dependent: :delete_all, autosave: true
 
   has_one_attached :source_file
 
@@ -44,6 +45,9 @@ class Activity < ApplicationRecord
   # `_later` variant coalesces the burst of broadcasts a bulk sync emits.
   after_commit :broadcast_activity_refresh
 
+  # The hidden portion is only computable once the data points are stored.
+  after_save -> { SegmentEffort.refresh_privacy(self) }, if: :segment_effort_privacy_stale?
+
   def broadcast_activity_refresh
     broadcast_refresh_later_to(user, :activities)
   end
@@ -76,6 +80,11 @@ class Activity < ApplicationRecord
 
   def sport_icon_name
     { cycling: "bike", running: "sport-shoe", other: "zap" }.fetch(sport_category)
+  end
+
+  def segment_effort_privacy_stale?
+    previously_new_record? || saved_change_to_visibility? || saved_change_to_map_hidden? ||
+      association(:segment_efforts).target.any?(&:previously_new_record?)
   end
 
   def shareable_link?

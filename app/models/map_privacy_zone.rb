@@ -20,6 +20,7 @@ class MapPrivacyZone < ApplicationRecord
   end
 
   before_save { self.center = "SRID=4326;POINT(#{longitude} #{latitude})" }
+  after_commit { RefreshSegmentEffortPrivacyJob.perform_later(user) }
 
   private
 

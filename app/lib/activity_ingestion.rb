@@ -56,6 +56,7 @@ class ActivityIngestion
     apply_location(track)
     apply_fallbacks
     apply_best_efforts(track)
+    apply_segment_efforts(track)
     track.problems.each { |problem| activity.errors.add(:source_file, problem) }
   end
 
@@ -117,6 +118,11 @@ class ActivityIngestion
   def apply_best_efforts(track)
     activity.best_efforts.each(&:mark_for_destruction)
     BestEffort.build_for(activity, track.located_points)
+  end
+
+  def apply_segment_efforts(track)
+    activity.segment_efforts.each(&:mark_for_destruction)
+    SegmentEffort.build_for(activity, track.located_points)
   end
 
   def apply_fallbacks

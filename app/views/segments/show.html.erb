@@ -1,0 +1,83 @@
+<% content_for :title, @segment.name %>
+<%= content_for :head do %>
+  <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  <% end %>
+<% end %>
+<% category = @segment.sport_category.to_sym %>
+<% map_id = dom_id(@segment, :map) %>
+<% best = @efforts.min_by(&:elapsed_seconds) %>
+
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <header class="not-prose flex items-center gap-3">
+    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <%= icon({ cycling: "bike", running: "sport-shoe" }.fetch(category), class: "size-6") %>
+    </span>
+    <div>
+      <h1 class="m-0 text-xl font-bold leading-tight"><%= @segment.name %></h1>
+      <span class="text-xs uppercase font-semibold opacity-60">
+        <%= t("activity.sport_group.#{category}") %> · <%= segment_figures(@segment) %>
+      </span>
+    </div>
+  </header>
+
+  <% start = @segment.path.points.first %>
+  <div
+    id="<%= map_id %>"
+    data-controller="map"
+    data-map-lng-value="<%= start.x %>"
+    data-map-lat-value="<%= start.y %>"
+    data-map-route-value="<%= @segment.path_geojson %>"
+    class="map my-4 h-[320px] overflow-hidden rounded-box"
+  ></div>
+
+  <% if (elevation_data = @segment.elevation_chart_data) %>
+    <%= render "activities/elevation_profile", elevation_data:, map_target: "##{map_id}", x_mode: "distance" %>
+  <% end %>
+
+  <section id="<%= dom_id(@segment, :own_efforts) %>" class="not-prose mb-6">
+    <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Vos efforts</h3>
+    <% if @efforts.any? %>
+      <ul class="overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">
+        <% @efforts.each do |effort| %>
+          <li id="<%= dom_id(effort) %>" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 <%= "bg-warning/15" if effort == best %>">
+            <%= link_to l(effort.activity.start_time.in_time_zone("Europe/Paris").to_date, format: :long), activity_path(effort.activity), class: "w-32 font-semibold link link-hover" %>
+            <span class="font-mono tabular-nums"><%= best_effort_time(effort) %></span>
+            <span class="text-sm opacity-60"><%= best_effort_rate(effort, category) %></span>
+            <%= best_effort_badge(effort.rank) %>
+            <% if effort == best %><span class="text-xs font-semibold">Meilleur temps</span><% end %>
+            <%= segment_effort_private_tag(effort) %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <p class="text-sm opacity-60">Vous n'avez pas encore parcouru ce segment.</p>
+    <% end %>
+  </section>
+
+  <section id="<%= dom_id(@segment, :leaderboard) %>" class="not-prose mb-6">
+    <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Classement</h3>
+    <% if @leaderboard.any? %>
+      <table class="table table-sm">
+        <thead>
+          <tr><th>#</th><th>Athlète</th><th>Temps</th><th><%= category == :running ? "Allure" : "Vitesse" %></th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          <% @leaderboard.each.with_index(1) do |effort, position| %>
+            <% rider = effort.activity.user %>
+            <tr id="<%= dom_id(effort, :leaderboard) %>" class="<%= "bg-base-200 font-semibold" if rider == Current.user %>">
+              <td><%= position %></td>
+              <td><%= rider.display_name %><%= " (vous)" if rider == Current.user %></td>
+              <td class="font-mono tabular-nums"><%= best_effort_time(effort) %></td>
+              <td><%= best_effort_rate(effort, category) %></td>
+              <td><%= l effort.activity.start_time.in_time_zone("Europe/Paris").to_date, format: :short %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="text-sm opacity-60">Aucun effort public pour l'instant.</p>
+    <% end %>
+  </section>
+</main>

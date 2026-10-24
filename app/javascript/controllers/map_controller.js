@@ -60,6 +60,8 @@ export default class extends Controller {
     }))
     this.map.addControl(new FitToBoundsControl(initialBounds))
 
+    this.map.on("click", ({ lngLat }) => this.dispatch("click", { detail: { lngLat: [ lngLat.lng, lngLat.lat ] } }))
+
     this.map.on("load", () => {
       this.#styleReady = true
       if (!this.hasRouteValue) return
@@ -131,12 +133,13 @@ export default class extends Controller {
   }
 
   // Outlet API: draw the route vertices [startIndex..endIndex] over the route
-  // (a best effort's stretch) and frame them.
-  highlightStretch(startIndex, endIndex) {
+  // (a best effort's stretch) and, unless `fit` is false, frame them.
+  highlightStretch(startIndex, endIndex, { fit = true } = {}) {
     const coordinates = this.#coordinates?.slice(startIndex, endIndex + 1)
     if (!this.map || !coordinates || coordinates.length < 2) return
+    this.element.dataset.highlightedStretch = `${startIndex}-${endIndex}`
     if (!this.#styleReady) {
-      this.#pendingStretch = [ startIndex, endIndex ]
+      this.#pendingStretch = [ startIndex, endIndex, { fit } ]
       return
     }
 
@@ -156,6 +159,7 @@ export default class extends Controller {
       })
     }
 
+    if (!fit) return
     const bounds = coordinates.reduce(
       (b, c) => b.extend(c),
       new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
@@ -165,6 +169,7 @@ export default class extends Controller {
 
   clearStretch() {
     this.#pendingStretch = null
+    delete this.element.dataset.highlightedStretch
     this.map?.getSource("stretch")?.setData({ type: "FeatureCollection", features: [] })
   }
 }

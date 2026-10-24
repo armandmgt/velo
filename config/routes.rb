@@ -45,6 +45,7 @@ Rails.application.routes.draw do
   resource :forme, only: :show
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
+    resources :segments, only: %i[ new create ]
   end
   resources :gears do
     member do
@@ -55,6 +56,7 @@ Rails.application.routes.draw do
       post :replace, on: :member
     end
   end
+  resources :segments, only: :show
   resources :best_efforts, only: [] do
     resource :removal, only: %i[ create destroy ], module: :best_efforts
   end
