@@ -5,11 +5,17 @@ fr:
     attributes:
       user:
         email_address: Adresse email
+        map_hide_start_end_distance: Distance masquée au début et à la fin
       activity:
         name: Nom
         description: Description
         sport: Sport
         source_file: Fichier (FIT ou GPX)
+      map_privacy_zone:
+        name: Nom
+        latitude: Emplacement
+        longitude: Emplacement
+        radius: Rayon
       planned_route:
         name: Nom
         sport: Sport

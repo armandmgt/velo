@@ -10,8 +10,7 @@ class MapPrivacyZone < ApplicationRecord
 
   normalizes :name, with: ->(n) { n.strip.presence }
 
-  validates :latitude, numericality: { in: -90..90 }
-  validates :longitude, numericality: { in: -180..180 }
+  validate :center_chosen
   validates :radius, inclusion: { in: RADIUS_OPTIONS }
   validates :name, length: { maximum: 50 }
 
@@ -21,4 +20,12 @@ class MapPrivacyZone < ApplicationRecord
   end
 
   before_save { self.center = "SRID=4326;POINT(#{longitude} #{latitude})" }
+
+  private
+
+  def center_chosen
+    return if latitude&.between?(-90, 90) && longitude&.between?(-180, 180)
+
+    errors.add(:latitude, "doit être choisi sur la carte")
+  end
 end

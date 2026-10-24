@@ -119,7 +119,7 @@ class ActivitiesController < ApplicationController
   # the old name. See ADR 0005. `source_file` wins when both are sent.
   def activity_params
     permitted = params.expect(activity: [ :name, :description, :sport, :visibility,
-                                          :source_file, :fit_file, :recording_uuid ])
+                                          :map_hidden, :source_file, :fit_file, :recording_uuid ])
     alias_upload = permitted.delete(:fit_file)
     permitted[:source_file] ||= alias_upload if alias_upload
 
