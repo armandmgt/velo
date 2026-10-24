@@ -1,0 +1,12 @@
+<%# locals: (activity:) %>
+
+<div class="my-4 flex flex-wrap items-center gap-x-3 gap-y-1" id="<%= dom_id(activity, :effort_score) %>">
+  <h3 class="m-0 text-sm font-semibold uppercase opacity-60" title="<%= t("activity.effort_score.help") %>">
+    <%= t("activity.effort_score.title") %>
+  </h3>
+  <span class="text-2xl font-extrabold tabular-nums"><%= activity.effort_score.round %></span>
+  <% if (band = activity.effort_band) %>
+    <span class="badge badge-soft"><%= t("activity.effort_score.band.#{band}") %></span>
+  <% end %>
+  <%= link_to t("activity.effort_score.forme_link"), forme_path, class: "link text-sm ml-auto" %>
+</div>

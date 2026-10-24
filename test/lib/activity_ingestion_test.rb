@@ -52,6 +52,31 @@ class ActivityIngestionTest < ActiveSupport::TestCase
     assert_equal 5, activity.activity_data_points.size
   end
 
+  # --- Effort score ----------------------------------------------------------
+
+  test "scores the activity from its heart rate and the rider's max HR" do
+    @user.update_columns(max_heart_rate: 200)
+    activity = ingest(ride_gpx)
+
+    # 10 s in Z1 (110 bpm) and 30 s in Z2 (120–135 bpm): 10/60 × 1 + 30/60 × 2
+    assert_equal 1.2, activity.effort_score
+    assert activity.effort_score_source_heart_rate?
+  end
+
+  test "leaves the score empty without a max HR" do
+    activity = ingest(ride_gpx)
+
+    assert_nil activity.effort_score
+    assert_nil activity.effort_score_source
+  end
+
+  test "leaves the score empty without heart rate data" do
+    @user.update_columns(max_heart_rate: 200)
+    activity = ingest(two_point_gpx)
+
+    assert_nil activity.effort_score
+  end
+
   # --- Summary and data points ----------------------------------------------
 
   test "applies the track summary to the activity" do

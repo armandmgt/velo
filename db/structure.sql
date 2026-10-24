@@ -149,7 +149,9 @@ CREATE TABLE public.activities (
     path public.geometry(LineString),
     name_pending boolean DEFAULT false NOT NULL,
     visibility character varying DEFAULT 'private'::character varying NOT NULL,
-    recording_uuid uuid
+    recording_uuid uuid,
+    effort_score numeric(7,1),
+    effort_score_source character varying
 );
 
 
@@ -688,6 +690,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024120020'),
 ('20260908120000'),
 ('20260907190943'),
 ('20260812183644'),

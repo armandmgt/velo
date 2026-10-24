@@ -41,6 +41,7 @@ Rails.application.routes.draw do
   resources :passwords, param: :token
 
   resource :activity_feeds
+  resource :forme, only: :show
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
   end
