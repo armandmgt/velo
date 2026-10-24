@@ -118,6 +118,29 @@ struct UnsentRecordingsTests {
         #expect(session.recordedSport == .bike)
     }
 
+    @Test("a point carries heart rate only when the strap had a reading for it")
+    func heartRateReachesTheHandoff() throws {
+        let store = RecordingStore(inMemory: true)
+        let session = store.createSession(startedAt: startedAt)
+        for (index, heartRate) in [142, nil].enumerated() {
+            store.appendPoint(
+                to: session,
+                timestamp: startedAt.addingTimeInterval(Double(index)),
+                latitude: 48.8566,
+                longitude: 2.3522,
+                elevation: nil,
+                speed: 0,
+                horizontalAccuracy: 5,
+                lap: 1,
+                heartRate: heartRate
+            )
+        }
+        store.finish(session, stats: .zero)
+
+        let points = try #require(decode(RecordingHandoff(session: session))["points"] as? [[String: Any]])
+        #expect(points.map { $0["hr"] as? Int } == [142, nil])
+    }
+
     @Test("only stopped sessions with points are unsent, newest first")
     func listsStoppedSessionsNewestFirst() {
         let store = RecordingStore(inMemory: true)
