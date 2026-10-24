@@ -8,6 +8,10 @@ servers:
       - minipc.armandmgt.fr
     cmd: bin/jobs
 
+# The heatmap's generated tile columns rewrite the activities table on their
+# first migration, which runs before the app answers its health check.
+deploy_timeout: 1200
+
 proxy:
   ssl: true
   host: velo.armandmgt.fr
