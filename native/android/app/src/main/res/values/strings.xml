@@ -46,6 +46,26 @@
     <string name="recording_laps_in_progress">Le tour %1$d est en cours.</string>
     <string name="recording_laps_close">Fermer</string>
 
+    <!-- Heart-rate strap (#59) — match the iOS wording. -->
+    <string name="heart_rate_pair">Associer une ceinture cardio</string>
+    <string name="heart_rate_forget">Oublier</string>
+    <string name="heart_rate_strap_status">%1$s · %2$s</string>
+    <string name="heart_rate_strap_default_name">Ceinture cardio</string>
+    <string name="heart_rate_status_connected">connectée</string>
+    <string name="heart_rate_status_connecting">recherche…</string>
+    <string name="heart_rate_status_reconnecting">reconnexion…</string>
+    <string name="heart_rate_status_unavailable">Bluetooth indisponible</string>
+    <string name="heart_rate_bpm">BPM</string>
+    <string name="heart_rate_banner_connecting">Recherche de la ceinture cardio…</string>
+    <string name="heart_rate_banner_reconnecting">Cardio perdu — reconnexion…</string>
+    <string name="heart_rate_banner_unavailable">Bluetooth indisponible — pas de cardio</string>
+    <string name="heart_rate_pairing_title">Ceinture cardio</string>
+    <string name="heart_rate_pairing_intro">Mettez votre ceinture : elle apparaît ici dès qu\'elle détecte votre cœur.</string>
+    <string name="heart_rate_pairing_searching">Recherche des ceintures à proximité…</string>
+    <string name="heart_rate_pairing_pick">Touchez votre ceinture pour l\'associer.</string>
+    <string name="heart_rate_pairing_unavailable">Bluetooth est désactivé ou non autorisé pour Velo.</string>
+    <string name="heart_rate_pairing_cancel">Annuler</string>
+
     <!-- Review/confirm screen before upload (#67). -->
     <string name="recording_discard">Supprimer</string>
     <string name="recording_discard_confirm_title">Supprimer cet enregistrement ?</string>

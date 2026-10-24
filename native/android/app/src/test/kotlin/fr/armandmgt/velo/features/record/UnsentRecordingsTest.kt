@@ -94,6 +94,27 @@ class UnsentRecordingsTest {
     }
 
     @Test
+    fun `a point carries heart rate only when the strap had a reading for it`() = runBlocking {
+        dao.insertSession(session("ride", state = RecordingState.STOPPED))
+        listOf(142, null).forEachIndexed { index, heartRate ->
+            dao.insertPoint(
+                RecordingPointEntity(
+                    sessionId = "ride",
+                    timestamp = startedAt + index * 1_000L,
+                    latitude = 48.8566,
+                    longitude = 2.3522,
+                    heartRate = heartRate,
+                ),
+            )
+        }
+
+        val handoff = RecordingHandoff.load(dao, "ride", fallbackSport = Sport.BIKE)!!
+
+        assertEquals(listOf(142, null), handoff.points.map { it.hr })
+        assertTrue(RecordingHandoff.encode(handoff).isNotEmpty())
+    }
+
+    @Test
     fun `only stopped sessions with points are unsent, newest first`() = runBlocking {
         dao.insertSession(session("older", startedAt = startedAt, state = RecordingState.STOPPED))
         insertPoints("older", count = 1)

@@ -41,8 +41,9 @@ data class RecordingPointEntity(
     val horizontalAccuracy: Double = 0.0,
     /** Lap ordinal this point belongs to (denormalized from the session). */
     val lap: Int = 1,
-    // Sensor fields — nullable, populated when sensors are wired up later.
+    /** Beats per minute from a paired strap, or null without a fresh reading. */
     val heartRate: Int? = null,
+    // Never filled on the phone: cadence and power come from bike computers.
     val cadence: Double? = null,
     val power: Double? = null,
 )

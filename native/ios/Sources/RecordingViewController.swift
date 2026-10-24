@@ -895,7 +895,7 @@ final class RecordingViewController: UIViewController {
         case .connected: "connectée"
         case .connecting: "recherche…"
         case .reconnecting: "reconnexion…"
-        case .unavailable: "Bluetooth désactivé"
+        case .unavailable: "Bluetooth indisponible"
         case .inactive: nil
         }
     }
@@ -1139,7 +1139,7 @@ private final class HeartRateBannerView: UIView {
         case .reconnecting:
             show(symbol: "heart.slash", color: Palette.paused, text: "Cardio perdu — reconnexion…")
         case .unavailable:
-            show(symbol: "heart.slash", color: Palette.paused, text: "Bluetooth désactivé — pas de cardio")
+            show(symbol: "heart.slash", color: Palette.paused, text: "Bluetooth indisponible — pas de cardio")
         case .connected, .inactive:
             isHidden = true
         }

@@ -110,6 +110,8 @@ class RecordingService : Service() {
         LocationServices.getFusedLocationProviderClient(this)
     }
 
+    private val heartRate: HeartRateMonitor by lazy { HeartRateMonitor.get(this) }
+
     // In-memory recording state — only touched on the main thread (location
     // callback, ticker, and binder controls all run there), so no locking needed.
     private var armed = false
@@ -203,6 +205,7 @@ class RecordingService : Service() {
         if (!armed) {
             armed = true
             startLocationUpdates()
+            heartRate.activate()
             emitState()
         }
 
@@ -214,6 +217,7 @@ class RecordingService : Service() {
 
     override fun onDestroy() {
         fusedClient.removeLocationUpdates(locationCallback)
+        heartRate.deactivate()
         stopTicker()
         ioScope.cancel()
         mainScope.cancel()
@@ -364,6 +368,7 @@ class RecordingService : Service() {
             speed = segmentSpeed,
             horizontalAccuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else 0.0,
             lap = lap,
+            heartRate = heartRate.latestReading?.bpmAt(location.time),
         )
         lastPointWrite = ioScope.launch { dao.insertPoint(point) }
         persistProgress(current)
@@ -495,6 +500,7 @@ class RecordingService : Service() {
         recordingState = RecordingState.STOPPED
         stopTicker()
         fusedClient.removeLocationUpdates(locationCallback)
+        heartRate.deactivate()
         return ioScope.launch {
             pendingPoint?.join()
             if (id != null) {
