@@ -183,7 +183,7 @@ final class RecordTabBarController: HotwireTabBarController {
         case .record:
             recordButton.configuration?.image = fabImage("record.circle")
             recordButton.configuration?.baseBackgroundColor = isRecording ? .systemRed : .tintColor
-            recordButton.accessibilityLabel = "Enregistrer"
+            recordButton.accessibilityLabel = isRecording ? "Enregistrement en cours" : "Enregistrer"
         case .newActivity:
             recordButton.configuration?.image = fabImage("plus")
             recordButton.configuration?.baseBackgroundColor = .tintColor

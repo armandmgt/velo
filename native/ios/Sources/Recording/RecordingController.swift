@@ -21,7 +21,8 @@ extension Notification.Name {
 /// recording exists at a time and three places share it: the recording screen
 /// (live stats), the tab-bar button (active/idle), and launch (kill recovery).
 ///
-/// State machine: `idle → recording ⇄ paused/autoPaused → stopped(→ idle)`. Fixes
+/// State machine: `idle → recording ⇄ paused/autoPaused → stopped(→ idle)`. A
+/// recording the app was killed during comes back at launch as `paused`. Fixes
 /// are only persisted while `.recording`; both paused states drop them (and break
 /// the distance segment so the paused gap isn't counted).
 ///
@@ -74,12 +75,8 @@ final class RecordingController: NSObject {
     /// Points persisted in the current session so far (debug readout / stats).
     private(set) var pointCount: Int = 0
 
-    /// Point count of an active session recovered from a previous launch (kill
-    /// recovery). Read-only here; the resume/finish prompt consumes it.
-    private(set) var recoveredPointCount: Int = 0
-
     private let recorder = LocationRecorder()
-    private let store = RecordingStore()
+    private let store: RecordingStore
 
     /// Watches the fix stream for pause automatique. Inert until `start()` arms it,
     /// and configured from the preference as it stood at Démarrer, so a ride
@@ -98,16 +95,41 @@ final class RecordingController: NSObject {
     private var stretchStart: Date?
     private var ticker: Timer?
 
-    private override init() {
+    init(store: RecordingStore = RecordingStore()) {
+        self.store = store
         super.init()
         recorder.delegate = self
-        // Kill recovery: surface any orphaned active session's point count. We do
-        // NOT resume it — the data simply stays in the store for the
-        // resume/finish prompt to deal with.
         if let orphan = store.activeSession() {
-            recoveredPointCount = orphan.orderedPoints.count
-            NSLog("[RecordingController] recovered active session with \(recoveredPointCount) points")
+            restore(orphan)
+            // Set here rather than in `restore` so it skips the observer: nobody
+            // can be listening yet, and `shared` may still be initializing.
+            state = .paused
         }
+    }
+
+    /// Kill recovery: pick the interrupted recording back up as a manual pause, so
+    /// only the rider's own Reprendre carries on recording into it. The clock and
+    /// totals resume from the session's snapshots, which stopped moving when the
+    /// app died, so the dead span counts as paused.
+    private func restore(_ orphan: RecordingSession) {
+        session = orphan
+        sport = orphan.recordedSport
+        let points = orphan.orderedPoints
+        pointCount = points.count
+        lastPersistedSecond = points.last?.timestamp.timeIntervalSince1970.rounded(.down)
+        accumulator = orphan.restoredAccumulator
+        accumulatedElapsed = orphan.elapsed > 0 ? orphan.elapsed : Self.span(of: points)
+        stretchStart = nil
+        // A fresh detector is inactive until Reprendre, like after a manual pause.
+        detector = AutoPauseDetector(isEnabled: AutoPauseDetector.isEnabledPreference)
+        orphan.recordingState = .paused
+        saveProgress(of: orphan)
+    }
+
+    /// Temps écoulé for an orphan from a build that kept no running snapshot.
+    private static func span(of points: [RecordingPoint]) -> TimeInterval {
+        guard let first = points.first, let last = points.last else { return 0 }
+        return last.timestamp.timeIntervalSince(first.timestamp)
     }
 
     // MARK: - Screen readiness
@@ -128,17 +150,10 @@ final class RecordingController: NSObject {
 
     // MARK: - Recording controls
 
-    /// Start a fresh recording.
+    /// Start a fresh recording. An interrupted one is restored at launch, so the
+    /// controller is never idle while a session is active.
     func start() {
         guard state == .idle else { return }
-        // Preserve the single-active invariant: finalize any orphan recovered from
-        // a kill before opening a new session; the resume prompt handles it.
-        if let orphan = store.activeSession() {
-            orphan.recordingState = .stopped
-            store.save()
-            NotificationCenter.default.post(name: .unsentRecordingsDidChange, object: self)
-        }
-        recoveredPointCount = 0
         // Remember this sport so the next recording's picker defaults to it.
         Sport.lastUsed = sport
 
@@ -196,9 +211,10 @@ final class RecordingController: NSObject {
         // Break the segment so the paused gap adds neither distance nor moving time.
         accumulator.breakSegment()
         stopTicker()
-        session?.recordingState = target == .autoPaused ? .autoPaused : .paused
-        session?.elapsed = accumulatedElapsed
-        store.save()
+        if let session {
+            session.recordingState = target == .autoPaused ? .autoPaused : .paused
+            saveProgress(of: session)
+        }
         state = target
         emitStats()
     }
@@ -312,6 +328,20 @@ final class RecordingController: NSObject {
         delegate?.recordingController(self, didUpdate: currentStats)
     }
 
+    /// The running totals a killed recording is restored from.
+    private func updateSnapshot(of session: RecordingSession) {
+        let stats = currentStats
+        session.elapsed = stats.elapsed
+        session.distance = stats.distance
+        session.movingTime = stats.movingTime
+        session.averageSpeed = stats.averageSpeed
+    }
+
+    private func saveProgress(of session: RecordingSession) {
+        updateSnapshot(of: session)
+        store.save()
+    }
+
     var currentStats: RecordingStats {
         accumulator.snapshot(elapsed: elapsed, currentSpeed: lastFixSpeed)
     }
@@ -365,8 +395,8 @@ extension RecordingController: LocationRecorderDelegate {
         let segmentSpeed = accumulator.add(location)
         lastFixSpeed = location.speed >= 0 ? location.speed : segmentSpeed
         let elevation = location.verticalAccuracy >= 0 ? location.altitude : nil
-        // Saved with the point below.
-        session.elapsed = elapsed
+        // Saved with the point below, so the snapshot always matches the points.
+        updateSnapshot(of: session)
 
         store.appendPoint(
             to: session,

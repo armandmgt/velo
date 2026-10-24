@@ -51,7 +51,8 @@ final class RecordingSession: NSManagedObject {
     /// Temps écoulé. Kept current while recording (on every persisted point and
     /// state change), and final once `stoppedAt` is set.
     @NSManaged var elapsed: TimeInterval
-    /// Final totals, written at Arrêter alongside `stoppedAt`.
+    /// Totals kept current like `elapsed`, so a killed recording restores
+    /// them exactly, and final once `stoppedAt` is set.
     @NSManaged var distance: Double
     @NSManaged var movingTime: TimeInterval
     @NSManaged var averageSpeed: Double
@@ -82,6 +83,18 @@ final class RecordingSession: NSManagedObject {
         var stats = RecordingStats.derived(from: orderedPoints.map(\.location))
         if elapsed > 0 { stats.elapsed = elapsed }
         return stats
+    }
+
+    /// The running totals an interrupted recording picks up from: the snapshot
+    /// kept current with every point. An orphan from a build that kept no
+    /// snapshot replays its points instead, which may overcount across the
+    /// pauses it took before the kill.
+    var restoredAccumulator: RecordingStatsAccumulator {
+        let points = orderedPoints
+        if distance == 0, movingTime == 0, points.count > 1 {
+            return .replaying(points.map(\.location))
+        }
+        return RecordingStatsAccumulator(distance: distance, movingSeconds: movingTime)
     }
 
     /// The sport this recording uploads as. Sessions from before the store kept

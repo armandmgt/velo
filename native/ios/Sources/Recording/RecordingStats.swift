@@ -71,6 +71,26 @@ struct RecordingStatsAccumulator {
         lastLocation = nil
     }
 
+    /// Carry on from totals a recording already stored. There is no segment
+    /// anchor, so the first fix after this adds nothing: a restored recording is
+    /// paused, and the span the app was dead must not count as ridden.
+    init(distance: CLLocationDistance, movingSeconds: TimeInterval) {
+        self.distance = distance
+        self.movingSeconds = movingSeconds
+    }
+
+    init() {}
+
+    /// Fold stored fixes in order, ending without an anchor like a paused
+    /// recording. Pauses leave no trace in the points, so a gap a pause skipped
+    /// counts as ridden here where live folding broke the segment instead.
+    static func replaying(_ fixes: [CLLocation]) -> RecordingStatsAccumulator {
+        var accumulator = RecordingStatsAccumulator()
+        for fix in fixes { _ = accumulator.add(fix) }
+        accumulator.breakSegment()
+        return accumulator
+    }
+
     /// Snapshot for display. `elapsed` is supplied by the controller's clock so
     /// it keeps ticking between fixes.
     func snapshot(elapsed: TimeInterval, currentSpeed: CLLocationSpeed) -> RecordingStats {
@@ -90,8 +110,7 @@ extension RecordingStats {
     /// temps écoulé falls back to the first-to-last fix span, which counts any
     /// pause as riding because pauses leave no trace in the points.
     static func derived(from fixes: [CLLocation]) -> RecordingStats {
-        var accumulator = RecordingStatsAccumulator()
-        for fix in fixes { _ = accumulator.add(fix) }
+        let accumulator = RecordingStatsAccumulator.replaying(fixes)
         let span = fixes.last.map { last in fixes[0].timestamp.distance(to: last.timestamp) } ?? 0
         return accumulator.snapshot(elapsed: span, currentSpeed: 0)
     }
