@@ -89,6 +89,16 @@ fr:
       set_max_hr_hint_html: "Définissez votre FC max dans %{link} pour voir vos zones d'entraînement."
       max_hr_label: "Fréquence cardiaque maximale"
       max_hr_help: "Utilisée pour calculer vos zones d'entraînement (entre 100 et 240 bpm)."
+    effort_score:
+      title: "Score d'effort"
+      help: "Temps passé dans chaque zone de fréquence cardiaque, pondéré par la zone (Z1 × 1 … Z5 × 5)."
+      forme_link: "Voir ma forme"
+      band:
+        much_easier: "Bien plus facile que d'habitude"
+        easier: "Plus facile que d'habitude"
+        typical: "Dans vos habitudes"
+        harder: "Plus dur que d'habitude"
+        much_harder: "Bien plus dur que d'habitude"
     share:
       button: "Partager — copier le lien"
       copied: "Lien copié !"
@@ -131,6 +141,30 @@ fr:
       1: "Record personnel"
       2: "2e meilleur temps"
       3: "3e meilleur temps"
+  forme:
+    title: "Forme"
+    nav: "Forme"
+    window_label: "Période"
+    window:
+      3m: "3 mois"
+      6m: "6 mois"
+      1y: "1 an"
+    metric:
+      fitness: "Condition"
+      fatigue: "Fatigue"
+      form: "Forme"
+    chart:
+      aria: "Évolution quotidienne de la condition, de la fatigue et de la forme"
+      fitness: "Condition"
+      fatigue: "Fatigue"
+      form: "Forme"
+      load: "Score d'effort du jour"
+    explanation: "La condition est la moyenne de vos scores d'effort quotidiens sur environ 42 jours, la fatigue sur environ 7 jours. La forme est leur différence : négative après un bloc chargé, positive quand vous êtes reposé·e."
+    unscored_note: "Les activités sans fréquence cardiaque ne sont pas comptées."
+    unscored_count:
+      one: "(%{count} activité sur la période)"
+      other: "(%{count} activités sur la période)"
+    set_max_hr_hint_html: "Définissez votre FC max dans %{link} pour calculer vos scores d'effort."
   planned_route:
     nav:
       label: "Parcours"

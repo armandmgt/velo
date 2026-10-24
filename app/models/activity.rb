@@ -2,6 +2,7 @@ class Activity < ApplicationRecord
   include ActivityCharts
   include ActivityMetrics
   include ActivityHeartRateZones
+  include ActivityEffortScore
 
   belongs_to :user
   has_many :activity_data_points, dependent: :destroy
