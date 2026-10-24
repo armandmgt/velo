@@ -8,12 +8,12 @@ default: &default
 
 development:
   <<: *default
-  database: velo_development
+  database: <%= ENV.fetch("DEV_DB_NAME") { "velo_development" } %>
   schema_format: :sql
 
 test:
   <<: *default
-  database: velo_test
+  database: <%= ENV.fetch("TEST_DB_NAME") { "velo_test" } %>
   schema_format: :sql
   # libpq's GSSAPI negotiation calls into the macOS Kerberos framework, which is
   # not fork-safe and segfaults in Rails' forked parallel test workers. We don't

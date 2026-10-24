@@ -91,3 +91,61 @@ once they move again. Identical in effect to a manual pause — the clock freeze
 the distance segment breaks, incoming fixes are discarded — and differs only in
 who triggered it and who may end it.
 _Avoid_: Auto-stop, idle detection, smart pause
+
+### Performance
+
+**Best effort**:
+An Activity's fastest stretch over a standard distance (or, with power, its
+highest average power over a standard duration). Timed on the wall clock between
+the data point where the stretch starts and the one where it ends — stops
+included, as in a race. Not temps écoulé, which subtracts pauses, and not durée
+de déplacement.
+_Avoid_: PR (a PR is a rank a best effort earns), split, record
+
+**Segment**:
+A named, directional stretch of road or trail, created from part of an Activity
+and shared by every user of the instance. Riding it in reverse is a different
+segment.
+_Avoid_: Section, climb, route (a route is planned and has no leaderboard)
+
+**Segment effort**:
+One pass over a segment within an Activity, timed like a best effort. One
+Activity can hold several on the same segment. Private when its Activity is
+private or its start or end falls in a hidden part of the map; a private effort
+counts for its rider's own PRs but never on the leaderboard.
+_Avoid_: Attempt, match, lap
+
+**PR / 2nd / 3rd**:
+The rank a best effort or segment effort earns against the rider's own earlier
+ones, fixed when its Activity is ingested.
+_Avoid_: KOM (a leaderboard title Velo doesn't award), personal best
+
+**Effort score** (score d'effort):
+An Activity's training stress — zone-weighted heart-rate time, or TSS when it
+has power and the rider has an FTP. Absent when it has neither.
+_Avoid_: Relative Effort, Suffer Score, load (load is the curve, not the score)
+
+**Forme** (fitness / fatigue / form):
+The rolling curves built from daily effort scores: fitness (~42-day average),
+fatigue (~7-day), and form, their difference.
+_Avoid_: Freshness, CTL/ATL/TSB in the UI
+
+### Gear
+
+**Gear**:
+A bike or a pair of shoes an Activity was done with. May be the default for one
+or more sports; retired gear keeps its history but is no longer offered.
+_Avoid_: Equipment, kit, bike (as the general term)
+
+**Component**:
+A wearing part of a bike — chain, cassette, tire, brake pads — with an install
+date and a service interval in km. Replacing it retires the old one.
+_Avoid_: Part, consumable
+
+### Map visibility
+
+**Hidden portion**:
+The part of an Activity's track that anyone but its owner cannot see — its
+first and last metres along the track, anything inside the owner's address
+zones, or the whole map. Stats still cover the full Activity.
+_Avoid_: Privacy zone (an address zone is one way to create a hidden portion), redaction
