@@ -577,6 +577,13 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_activities_on_path; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_path ON public.activities USING gist (path);
+
+
+--
 -- Name: index_activities_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -688,6 +695,7 @@ ALTER TABLE ONLY public.planned_routes
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024120024'),
 ('20260908120000'),
 ('20260907190943'),
 ('20260812183644'),
