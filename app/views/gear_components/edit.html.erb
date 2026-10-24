@@ -1,0 +1,13 @@
+<% content_for :title, "Modifier #{@component.name}" %>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16">
+  <h1 class="text-2xl font-extrabold tracking-tight mb-5 hotwire-native:hidden">Modifier <%= @component.name %> · <%= @gear.name %></h1>
+
+  <%= render "form", gear: @gear, component: @component %>
+
+  <div class="mt-6 flex items-center gap-4">
+    <%= link_to "Retour", gear_path(@gear), class: "link" %>
+    <%= button_to "Supprimer", gear_component_path(@gear, @component), method: :delete, class: "btn btn-error btn-sm",
+          data: { turbo_confirm: "Supprimer ce composant ? Pour en installer un neuf, utilisez plutôt « Remplacer », qui garde l'historique." } %>
+  </div>
+</main>

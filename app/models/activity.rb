@@ -4,6 +4,7 @@ class Activity < ApplicationRecord
   include ActivityHeartRateZones
 
   belongs_to :user
+  belongs_to :gear, optional: true
   has_many :activity_data_points, dependent: :destroy
 
   has_one_attached :source_file
@@ -24,6 +25,11 @@ class Activity < ApplicationRecord
   }.freeze
 
   validates :name, :sport, :start_time, :end_time, presence: true
+  validate :gear_belongs_to_owner
+
+  # A swim can't have been done on a bike: changing the sport to one the gear
+  # doesn't fit drops the gear rather than keep a contradiction.
+  before_validation :drop_gear_of_another_kind
 
   scope :awaiting_name, -> { where(name_pending: true) }
 
@@ -72,5 +78,15 @@ class Activity < ApplicationRecord
 
   def shareable_link?
     visibility_shareable? || visibility_public?
+  end
+
+  private
+
+  def gear_belongs_to_owner
+    errors.add(:gear, :invalid) if gear && gear.user_id != user_id
+  end
+
+  def drop_gear_of_another_kind
+    self.gear = nil if gear && sport.present? && Gear.kind_for_sport(sport) != gear.kind
   end
 end

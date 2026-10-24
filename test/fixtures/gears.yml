@@ -1,0 +1,27 @@
+road_bike:
+  user: one
+  kind: bike
+  name: Vélo de course
+  brand: Canyon
+  model: Endurace
+
+gravel_bike:
+  user: one
+  kind: bike
+  name: Gravel
+
+trail_shoes:
+  user: one
+  kind: shoes
+  name: Chaussures de trail
+
+retired_bike:
+  user: one
+  kind: bike
+  name: Vieux biclou
+  retired_at: <%= 1.month.ago.to_fs(:db) %>
+
+other_users_bike:
+  user: two
+  kind: bike
+  name: Vélo de Two

@@ -1,0 +1,20 @@
+<%# locals: (gear:) %>
+
+<%= link_to gear, id: dom_id(gear), class: class_names("card card-side bg-base-100 shadow-sm hover:shadow transition-shadow", "opacity-70": gear.retired?) do %>
+  <figure class="w-20 shrink-0 bg-primary/10 text-primary">
+    <% if gear.photo.attached? %>
+      <%= image_tag gear.photo, alt: "", class: "size-full object-cover" %>
+    <% else %>
+      <%= icon gear_icon_name(gear), class: "size-8" %>
+    <% end %>
+  </figure>
+  <div class="card-body p-4 gap-1">
+    <h3 class="card-title text-base"><%= gear.name %></h3>
+    <% if gear.brand.present? || gear.model.present? %>
+      <p class="text-sm opacity-70 grow-0"><%= [ gear.brand, gear.model ].compact_blank.join(" ") %></p>
+    <% end %>
+    <% if gear.default_sports.any? %>
+      <p class="text-xs opacity-60 grow-0">Par défaut : <%= gear_default_sports_label(gear) %></p>
+    <% end %>
+  </div>
+<% end %>

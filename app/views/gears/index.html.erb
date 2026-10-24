@@ -1,0 +1,37 @@
+<% content_for :title, "Matériel" %>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <header class="flex items-center justify-between gap-3 mb-5 sm:mb-6">
+    <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0 hotwire-native:hidden">Matériel</h1>
+
+    <div class="flex gap-2">
+      <%= link_to new_gear_path(kind: "bike"), class: "btn btn-primary btn-sm" do %>
+        <%= icon "plus", class: "size-[1.2em]" %> Vélo
+      <% end %>
+      <%= link_to new_gear_path(kind: "shoes"), class: "btn btn-primary btn-sm" do %>
+        <%= icon "plus", class: "size-[1.2em]" %> Chaussures
+      <% end %>
+    </div>
+  </header>
+
+  <% if @active_gears.empty? && @retired_gears.empty? %>
+    <p class="opacity-60">
+      Ajoutez vos vélos et vos chaussures pour suivre leur kilométrage et l'usure de leurs composants.
+    </p>
+  <% end %>
+
+  <% if @active_gears.any? %>
+    <div id="active_gears" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <%= render partial: "gears/gear_card", collection: @active_gears, as: :gear %>
+    </div>
+  <% end %>
+
+  <% if @retired_gears.any? %>
+    <section id="retired_gears" class="mt-8">
+      <h2 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Retiré</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <%= render partial: "gears/gear_card", collection: @retired_gears, as: :gear %>
+      </div>
+    </section>
+  <% end %>
+</main>

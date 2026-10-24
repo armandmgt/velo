@@ -54,4 +54,20 @@ class ActivityFeedsControllerTest < ActionDispatch::IntegrationTest
     get root_url
     assert_select "a", text: activities(:two).name, count: 0
   end
+
+  test "lists components past their interval, linking to the bike" do
+    bike = gears(:road_bike)
+    activities(:this_week_ride).update!(gear: bike)
+    bike.components.create!(kind: "chain", installed_on: 1.year.ago.to_date, service_interval_km: 10)
+
+    get root_url
+
+    assert_select "#dashboard_due_components a[href='#{gear_path(bike)}']", text: /Chaîne/
+  end
+
+  test "shows no maintenance card when nothing is due" do
+    get root_url
+
+    assert_select "#dashboard_due_components", count: 0
+  end
 end

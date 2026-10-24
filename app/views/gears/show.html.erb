@@ -1,0 +1,98 @@
+<% content_for :title, @gear.name %>
+
+<main class="max-w-3xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <header class="flex items-center gap-3 mb-5">
+    <span class="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
+      <% if @gear.photo.attached? %>
+        <%= image_tag @gear.photo, alt: "", class: "size-full object-cover" %>
+      <% else %>
+        <%= icon gear_icon_name(@gear), class: "size-7" %>
+      <% end %>
+    </span>
+    <div>
+      <h1 class="text-2xl font-extrabold tracking-tight m-0"><%= @gear.name %></h1>
+      <p class="text-sm opacity-70">
+        <%= t("gear.kind.#{@gear.kind}") %>
+        <% if @gear.brand.present? || @gear.model.present? %>
+          · <%= [ @gear.brand, @gear.model ].compact_blank.join(" ") %>
+        <% end %>
+        <% if @gear.retired? %>
+          · <span class="badge badge-ghost badge-sm">Retiré le <%= l @gear.retired_at.to_date, format: :long %></span>
+        <% end %>
+      </p>
+    </div>
+  </header>
+
+  <% if @gear.default_sports.any? %>
+    <p class="text-sm opacity-70 mb-4">Matériel par défaut pour : <%= gear_default_sports_label(@gear) %></p>
+  <% end %>
+
+  <section id="gear_totals" class="stats stats-vertical sm:stats-horizontal w-full bg-base-100 shadow mb-6">
+    <div class="stat">
+      <div class="stat-title">Distance</div>
+      <div class="stat-value text-2xl"><%= gear_km(@totals.distance) %> km</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Durée de déplacement</div>
+      <div class="stat-value text-2xl"><%= format_period_hours(@totals.moving_seconds) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Dénivelé</div>
+      <div class="stat-value text-2xl"><%= number_with_delimiter(@totals.elevation.round) %> m</div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Activités</div>
+      <div class="stat-value text-2xl"><%= @totals.count %></div>
+    </div>
+  </section>
+
+  <% if @gear.bike? %>
+    <section id="gear_components" class="mb-8">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold m-0">Composants</h2>
+        <%= link_to new_gear_component_path(@gear), class: "btn btn-sm" do %>
+          <%= icon "plus", class: "size-[1.2em]" %> Ajouter
+        <% end %>
+      </div>
+
+      <% if @components.empty? %>
+        <p class="text-sm opacity-60">Aucun composant suivi. Ajoutez une chaîne, des pneus… pour être prévenu quand ils arrivent en fin de vie.</p>
+      <% else %>
+        <div class="space-y-3">
+          <%= render partial: "gear_components/component_card", collection: @components, as: :component %>
+        </div>
+      <% end %>
+
+      <% if @retired_components.any? %>
+        <details class="mt-4">
+          <summary class="cursor-pointer text-sm font-semibold opacity-70">Composants remplacés (<%= @retired_components.size %>)</summary>
+          <ul class="mt-2 divide-y divide-base-300 text-sm">
+            <% @retired_components.each do |component| %>
+              <li id="<%= dom_id(component) %>" class="py-2 flex justify-between gap-3">
+                <span><%= component.name %></span>
+                <span class="opacity-70">
+                  <%= l component.installed_on, format: :long %> → <%= l component.retired_at.to_date, format: :long %>
+                  · <%= gear_km(component.distance) %> km
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        </details>
+      <% end %>
+    </section>
+  <% end %>
+
+  <section class="flex flex-wrap gap-2 mb-6">
+    <%= link_to "Modifier", edit_gear_path(@gear), class: "btn" %>
+    <% if @gear.retired? %>
+      <%= button_to "Remettre en service", reactivate_gear_path(@gear), method: :patch, class: "btn" %>
+    <% else %>
+      <%= button_to "Retirer", retire_gear_path(@gear), method: :patch, class: "btn",
+            data: { turbo_confirm: "Retirer ce matériel ? Il garde ses activités et ses totaux, mais ne sera plus proposé ni utilisé par défaut." } %>
+    <% end %>
+    <%= button_to "Supprimer", @gear, method: :delete, class: "btn btn-error",
+          data: { turbo_confirm: "Supprimer ce matériel ? Ses activités sont conservées mais n'auront plus de matériel associé." } %>
+  </section>
+
+  <%= link_to "Retour au matériel", gears_path, class: "link" %>
+</main>

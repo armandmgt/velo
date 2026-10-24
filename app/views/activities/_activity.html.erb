@@ -24,6 +24,17 @@
     </div>
   </header>
 
+  <% if activity.gear %>
+    <p id="<%= dom_id(activity, :gear) %>" class="mt-3 mb-0 flex items-center gap-1.5 text-sm opacity-80">
+      <%= icon gear_icon_name(activity.gear), class: "size-4" %>
+      <% if local_assigns.fetch(:show_personal_data, true) %>
+        <%= link_to activity.gear.name, gear_path(activity.gear), class: "link" %>
+      <% else %>
+        <%= activity.gear.name %>
+      <% end %>
+    </p>
+  <% end %>
+
   <% if activity.description.present? %>
     <p class="mt-3 opacity-80"><%= activity.description %></p>
   <% end %>

@@ -1,0 +1,23 @@
+<%# locals: (components:) %>
+
+<%# The native bell opens the dashboard rather than a menu, so the components
+    it counts are listed here too. %>
+<% if components.any? %>
+  <section id="dashboard_due_components" class="card bg-base-300 shadow mb-10 not-prose">
+    <div class="card-body p-4">
+      <h2 class="card-title text-base font-semibold flex items-center gap-2">
+        <%= icon "wrench", class: "size-5 text-error" %>
+        Entretien à prévoir
+      </h2>
+      <ul class="divide-y divide-base-content/10">
+        <% components.each do |component| %>
+          <li class="py-2">
+            <%= link_to gear_path(component.gear), class: "text-sm hover:text-primary" do %>
+              <span class="font-semibold"><%= component.gear.name %></span> · <%= component_progress_label(component) %>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
+    </div>
+  </section>
+<% end %>

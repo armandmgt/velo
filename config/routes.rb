@@ -44,6 +44,15 @@ Rails.application.routes.draw do
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
   end
+  resources :gears do
+    member do
+      patch :retire
+      patch :reactivate
+    end
+    resources :components, controller: "gear_components", only: %i[ new create edit update destroy ] do
+      post :replace, on: :member
+    end
+  end
   resources :planned_routes, only: %i[ index new create edit update show destroy ] do
     post :preview, on: :collection
     post :import_gpx, on: :collection
