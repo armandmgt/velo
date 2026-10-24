@@ -50,6 +50,7 @@ class ActivityIngestion
     apply_path(track)
     apply_location(track)
     apply_fallbacks
+    apply_best_efforts(track)
     track.problems.each { |problem| activity.errors.add(:source_file, problem) }
   end
 
@@ -98,6 +99,13 @@ class ActivityIngestion
       activity.location ||= NominatimClient.new.reverse_geocode(fix.lat, fix.lon)
     end
     activity.location ||= "Unknown"
+  end
+
+  # Re-ingesting replaces the efforts rather than adding to them. Located points
+  # only, so effort offsets index the path's vertices.
+  def apply_best_efforts(track)
+    activity.best_efforts.each(&:mark_for_destruction)
+    BestEffort.build_for(activity, track.located_points)
   end
 
   def apply_fallbacks

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import * as maplibregl from "maplibre-gl"
-import { primaryAccentColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
+import { primaryAccentColor, resolveCssColor, FitToBoundsControl, styleUrl } from "controllers/lib/map_helpers"
 
 export default class extends Controller {
   static values = {
@@ -11,6 +11,9 @@ export default class extends Controller {
 
   #accentColor
   #marker
+  #coordinates
+  #styleReady = false
+  #pendingStretch = null
 
   connect() {
     this.#accentColor = primaryAccentColor()
@@ -31,6 +34,7 @@ export default class extends Controller {
         const coords = route.geometry.type === "MultiLineString"
           ? route.geometry.coordinates.flat()
           : route.geometry.coordinates
+        this.#coordinates = coords
         initialGeojson = { type: "FeatureCollection", features: [route] }
         initialBounds = coords.reduce(
           (b, c) => b.extend(c),
@@ -57,6 +61,7 @@ export default class extends Controller {
     this.map.addControl(new FitToBoundsControl(initialBounds))
 
     this.map.on("load", () => {
+      this.#styleReady = true
       if (!this.hasRouteValue) return
 
       const geojson = initialGeojson || {
@@ -89,6 +94,8 @@ export default class extends Controller {
           "line-opacity": 0.9
         }
       }, "geojson-line")
+
+      if (this.#pendingStretch) this.highlightStretch(...this.#pendingStretch)
     })
   }
 
@@ -121,5 +128,43 @@ export default class extends Controller {
 
   hidePoint() {
     this.#marker?.remove()
+  }
+
+  // Outlet API: draw the route vertices [startIndex..endIndex] over the route
+  // (a best effort's stretch) and frame them.
+  highlightStretch(startIndex, endIndex) {
+    const coordinates = this.#coordinates?.slice(startIndex, endIndex + 1)
+    if (!this.map || !coordinates || coordinates.length < 2) return
+    if (!this.#styleReady) {
+      this.#pendingStretch = [ startIndex, endIndex ]
+      return
+    }
+
+    const data = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } }
+    const source = this.map.getSource("stretch")
+    if (source) {
+      source.setData(data)
+    } else {
+      const secondary = getComputedStyle(document.documentElement).getPropertyValue("--color-secondary").trim()
+      this.map.addSource("stretch", { type: "geojson", data })
+      this.map.addLayer({
+        id: "stretch-line",
+        type: "line",
+        source: "stretch",
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": resolveCssColor(secondary) || "#f97316", "line-width": 6 },
+      })
+    }
+
+    const bounds = coordinates.reduce(
+      (b, c) => b.extend(c),
+      new maplibregl.LngLatBounds(coordinates[0], coordinates[0])
+    )
+    this.map.fitBounds(bounds, { padding: 60, maxZoom: 16 })
+  }
+
+  clearStretch() {
+    this.#pendingStretch = null
+    this.map?.getSource("stretch")?.setData({ type: "FeatureCollection", features: [] })
   }
 }

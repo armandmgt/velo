@@ -1,0 +1,44 @@
+<%# locals: (activity:) %>
+<% efforts = activity.best_efforts.sort_by(&:meters) %>
+<% if efforts.any? %>
+  <section
+    id="<%= dom_id(activity, :best_efforts) %>"
+    class="not-prose mb-4"
+    data-controller="best-efforts"
+    <% if activity.path.present? %>data-best-efforts-map-outlet="#<%= dom_id(activity, :map) %>"<% end %>
+  >
+    <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Meilleurs efforts</h3>
+    <ul class="overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">
+      <% efforts.each do |effort| %>
+        <li id="<%= dom_id(effort) %>" class="flex items-center gap-2 pr-2 <%= "opacity-50" if effort.removed? %>">
+          <button
+            type="button"
+            class="flex flex-1 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-left cursor-pointer hover:bg-base-200 aria-pressed:bg-secondary/15"
+            aria-pressed="false"
+            data-best-efforts-target="effort"
+            data-action="best-efforts#select"
+            data-best-efforts-start-param="<%= effort.start_index %>"
+            data-best-efforts-end-param="<%= effort.end_index %>"
+          >
+            <span class="w-28 font-semibold"><%= best_effort_label(effort) %></span>
+            <span class="font-mono tabular-nums"><%= best_effort_time(effort) %></span>
+            <span class="text-sm opacity-60"><%= best_effort_rate(effort, activity.sport_category) %></span>
+            <%= best_effort_badge(effort.rank) unless effort.removed? %>
+            <% if effort.removed? %>
+              <span class="text-xs italic">Retiré</span>
+            <% end %>
+          </button>
+          <% if effort.removed? %>
+            <%= button_to "Rétablir", best_effort_removal_path(effort), method: :delete,
+                          class: "btn btn-ghost btn-xs" %>
+          <% else %>
+            <%= button_to "Retirer", best_effort_removal_path(effort),
+                          class: "btn btn-ghost btn-xs",
+                          title: "Retirer cet effort (erreur GPS) de vos records",
+                          data: { turbo_confirm: "Retirer cet effort de vos records ?" } %>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  </section>
+<% end %>
