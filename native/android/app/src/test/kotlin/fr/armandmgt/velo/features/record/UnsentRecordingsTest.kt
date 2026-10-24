@@ -85,7 +85,7 @@ class UnsentRecordingsTest {
     fun `the fallback prefers the running temps écoulé snapshot to the span of the points`() = runBlocking {
         dao.insertSession(session("orphan", state = RecordingState.STOPPED, sport = Sport.BIKE))
         insertPoints("orphan", count = 4, secondsApart = 10)
-        dao.updateElapsed("orphan", 42.0)
+        dao.updateProgress("orphan", elapsed = 42.0, distance = 0.0, movingTime = 0.0, averageSpeed = 0.0)
 
         val handoff = RecordingHandoff.load(dao, "orphan", fallbackSport = Sport.HIKE)!!
 

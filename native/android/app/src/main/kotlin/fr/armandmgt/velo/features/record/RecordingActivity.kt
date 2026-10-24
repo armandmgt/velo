@@ -63,7 +63,11 @@ class RecordingActivity : ComponentActivity() {
             val localBinder = service as RecordingService.LocalBinder
             binder = localBinder
             lifecycleScope.launch {
-                localBinder.uiState.collect { screenState = RecordingScreenState.Streaming(it) }
+                localBinder.uiState.collect { state ->
+                    screenState = RecordingScreenState.Streaming(state)
+                    // A restored recording brings its own sport back.
+                    state.sport?.let { selectedSport = it }
+                }
             }
         }
 

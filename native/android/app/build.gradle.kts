@@ -74,6 +74,11 @@ android {
         named("main") { java { srcDirs("src/main/kotlin") } }
         named("test") { java { srcDirs("src/test/kotlin") } }
     }
+
+    // The recording service's notification needs its strings and icon under Robolectric.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 // Compile with whatever JDK 21+ is running while targeting Java 21 bytecode.

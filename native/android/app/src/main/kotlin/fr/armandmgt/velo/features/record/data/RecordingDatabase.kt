@@ -1,6 +1,7 @@
 package fr.armandmgt.velo.features.record.data
 
 import android.content.Context
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -63,6 +64,12 @@ abstract class RecordingDatabase : RoomDatabase() {
 
         /** Every upgrade path, oldest first — what [get] opens the store with. */
         internal val MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+
+        /** Lets a test hand the service an in-memory store before it opens the real one. */
+        @VisibleForTesting
+        internal fun replaceForTesting(database: RecordingDatabase?) {
+            instance = database
+        }
 
         fun get(context: Context): RecordingDatabase =
             instance ?: synchronized(this) {

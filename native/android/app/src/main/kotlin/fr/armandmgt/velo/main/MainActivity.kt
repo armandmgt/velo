@@ -1,11 +1,13 @@
 package fr.armandmgt.velo.main
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -33,6 +35,9 @@ class MainActivity : HotwireActivity() {
     /** Recordings that never reached the server, counted on the Record FAB. */
     private var unsentCount = 0
     private var selectedTabIndex = DASHBOARD_TAB_INDEX
+
+    /** A recording is open, including one a kill left for the recording screen to restore. */
+    private var recordingInProgress = false
 
     // A finished recording parks its handoff and asks for the review, which is
     // the web `/activities/new`, presented modally by the path config.
@@ -67,9 +72,17 @@ class MainActivity : HotwireActivity() {
         val dao = RecordingDatabase.get(this).recordingDao()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                dao.stoppedSessions().collect { sessions ->
-                    unsentCount = sessions.size
-                    updateUnsentBadge()
+                launch {
+                    dao.stoppedSessions().collect { sessions ->
+                        unsentCount = sessions.size
+                        updateUnsentBadge()
+                    }
+                }
+                launch {
+                    dao.hasActiveSession().collect { active ->
+                        recordingInProgress = active
+                        updateFab(selectedTabIndex)
+                    }
                 }
             }
         }
@@ -107,18 +120,29 @@ class MainActivity : HotwireActivity() {
         bottomNavigationController.load(mainTabs, selectedTabIndex = 0)
     }
 
-    /** Point the FAB's icon, label and tap action at whatever the selected tab needs. */
+    /**
+     * Point the FAB's icon, label and tap action at whatever the selected tab needs.
+     * A recording in progress wins on every tab, in red, so it stays one tap away.
+     */
     private fun updateFab(selectedTabIndex: Int) {
         this.selectedTabIndex = selectedTabIndex
         updateUnsentBadge()
-        when (selectedTabIndex) {
-            tabIndex("activities") -> configureFab(R.drawable.ic_add, R.string.new_activity) {
+        when {
+            recordingInProgress -> configureFab(
+                R.drawable.ic_record,
+                R.string.record_in_progress,
+                R.color.brand_error,
+                R.color.brand_on_error,
+            ) {
+                recordLauncher.launch(Intent(this, RecordingActivity::class.java))
+            }
+            selectedTabIndex == tabIndex("activities") -> configureFab(R.drawable.ic_add, R.string.new_activity) {
                 // The plain upload form, never the review of a recording parked by
                 // an earlier Arrêter whose page failed to load.
                 RecordingHandoff.pending = null
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
             }
-            tabIndex("planned_routes") -> configureFab(R.drawable.ic_add, R.string.new_route) {
+            selectedTabIndex == tabIndex("planned_routes") -> configureFab(R.drawable.ic_add, R.string.new_route) {
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/planned_routes/new")
             }
             else -> configureFab(R.drawable.ic_record, R.string.record) {
@@ -130,15 +154,23 @@ class MainActivity : HotwireActivity() {
     /** Only on the Record FAB: the "+" modes have nothing to do with recordings. */
     private fun updateUnsentBadge() {
         val isRecordFab = selectedTabIndex != tabIndex("activities") && selectedTabIndex != tabIndex("planned_routes")
-        unsentBadge.isVisible = recordFab.isVisible && isRecordFab && unsentCount > 0
+        unsentBadge.isVisible = recordFab.isVisible && isRecordFab && !recordingInProgress && unsentCount > 0
         unsentBadge.text = unsentCount.toString()
         unsentBadge.contentDescription =
             resources.getQuantityString(R.plurals.recording_unsent_count, unsentCount, unsentCount)
     }
 
-    private fun configureFab(iconResId: Int, contentDescriptionResId: Int, onClick: () -> Unit) {
+    private fun configureFab(
+        iconResId: Int,
+        contentDescriptionResId: Int,
+        backgroundColorResId: Int = R.color.brand_primary,
+        iconColorResId: Int = R.color.brand_on_primary,
+        onClick: () -> Unit,
+    ) {
         recordFab.setImageResource(iconResId)
         recordFab.contentDescription = getString(contentDescriptionResId)
+        recordFab.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, backgroundColorResId))
+        recordFab.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, iconColorResId))
         recordFab.setOnClickListener { onClick() }
     }
 

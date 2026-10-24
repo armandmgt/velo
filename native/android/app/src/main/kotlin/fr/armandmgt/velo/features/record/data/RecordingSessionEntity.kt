@@ -33,7 +33,10 @@ data class RecordingSessionEntity(
      * point and state change), and final once [stoppedAt] is set.
      */
     @ColumnInfo(defaultValue = "0") val elapsed: Double = 0.0,
-    /** Final totals, written at Arrêter alongside [stoppedAt]. Meters, seconds, m/s. */
+    /**
+     * Totals kept current like [elapsed], so a killed recording restores them
+     * exactly, and final once [stoppedAt] is set. Meters, seconds, m/s.
+     */
     @ColumnInfo(defaultValue = "0") val distance: Double = 0.0,
     @ColumnInfo(defaultValue = "0") val movingTime: Double = 0.0,
     @ColumnInfo(defaultValue = "0") val averageSpeed: Double = 0.0,

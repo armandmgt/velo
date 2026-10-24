@@ -4,6 +4,7 @@
     <string name="menu_open">Menu</string>
     <string name="download_started">Téléchargement en cours…</string>
     <string name="record">Enregistrer</string>
+    <string name="record_in_progress">Enregistrement en cours</string>
     <string name="new_activity">Nouvelle activité</string>
     <string name="new_route">Nouveau parcours</string>
     <string name="recording_notification_channel_name">Enregistrement</string>

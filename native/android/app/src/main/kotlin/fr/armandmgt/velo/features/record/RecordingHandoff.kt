@@ -1,6 +1,5 @@
 package fr.armandmgt.velo.features.record
 
-import android.location.Location
 import fr.armandmgt.velo.features.record.data.RecordingDao
 import fr.armandmgt.velo.features.record.data.RecordingLapEntity
 import fr.armandmgt.velo.features.record.data.RecordingPointEntity
@@ -156,16 +155,7 @@ object RecordingHandoff {
      * pause as riding because pauses leave no trace in the points.
      */
     fun derivedStats(points: List<RecordingPointEntity>): Stats {
-        val accumulator = RecordingStatsAccumulator()
-        for (point in points) {
-            accumulator.add(
-                Location("recording").apply {
-                    latitude = point.latitude
-                    longitude = point.longitude
-                    time = point.timestamp
-                },
-            )
-        }
+        val accumulator = RecordingStatsAccumulator.replaying(points)
         val span = if (points.isEmpty()) 0.0 else (points.last().timestamp - points.first().timestamp) / 1000.0
         return Stats(accumulator.distance, span, accumulator.movingSeconds, accumulator.averageSpeed())
     }
