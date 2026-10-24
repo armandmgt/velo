@@ -9,8 +9,11 @@ export default class extends Controller {
     route: Object,
   }
 
+  #accentColor
+  #marker
+
   connect() {
-    this._accentColor = primaryAccentColor()
+    this.#accentColor = primaryAccentColor()
 
     // Compute initial bounds from route to avoid post-load zoom animation
     let initialBounds = null
@@ -67,7 +70,7 @@ export default class extends Controller {
         type: "line",
         source: "route",
         paint: {
-          "line-color": this._accentColor,
+          "line-color": this.#accentColor,
           "line-width": 3,
         },
       })
@@ -86,8 +89,8 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this._marker?.remove()
-    this._marker = undefined
+    this.#marker?.remove()
+    this.#marker = undefined
     this.map?.remove()
     this.map = undefined
   }
@@ -97,21 +100,21 @@ export default class extends Controller {
   showPoint(coordinate) {
     if (!this.map || !coordinate) return
 
-    if (!this._marker) {
+    if (!this.#marker) {
       const el = document.createElement("div")
       el.style.width = "14px"
       el.style.height = "14px"
       el.style.borderRadius = "9999px"
-      el.style.background = this._accentColor
+      el.style.background = this.#accentColor
       el.style.border = "2px solid #ffffff"
       el.style.boxShadow = "0 0 0 1px rgba(0, 0, 0, 0.25)"
-      this._marker = new maplibregl.Marker({ element: el })
+      this.#marker = new maplibregl.Marker({ element: el })
     }
 
-    this._marker.setLngLat(coordinate).addTo(this.map)
+    this.#marker.setLngLat(coordinate).addTo(this.map)
   }
 
   hidePoint() {
-    this._marker?.remove()
+    this.#marker?.remove()
   }
 }

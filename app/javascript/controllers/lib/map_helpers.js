@@ -30,16 +30,20 @@ export function primaryAccentColor(fallback = "#ff0000") {
 }
 
 export class FitToBoundsControl {
+  #bounds
+  #map
+  #container
+
   constructor(bounds) {
-    this._bounds = bounds
+    this.#bounds = bounds
   }
 
   setBounds(bounds) {
-    this._bounds = bounds
+    this.#bounds = bounds
   }
 
   onAdd(map) {
-    this._map = map
+    this.#map = map
 
     const span = document.createElement("span")
     span.className = "maplibregl-ctrl-icon"
@@ -48,20 +52,20 @@ export class FitToBoundsControl {
     button.className = "maplibregl-ctrl-geolocate"
     button.ariaLabel = "Back to center"
     button.addEventListener("click", () => {
-      if (this._bounds) this._map.fitBounds(this._bounds, { padding: 40 })
+      if (this.#bounds) this.#map.fitBounds(this.#bounds, { padding: 40 })
     })
     button.appendChild(span)
 
-    this._container = document.createElement("div")
-    this._container.className = "maplibregl-ctrl maplibregl-ctrl-group"
-    this._container.appendChild(button)
+    this.#container = document.createElement("div")
+    this.#container.className = "maplibregl-ctrl maplibregl-ctrl-group"
+    this.#container.appendChild(button)
 
-    return this._container
+    return this.#container
   }
 
   onRemove() {
-    this._container.remove()
-    this._map = undefined
+    this.#container.remove()
+    this.#map = undefined
   }
 }
 
