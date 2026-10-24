@@ -8,6 +8,9 @@
 >
   <div class="flex items-center justify-between mb-2">
     <h3 class="text-sm font-semibold uppercase opacity-60">Segments</h3>
+    <% if activity.path.present? && Segment::CATEGORIES.include?(activity.sport_category.to_s) %>
+      <%= link_to "Créer un segment", new_activity_segment_path(activity), class: "btn btn-ghost btn-xs" %>
+    <% end %>
   </div>
   <% if efforts.any? %>
     <ul class="overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">

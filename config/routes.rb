@@ -44,6 +44,7 @@ Rails.application.routes.draw do
   resource :activity_feeds
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
+    resources :segments, only: %i[ new create ]
   end
   resources :segments, only: :show
   resources :best_efforts, only: [] do

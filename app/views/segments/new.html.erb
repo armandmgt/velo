@@ -1,0 +1,68 @@
+<% content_for :title, "Créer un segment" %>
+<%= content_for :head do %>
+  <%= stylesheet_link_tag "maplibre-gl" %>
+  <%= javascript_tag do %>
+    window.MAPTILER_API_KEY = "<%= Rails.application.credentials.maptiler_api_key %>"
+  <% end %>
+<% end %>
+<% map_id = dom_id(@activity, :map) %>
+<% coordinates = @activity.path&.points&.map { [ it.x, it.y ] } || [] %>
+
+<main class="prose dark:prose-invert md:py-16 p-4">
+  <h1 class="hotwire-native:hidden">Créer un segment</h1>
+  <p>Choisissez le début et la fin du segment sur la trace de « <%= @activity.name %> », sur la carte ou avec les curseurs.</p>
+
+  <%= form_with model: @segment, url: activity_segments_path(@activity), class: "not-prose",
+                data: { controller: "segment-picker",
+                        segment_picker_coordinates_value: coordinates.to_json,
+                        segment_picker_min_distance_value: Segment::MIN_DISTANCE,
+                        segment_picker_map_outlet: "##{map_id}",
+                        action: "map:click->segment-picker#pick" } do |form| %>
+    <% if @segment.errors.any? %>
+      <div role="alert" class="alert alert-error mb-4">
+        <span><%= @segment.errors.full_messages.to_sentence %></span>
+      </div>
+    <% end %>
+
+    <% if coordinates.size >= 2 %>
+      <div id="<%= map_id %>" data-controller="map"
+           data-map-lng-value="<%= coordinates.first[0] %>" data-map-lat-value="<%= coordinates.first[1] %>"
+           data-map-route-value="<%= @activity.path_geojson %>"
+           class="map my-4 h-[360px] overflow-hidden rounded-box"></div>
+    <% end %>
+
+    <% if (elevation_data = @activity.elevation_chart_data) %>
+      <%= render "activities/elevation_profile", elevation_data:, map_target: "##{map_id}" %>
+    <% end %>
+
+    <% last = [ coordinates.size - 1, 1 ].max %>
+    <div class="grid gap-3 sm:grid-cols-2 my-4">
+      <label class="block">
+        <span class="text-sm font-medium">Début</span>
+        <input type="range" name="segment[start_index]" min="0" max="<%= last %>" step="1"
+               value="<%= params.dig(:segment, :start_index) || 0 %>" class="range range-sm w-full"
+               data-segment-picker-target="start" data-action="input->segment-picker#update">
+      </label>
+      <label class="block">
+        <span class="text-sm font-medium">Fin</span>
+        <input type="range" name="segment[end_index]" min="0" max="<%= last %>" step="1"
+               value="<%= params.dig(:segment, :end_index) || last %>" class="range range-sm w-full"
+               data-segment-picker-target="end" data-action="input->segment-picker#update">
+      </label>
+    </div>
+
+    <p class="text-sm mb-4">
+      Longueur : <strong data-segment-picker-target="distance">—</strong>
+      <span class="opacity-60">(minimum <%= Segment::MIN_DISTANCE %> m)</span>
+    </p>
+
+    <div class="mb-4">
+      <%= form.label :name, "Nom du segment", class: "block mb-2 text-sm font-medium" %>
+      <%= form.text_field :name, required: true, maxlength: 100, class: "input w-full" %>
+    </div>
+
+    <%= form.submit "Créer le segment", class: "btn btn-primary", data: { segment_picker_target: "submit" } %>
+  <% end %>
+
+  <p><%= link_to "Retour à l'activité", activity_path(@activity) %></p>
+</main>
