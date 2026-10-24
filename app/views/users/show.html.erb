@@ -21,6 +21,21 @@
         <p class="mt-1 text-xs opacity-60"><%= t("activity.heart_rate_zone.max_hr_help") %></p>
       </fieldset>
 
+      <% suggested_ftp = @user.suggested_ftp %>
+      <fieldset id="profile-ftp" <% if suggested_ftp %>data-controller="ftp-suggestion" data-ftp-suggestion-watts-value="<%= suggested_ftp %>"<% end %>>
+        <%= form.label :ftp, t("activity.power_zone.ftp_label"), class: "block mb-2 text-sm font-medium" %>
+        <%= form.number_field :ftp, in: 1..1000, placeholder: "W",
+              data: { ftp_suggestion_target: "input" },
+              class: class_names("w-full input", { "input-error": @user.errors.include?(:ftp) }) %>
+        <p class="mt-1 text-xs opacity-60"><%= t("activity.power_zone.ftp_help") %></p>
+        <% if suggested_ftp && suggested_ftp != @user.ftp %>
+          <p class="mt-1 flex items-center gap-2 text-xs">
+            <span><%= t("activity.power_zone.ftp_suggestion", watts: suggested_ftp) %></span>
+            <button type="button" class="btn btn-xs" data-action="ftp-suggestion#apply"><%= t("activity.power_zone.ftp_apply") %></button>
+          </p>
+        <% end %>
+      </fieldset>
+
       <%= form.submit "Enregistrer", class: "btn btn-primary" %>
     <% end %>
   </section>

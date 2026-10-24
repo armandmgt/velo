@@ -1,0 +1,56 @@
+<%# locals: (zones:) %>
+
+<div class="my-4" id="power_zones">
+  <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">
+    <%= t("activity.power_zone.title") %>
+  </h3>
+
+  <div class="flex h-3 w-full overflow-hidden rounded-full bg-base-300" data-controller="stacked-bar">
+    <% zones.each do |zone| %>
+      <% if zone[:percent].positive? %>
+        <div
+          class="<%= zone[:css_class] %>"
+          data-stacked-bar-target="segment"
+          data-percent="<%= zone[:percent] %>"
+          title="<%= zone[:label] %> — <%= zone[:percent] %>%"
+        ></div>
+      <% end %>
+    <% end %>
+  </div>
+
+  <table class="mt-3 w-full text-sm">
+    <thead>
+      <tr class="text-xs uppercase opacity-60">
+        <th class="text-left font-semibold py-1"><%= t("activity.heart_rate_zone.zone") %></th>
+        <th class="text-right font-semibold py-1"><%= t("activity.power_zone.range") %></th>
+        <th class="text-right font-semibold py-1"><%= t("activity.heart_rate_zone.time") %></th>
+        <th class="text-right font-semibold py-1"><%= t("activity.heart_rate_zone.percent") %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% zones.each do |zone| %>
+        <tr>
+          <td class="py-1">
+            <span class="inline-flex items-center gap-2">
+              <span class="inline-block size-2.5 rounded-full <%= zone[:css_class] %>"></span>
+              <%= zone[:label] %>
+            </span>
+          </td>
+          <td class="text-right tabular-nums py-1">
+            <% if zone[:min_watts].zero? %>
+              &lt; <%= zone[:max_watts] %>
+            <% elsif zone[:max_watts].nil? %>
+              ≥ <%= zone[:min_watts] %>
+            <% else %>
+              <%= zone[:min_watts] %>–<%= zone[:max_watts] %>
+            <% end %>
+          </td>
+          <td class="text-right tabular-nums py-1">
+            <%= zone[:seconds].positive? ? duration_display(ActiveSupport::Duration.build(zone[:seconds])) : "—" %>
+          </td>
+          <td class="text-right tabular-nums py-1"><%= zone[:percent] %>%</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

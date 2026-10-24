@@ -78,4 +78,17 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_content
     assert_equal 200, @user.reload.map_hide_start_end_distance
   end
+  test "shows the FTP suggestion without saving it, and saves an FTP the rider submits" do
+    login(@user)
+    activities(:this_week_ride).best_efforts.create!(distance: "power_20m", elapsed_seconds: 1_200, average_power: 300)
+
+    get user_url
+    assert_select "#profile-ftp[data-ftp-suggestion-watts-value='285']"
+    assert_select "#profile-ftp", text: /Estimation : 285 W/
+    assert_nil @user.reload.ftp
+
+    patch user_url, params: { user: { ftp: 285 } }
+    assert_redirected_to user_path
+    assert_equal 285, @user.reload.ftp
+  end
 end

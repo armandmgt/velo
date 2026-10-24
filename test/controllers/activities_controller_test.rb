@@ -277,4 +277,35 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to activities_url
   end
+  test "a ride with power shows weighted power and, with an FTP, power zones and a TSS score" do
+    users(:one).update_columns(ftp: 250)
+    @activity.update_columns(normalized_power: 212.4, effort_score: 64, effort_score_source: "power")
+    t = Time.zone.parse("2026-01-01 10:00:00")
+    [ 100, 200, 300, 400 ].each_with_index { |watts, i| @activity.activity_data_points.create!(recorded_at: t + i, power: watts) }
+
+    get activity_url(@activity)
+
+    assert_select ".stat-title, div, span", text: "Puissance pondérée"
+    assert_match "212 W", response.body
+    assert_select "#power_zones" do
+      assert_select "h3", text: "Zones de puissance"
+      assert_select "td", text: "Z7 · Neuromusculaire"
+      assert_select "td", text: "≥ 375"
+    end
+    assert_select "##{ActionView::RecordIdentifier.dom_id(@activity, :effort_score)} h3[title*=TSS]"
+  end
+
+  test "a ride with power but no FTP invites to set one; a ride without power shows no power section" do
+    @activity.update_columns(normalized_power: 200)
+    @activity.activity_data_points.create!(recorded_at: Time.zone.parse("2026-01-01 10:00"), power: 200)
+
+    get activity_url(@activity)
+    assert_select "#power_zones", count: 0
+    assert_match "Définissez votre FTP", response.body
+
+    @activity.update_columns(normalized_power: nil)
+    get activity_url(@activity)
+    assert_no_match "Puissance pondérée", response.body
+    assert_no_match "Définissez votre FTP", response.body
+  end
 end

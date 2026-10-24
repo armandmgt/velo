@@ -11,8 +11,15 @@ module BestEffortsHelper
     h.positive? ? format("%d:%02d:%02d", h, m, s) : format("%d:%02d", m, s)
   end
 
-  # Pace for the running category, speed for cycling.
+  # The time a distance effort took, or the watts a power effort held.
+  def best_effort_value(effort)
+    effort.power? ? "#{effort.average_power.round} W" : best_effort_time(effort)
+  end
+
+  # Pace for the running category, speed for cycling; nothing for power.
   def best_effort_rate(effort, category)
+    return if effort.power?
+
     if category == :running
       pace_display(effort.elapsed_seconds / (effort.meters / 1000.0))
     else
@@ -20,10 +27,11 @@ module BestEffortsHelper
     end
   end
 
-  def best_effort_badge(rank)
+  def best_effort_badge(rank, power: false)
     return unless rank
 
-    tag.span(t("best_effort.rank.#{rank}"), title: t("best_effort.rank_title.#{rank}"),
+    title = power ? t("best_effort.power_rank_title.#{rank}") : t("best_effort.rank_title.#{rank}")
+    tag.span(t("best_effort.rank.#{rank}"), title:,
              class: [ "badge badge-sm font-semibold", rank == 1 ? "badge-warning" : "badge-ghost" ])
   end
 end

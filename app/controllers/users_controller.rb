@@ -45,6 +45,6 @@ class UsersController < ApplicationController
   end
 
   def profile_params
-    params.expect(user: [ :name, :max_heart_rate, :map_hide_start_end_distance ])
+    params.expect(user: [ :name, :max_heart_rate, :ftp, :map_hide_start_end_distance ])
   end
 end
