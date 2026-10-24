@@ -71,6 +71,12 @@
           <% end %>
         </li>
         <li>
+          <%= link_to gears_path do %>
+            <%= icon "wrench", class: "size-[1.2em]" %>
+            Matériel
+          <% end %>
+        </li>
+        <li>
           <%= link_to edit_igpsport_connection_path, data: bridge_nav_item_data do %>
             <%= icon "cable", class: "size-[1.2em]" %>
             Intégrations

@@ -229,6 +229,47 @@ class ActivityIngestionTest < ActiveSupport::TestCase
     assert_includes activity.errors.details[:source_file].map { _1[:error] }, :invalid_file_type
   end
 
+  # --- Default gear ----------------------------------------------------------
+
+  test "gives an activity with no gear chosen its sport's default gear" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    activity = ingest(two_point_gpx, activity: @user.activities.build(sport: "bike"))
+
+    assert_equal gears(:road_bike), activity.gear
+  end
+
+  test "picks the default for the sport the file suggests when the rider gave none" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    activity = ingest(two_point_gpx)
+
+    assert_equal "bike", activity.sport
+    assert_equal gears(:road_bike), activity.gear
+  end
+
+  test "keeps the gear the rider chose over the default" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    activity = ingest(two_point_gpx, activity: @user.activities.build(sport: "bike", gear: gears(:gravel_bike)))
+
+    assert_equal gears(:gravel_bike), activity.gear
+  end
+
+  test "an explicit choice of no gear is not overridden by the default" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    activity = ingest(two_point_gpx, activity: @user.activities.build(sport: "bike"), gear_chosen: true)
+
+    assert_nil activity.gear
+  end
+
+  test "leaves the gear empty when the sport has no default" do
+    activity = ingest(two_point_gpx, activity: @user.activities.build(sport: "gravel_ride"))
+
+    assert_nil activity.gear
+  end
+
   # --- End to end ------------------------------------------------------------
 
   test "persists an ingested activity with its data points" do

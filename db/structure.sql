@@ -150,6 +150,7 @@ CREATE TABLE public.activities (
     name_pending boolean DEFAULT false NOT NULL,
     visibility character varying DEFAULT 'private'::character varying NOT NULL,
     recording_uuid uuid,
+    gear_id bigint,
     map_hidden boolean DEFAULT false NOT NULL,
     effort_score numeric(7,1),
     effort_score_source character varying
@@ -269,6 +270,112 @@ ALTER SEQUENCE public.best_efforts_id_seq OWNED BY public.best_efforts.id;
 CREATE TABLE public.data_migrations (
     version character varying NOT NULL
 );
+
+
+--
+-- Name: gear_components; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gear_components (
+    id bigint NOT NULL,
+    gear_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    nickname character varying,
+    installed_on date NOT NULL,
+    service_interval_km integer NOT NULL,
+    retired_at timestamp(6) without time zone,
+    final_distance numeric,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: gear_components_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.gear_components_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gear_components_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.gear_components_id_seq OWNED BY public.gear_components.id;
+
+
+--
+-- Name: gear_defaults; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gear_defaults (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    gear_id bigint NOT NULL,
+    sport character varying NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: gear_defaults_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.gear_defaults_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gear_defaults_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.gear_defaults_id_seq OWNED BY public.gear_defaults.id;
+
+
+--
+-- Name: gears; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gears (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    kind character varying NOT NULL,
+    name character varying NOT NULL,
+    brand character varying,
+    model character varying,
+    retired_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: gears_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.gears_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: gears_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.gears_id_seq OWNED BY public.gears.id;
 
 
 --
@@ -507,6 +614,27 @@ ALTER TABLE ONLY public.best_efforts ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: gear_components id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_components ALTER COLUMN id SET DEFAULT nextval('public.gear_components_id_seq'::regclass);
+
+
+--
+-- Name: gear_defaults id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_defaults ALTER COLUMN id SET DEFAULT nextval('public.gear_defaults_id_seq'::regclass);
+
+
+--
+-- Name: gears id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gears ALTER COLUMN id SET DEFAULT nextval('public.gears_id_seq'::regclass);
+
+
+--
 -- Name: igpsport_connections id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -606,6 +734,30 @@ ALTER TABLE ONLY public.data_migrations
 
 
 --
+-- Name: gear_components gear_components_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_components
+    ADD CONSTRAINT gear_components_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: gear_defaults gear_defaults_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_defaults
+    ADD CONSTRAINT gear_defaults_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: gears gears_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gears
+    ADD CONSTRAINT gears_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: igpsport_connections igpsport_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -682,6 +834,13 @@ CREATE UNIQUE INDEX index_active_storage_variant_records_uniqueness ON public.ac
 
 
 --
+-- Name: index_activities_on_gear_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_activities_on_gear_id ON public.activities USING btree (gear_id);
+
+
+--
 -- Name: index_activities_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -721,6 +880,34 @@ CREATE UNIQUE INDEX index_best_efforts_on_activity_id_and_distance ON public.bes
 --
 
 CREATE INDEX index_best_efforts_on_distance_and_elapsed_seconds ON public.best_efforts USING btree (distance, elapsed_seconds) WHERE (removed_at IS NULL);
+
+
+--
+-- Name: index_gear_components_on_gear_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_gear_components_on_gear_id ON public.gear_components USING btree (gear_id);
+
+
+--
+-- Name: index_gear_defaults_on_gear_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_gear_defaults_on_gear_id ON public.gear_defaults USING btree (gear_id);
+
+
+--
+-- Name: index_gear_defaults_on_user_id_and_sport; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_gear_defaults_on_user_id_and_sport ON public.gear_defaults USING btree (user_id, sport);
+
+
+--
+-- Name: index_gears_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_gears_on_user_id ON public.gears USING btree (user_id);
 
 
 --
@@ -775,6 +962,14 @@ ALTER TABLE ONLY public.igpsport_connections
 
 
 --
+-- Name: gear_defaults fk_rails_403b116a29; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_defaults
+    ADD CONSTRAINT fk_rails_403b116a29 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: activity_data_points fk_rails_4fe4a431f7; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -799,11 +994,35 @@ ALTER TABLE ONLY public.activities
 
 
 --
+-- Name: activities fk_rails_88c0317c2b; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.activities
+    ADD CONSTRAINT fk_rails_88c0317c2b FOREIGN KEY (gear_id) REFERENCES public.gears(id) ON DELETE SET NULL;
+
+
+--
 -- Name: active_storage_variant_records fk_rails_993965df05; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.active_storage_variant_records
     ADD CONSTRAINT fk_rails_993965df05 FOREIGN KEY (blob_id) REFERENCES public.active_storage_blobs(id);
+
+
+--
+-- Name: gear_components fk_rails_9d26c896e8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_components
+    ADD CONSTRAINT fk_rails_9d26c896e8 FOREIGN KEY (gear_id) REFERENCES public.gears(id) ON DELETE CASCADE;
+
+
+--
+-- Name: gear_defaults fk_rails_a19fd7ac3c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gear_defaults
+    ADD CONSTRAINT fk_rails_a19fd7ac3c FOREIGN KEY (gear_id) REFERENCES public.gears(id) ON DELETE CASCADE;
 
 
 --
@@ -831,12 +1050,21 @@ ALTER TABLE ONLY public.planned_routes
 
 
 --
+-- Name: gears fk_rails_f37d6dac40; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gears
+    ADD CONSTRAINT fk_rails_f37d6dac40 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- PostgreSQL database dump complete
 --
 
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20261024130000'),
 ('20261024120103'),
 ('20261024120020'),
 ('20261024100100'),

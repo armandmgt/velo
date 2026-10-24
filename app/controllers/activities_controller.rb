@@ -43,7 +43,8 @@ class ActivitiesController < ApplicationController
 
     # No time fallbacks: a rider's upload of a timeless file must still fail
     # validation as a 422 rather than be silently stamped with the current time.
-    ActivityIngestion.call(@activity, upload, filename: upload.try(:original_filename))
+    ActivityIngestion.call(@activity, upload, filename: upload.try(:original_filename),
+                                              gear_chosen: attrs.key?(:gear_id))
 
     if @activity.save
       respond_with_created(@activity)
@@ -119,7 +120,7 @@ class ActivitiesController < ApplicationController
   # the old name. See ADR 0005. `source_file` wins when both are sent.
   def activity_params
     permitted = params.expect(activity: [ :name, :description, :sport, :visibility,
-                                          :map_hidden, :source_file, :fit_file, :recording_uuid ])
+                                          :map_hidden, :source_file, :fit_file, :recording_uuid, :gear_id ])
     alias_upload = permitted.delete(:fit_file)
     permitted[:source_file] ||= alias_upload if alias_upload
 

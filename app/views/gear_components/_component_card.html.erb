@@ -1,0 +1,25 @@
+<%# locals: (component:) %>
+
+<div id="<%= dom_id(component) %>" class="card bg-base-100 shadow-sm" data-status="<%= component.status %>">
+  <div class="card-body p-4 gap-2">
+    <div class="flex items-baseline justify-between gap-3">
+      <span class="font-semibold"><%= component_progress_label(component) %></span>
+      <% case component.status %>
+      <% when :overdue %>
+        <span class="badge badge-error badge-sm shrink-0">Entretien dépassé</span>
+      <% when :warning %>
+        <span class="badge badge-warning badge-sm shrink-0">Bientôt</span>
+      <% end %>
+    </div>
+    <progress class="progress <%= component_progress_class(component) %> w-full"
+              value="<%= [ component.progress, 1 ].min * 100 %>" max="100"></progress>
+    <div class="flex flex-wrap items-center justify-between gap-2 text-xs opacity-70">
+      <span>Installé le <%= l component.installed_on, format: :long %></span>
+      <span class="flex gap-1">
+        <%= link_to "Modifier", edit_gear_component_path(component.gear, component), class: "btn btn-ghost btn-xs" %>
+        <%= button_to "Remplacer", replace_gear_component_path(component.gear, component), class: "btn btn-xs",
+              data: { turbo_confirm: "Remplacer ce composant ? L'ancien est conservé dans l'historique avec sa distance, le nouveau repart de zéro." } %>
+      </span>
+    </div>
+  </div>
+</div>

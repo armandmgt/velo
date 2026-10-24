@@ -67,7 +67,8 @@ class StravaImportService
       index[filename] = {
         name: row["Activity Name"].presence || "Sortie importée",
         name_pending: row["Activity Name"].blank?,
-        sport: SPORT_MAP[row["Activity Type"]] || :bike
+        sport: SPORT_MAP[row["Activity Type"]] || :bike,
+        gear_name: row["Activity Gear"].to_s.strip.presence
       }
     end
   end
@@ -108,6 +109,7 @@ class StravaImportService
       sport: metadata[:sport] || :bike,
       location: "Unknown"
     )
+    activity.gear = named_gear = gear_named(metadata[:gear_name], sport: activity.sport)
 
     File.open(file_path, "rb") do |file|
       ActivityIngestion.call(activity, file, filename: filename, reverse_geocode: false,
@@ -116,7 +118,9 @@ class StravaImportService
 
     existing = find_duplicate(activity)
     if existing
-      existing.update(name: activity.name, sport: activity.sport)
+      attributes = { name: activity.name, sport: activity.sport }
+      attributes[:gear] = named_gear if named_gear
+      existing.update(attributes)
       return :skipped
     end
 
@@ -129,6 +133,17 @@ class StravaImportService
     end
 
     :imported
+  end
+
+  # Gear is matched by name — retired gear included, since old activities were
+  # done with it — and created when the rider has none of that name yet. The
+  # kind follows the sport, so gear on an "other" sport is left unassigned.
+  def gear_named(name, sport:)
+    kind = Gear.kind_for_sport(sport)
+    return unless name && kind
+
+    @gears ||= {}
+    @gears[[ name, kind ]] ||= user.gears.find_or_create_by!(name: name, kind: kind)
   end
 
   def find_duplicate(activity)

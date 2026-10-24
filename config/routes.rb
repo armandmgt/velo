@@ -46,6 +46,15 @@ Rails.application.routes.draw do
   resources :activities do
     patch :visibility, on: :member, action: :update_visibility
   end
+  resources :gears do
+    member do
+      patch :retire
+      patch :reactivate
+    end
+    resources :components, controller: "gear_components", only: %i[ new create edit update destroy ] do
+      post :replace, on: :member
+    end
+  end
   resources :best_efforts, only: [] do
     resource :removal, only: %i[ create destroy ], module: :best_efforts
   end

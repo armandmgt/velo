@@ -1,0 +1,32 @@
+<%# locals: (gear:, component:) %>
+
+<%= form_with model: component, url: (component.new_record? ? gear_components_path(gear) : gear_component_path(gear, component)),
+              scope: :gear_component, class: "max-w-xl w-full space-y-5" do |form| %>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <fieldset>
+      <%= form.label :kind, class: "block mb-2 text-sm font-medium" %>
+      <%= form.select :kind, GearComponent.kinds.keys.map { |kind| [ t("gear_component.kind.#{kind}"), kind ] },
+            {}, class: "w-full select" %>
+    </fieldset>
+    <fieldset>
+      <%= form.label :nickname, class: "block mb-2 text-sm font-medium" %>
+      <%= form.text_field :nickname, maxlength: 80, placeholder: "Facultatif, sauf pour « Autre »",
+            class: class_names("w-full input", { "input-error": component.errors.include?(:nickname) }) %>
+    </fieldset>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <fieldset>
+      <%= form.label :installed_on, class: "block mb-2 text-sm font-medium" %>
+      <%= form.date_field :installed_on, required: true,
+            class: class_names("w-full input", { "input-error": component.errors.include?(:installed_on) }) %>
+    </fieldset>
+    <fieldset>
+      <%= form.label :service_interval_km, class: "block mb-2 text-sm font-medium" %>
+      <%= form.number_field :service_interval_km, required: true, min: 1, step: 1, placeholder: "3000",
+            class: class_names("w-full input", { "input-error": component.errors.include?(:service_interval_km) }) %>
+    </fieldset>
+  </div>
+
+  <%= form.submit "Enregistrer", class: "btn btn-accent" %>
+<% end %>

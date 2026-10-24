@@ -8,6 +8,8 @@
   <%= render "activities/name_prompts_banner",
              activities: Current.user.activities.awaiting_name.order(start_time: :desc) %>
 
+  <%= render "gear_components/due_banner", components: Current.user.overdue_gear_components %>
+
   <div data-controller="dashboard-tabs">
     <%# Greeting + period toggle %>
     <div class="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">

@@ -85,7 +85,11 @@ export default class extends BridgeComponent {
     const paced = usesPace(handoff.sport)
 
     this.uuidTarget.value = handoff.recordingUuid ?? ""
-    if (handoff.sport) this.sportTarget.value = handoff.sport
+    if (handoff.sport) {
+      this.sportTarget.value = handoff.sport
+      // Setting the value fires nothing, and the gear picker preselects from it.
+      this.sportTarget.dispatchEvent(new Event("change", { bubbles: true }))
+    }
 
     this.distanceTarget.textContent = distanceKilometers(stats.distance ?? 0)
     this.elapsedTarget.textContent = elapsedString(stats.elapsed ?? 0)

@@ -3,6 +3,8 @@ class User < ApplicationRecord
   has_many :sessions, dependent: :destroy
   has_many :activities, dependent: :destroy
   has_many :planned_routes, dependent: :destroy
+  has_many :gears, dependent: :destroy
+  has_many :gear_defaults, dependent: :delete_all
   has_one :igpsport_connection, dependent: :destroy
   has_many :map_privacy_zones, dependent: :destroy
 
@@ -36,6 +38,14 @@ class User < ApplicationRecord
   # capitalized version of the email local-part when unset.
   def display_name
     name.presence || default_display_name
+  end
+
+  def default_gear_for(sport)
+    gear_defaults.find_by(sport: sport)&.gear
+  end
+
+  def overdue_gear_components
+    GearComponent.active.where(gear: gears.active).with_distance.includes(:gear).select(&:overdue?)
   end
 
   private

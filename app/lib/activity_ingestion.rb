@@ -12,14 +12,17 @@ class ActivityIngestion
     new(...).call
   end
 
+  # `gear_chosen:` tells an explicit "no gear" apart from a rider who never saw
+  # a picker: only the latter gets the sport's default gear.
   def initialize(activity, source, filename:, reverse_geocode: true,
-                 fallback_start_time: nil, fallback_end_time: nil)
+                 fallback_start_time: nil, fallback_end_time: nil, gear_chosen: false)
     @activity            = activity
     @source              = source
     @filename            = filename
     @reverse_geocode     = reverse_geocode
     @fallback_start_time = fallback_start_time
     @fallback_end_time   = fallback_end_time
+    @gear_chosen         = gear_chosen
   end
 
   def call
@@ -45,6 +48,7 @@ class ActivityIngestion
 
   def apply(track)
     apply_hints(track)
+    apply_default_gear
     apply_summary(track.summary)
     build_data_points(track)
     activity.assign_effort_score
@@ -60,6 +64,12 @@ class ActivityIngestion
   def apply_hints(track)
     activity.name  ||= track.suggested_name if track.suggested_name.present?
     activity.sport ||= track.suggested_sport if track.suggested_sport
+  end
+
+  def apply_default_gear
+    return if @gear_chosen || activity.gear || activity.sport.blank? || activity.user.nil?
+
+    activity.gear = activity.user.default_gear_for(activity.sport)
   end
 
   def apply_summary(summary)

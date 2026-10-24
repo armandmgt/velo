@@ -58,6 +58,25 @@ class ActivityTest < ActiveSupport::TestCase
     assert_equal [ [ activity.user, :activities ] ], recorded
   end
 
+  test "gear must belong to the activity's owner" do
+    activity = activities(:one)
+    activity.gear = gears(:other_users_bike)
+
+    assert_not activity.valid?
+    assert activity.errors.include?(:gear)
+  end
+
+  test "changing to a sport the gear doesn't fit drops the gear" do
+    activity = activities(:one)
+    activity.update!(gear: gears(:road_bike))
+
+    activity.update!(sport: "gravel_ride")
+    assert_equal gears(:road_bike), activity.reload.gear
+
+    activity.update!(sport: "swim")
+    assert_nil activity.reload.gear
+  end
+
   private
 
   # Records the streamables passed to broadcast_refresh_later_to so we can assert

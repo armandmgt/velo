@@ -11,6 +11,21 @@ fr:
         description: Description
         sport: Sport
         source_file: Fichier (FIT ou GPX)
+        gear: Matériel
+        gear_id: Matériel
+      gear:
+        name: Nom
+        kind: Type
+        brand: Marque
+        model: Modèle
+        photo: Photo
+        default_sports: Matériel par défaut pour
+      gear_component:
+        kind: Type
+        nickname: Nom
+        installed_on: Installé le
+        service_interval_km: Intervalle d'entretien (km)
+        gear: Vélo
       map_privacy_zone:
         name: Nom
         latitude: Emplacement
@@ -110,6 +125,18 @@ fr:
       shareable_hint: "Quiconque a le lien"
       public: "Publique"
       public_hint: "Visible par vos amis"
+  gear:
+    kind:
+      bike: Vélo
+      shoes: Chaussures
+  gear_component:
+    kind:
+      chain: Chaîne
+      cassette: Cassette
+      tires: Pneus
+      brake_pads: Plaquettes de frein
+      drivetrain: Transmission
+      custom: Autre
   best_effort:
     distance:
       400m: "400 m"

@@ -1,0 +1,50 @@
+<%# locals: (gear:) %>
+
+<%= form_with model: gear, class: "max-w-xl w-full space-y-5" do |form| %>
+  <% if gear.new_record? %>
+    <%= form.hidden_field :kind %>
+  <% end %>
+
+  <fieldset>
+    <%= form.label :name, class: "block mb-2 text-sm font-medium" %>
+    <%= form.text_field :name, required: true, maxlength: 80,
+          placeholder: gear.bike? ? "Ex : Vélo de route" : "Ex : Chaussures de trail",
+          class: class_names("w-full input", { "input-error": gear.errors.include?(:name) }) %>
+  </fieldset>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <fieldset>
+      <%= form.label :brand, class: "block mb-2 text-sm font-medium" %>
+      <%= form.text_field :brand, maxlength: 80, class: "w-full input" %>
+    </fieldset>
+    <fieldset>
+      <%= form.label :model, class: "block mb-2 text-sm font-medium" %>
+      <%= form.text_field :model, maxlength: 80, class: "w-full input" %>
+    </fieldset>
+  </div>
+
+  <fieldset>
+    <%= form.label :photo, class: "block mb-2 text-sm font-medium" %>
+    <%= form.file_field :photo, accept: "image/*", class: "file-input w-full" %>
+  </fieldset>
+
+  <fieldset id="gear_default_sports">
+    <legend class="block mb-2 text-sm font-medium"><%= Gear.human_attribute_name(:default_sports) %></legend>
+    <div class="flex flex-wrap gap-x-5 gap-y-2">
+      <%= form.collection_check_boxes :default_sports,
+            Gear.sports_for_kind(gear.kind).map { |sport| [ sport, t("activity.sport.#{sport}") ] },
+            :first, :last do |box| %>
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <%= box.check_box class: "checkbox checkbox-sm" %>
+          <%= box.text %>
+        </label>
+      <% end %>
+    </div>
+    <p class="mt-1 text-xs opacity-60">
+      Les nouvelles activités de ces sports utiliseront ce matériel. Un sport n'a qu'un matériel par défaut :
+      le choisir ici le retire de l'ancien.
+    </p>
+  </fieldset>
+
+  <%= form.submit "Enregistrer", class: "btn btn-accent" %>
+<% end %>

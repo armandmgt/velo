@@ -270,6 +270,105 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_equal original_name, activity.name
   end
 
+  # --- Gear ------------------------------------------------------------------
+
+  test "an upload with no gear field gets its sport's default gear" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    post activities_url, params: { activity: { name: "Défaut", sport: "bike", source_file: file_fixture_upload("gpx/ride.gpx") } }
+
+    assert_equal gears(:road_bike), Activity.last.gear
+  end
+
+  test "a native recording gets its sport's default gear" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    post activities_url,
+         params: { activity: { sport: "bike", recording_uuid: SecureRandom.uuid,
+                               source_file: file_fixture_upload("gpx/native_recording.gpx") } },
+         headers: { "User-Agent" => "Hotwire Native iOS" }
+
+    assert_equal gears(:road_bike), Activity.last.gear
+  end
+
+  test "choosing no gear in the picker keeps the activity without gear" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    post activities_url, params: { activity: { name: "Sans", sport: "bike", gear_id: "", source_file: file_fixture_upload("gpx/ride.gpx") } }
+
+    assert_nil Activity.last.gear
+  end
+
+  test "the chosen gear wins over the default" do
+    gears(:road_bike).update!(default_sports: %w[bike])
+
+    post activities_url, params: { activity: { name: "Choisi", sport: "bike", gear_id: gears(:gravel_bike).id,
+                                               source_file: file_fixture_upload("gpx/ride.gpx") } }
+
+    assert_equal gears(:gravel_bike), Activity.last.gear
+  end
+
+  test "another user's gear is refused" do
+    assert_no_difference("Activity.count") do
+      post activities_url, params: { activity: { name: "Volé", sport: "bike", gear_id: gears(:other_users_bike).id,
+                                                 source_file: file_fixture_upload("gpx/ride.gpx") } }
+    end
+
+    assert_response :unprocessable_content
+  end
+
+  test "the picker offers only active gear of the sport's kind" do
+    get edit_activity_url(@activity)
+
+    assert_select "select#activity_gear_id option", text: "Vélo de course"
+    assert_select "select#activity_gear_id option", text: "Gravel"
+    assert_select "select#activity_gear_id option", text: "Chaussures de trail", count: 0
+    assert_select "select#activity_gear_id option", text: /Vieux biclou/, count: 0
+    assert_select "select#activity_gear_id option", text: /Vélo de Two/, count: 0
+  end
+
+  test "the picker keeps an activity's retired gear so saving doesn't unassign it" do
+    @activity.update!(gear: gears(:retired_bike))
+
+    get edit_activity_url(@activity)
+
+    assert_select "select#activity_gear_id option[selected]", text: "Vieux biclou (retiré)"
+  end
+
+  test "the picker is withheld for a sport without gear" do
+    @activity.update!(sport: "swim")
+
+    get edit_activity_url(@activity)
+
+    assert_select "#activity_gear_field[hidden] select[disabled]"
+  end
+
+  test "updating assigns the chosen gear" do
+    patch activity_url(@activity), params: { activity: { gear_id: gears(:gravel_bike).id } }
+
+    assert_equal gears(:gravel_bike), @activity.reload.gear
+  end
+
+  test "the activity page shows the gear used and links to it" do
+    @activity.update!(gear: gears(:road_bike))
+
+    get activity_url(@activity)
+
+    assert_select "#gear_activity_#{@activity.id} a[href='#{gear_path(gears(:road_bike))}']", text: "Vélo de course"
+  end
+
+  test "the bell counts components past their interval and links to the bike" do
+    bike = gears(:road_bike)
+    activities(:this_week_ride).update!(gear: bike)
+    component = bike.components.create!(kind: "chain", installed_on: 1.year.ago.to_date, service_interval_km: 10)
+    pending = users(:one).activities.awaiting_name.count
+
+    get activities_url
+
+    assert_select "#navbar_name_prompts[data-bridge--notification-count-count-value=?]", (pending + 1).to_s
+    assert_select "#bell_gear_component_#{component.id} a[href='#{gear_path(bike)}']", text: /Chaîne/
+  end
+
   test "should destroy activity" do
     assert_difference("Activity.count", -1) do
       delete activity_url(@activity)

@@ -1,7 +1,16 @@
 <%# locals: (activity:, recording: false) %>
 
+<% gear_catalogue = gear_picker_catalogue(activity) %>
+<% gear_choices = gear_catalogue.select { |gear| gear[:kind] == Gear.kind_for_sport(activity.sport) } %>
+<% preselected_gear = activity.gear_id ||
+     (gear_choices.find { |gear| gear[:defaultSports].include?(activity.sport) }&.dig(:id) if activity.new_record?) %>
+
 <%= form_with model: activity, class: "max-w-3xl w-full",
-              data: recording ? { action: "turbo:submit-end->bridge--recording-review#submitEnd" } : {} do |form| %>
+              data: {
+                controller: "gear-picker",
+                gear_picker_catalogue_value: gear_catalogue.to_json,
+                gear_picker_kinds_value: gear_picker_kinds.to_json
+              }.merge(recording ? { action: "turbo:submit-end->bridge--recording-review#submitEnd" } : {}) do |form| %>
   <% if recording %>
     <%= form.hidden_field :recording_uuid, data: { "bridge--recording-review-target": "uuid" } %>
   <% end %>
@@ -34,7 +43,7 @@
           sport_grouped_options(activity.sport),
           { include_blank: true },
           { class: class_names("w-full select", { 'select-error': activity.errors.include?(:sport) }),
-            data: recording ? { "bridge--recording-review-target": "sport" } : {} } %>
+            data: { action: "gear-picker#sportChanged" }.merge(recording ? { "bridge--recording-review-target": "sport" } : {}) } %>
 
     <% if activity.errors.include?(:sport) %>
       <p class="mt-2 text-sm text-red-600 dark:text-red-500">
@@ -42,6 +51,25 @@
       </p>
     <% end %>
   </div>
+
+  <%# Disabled while hidden so the field isn't sent: an activity whose rider
+      never saw a picker gets its sport's default gear on ingestion. %>
+  <%= tag.div id: "activity_gear_field", class: "mb-5", hidden: gear_choices.empty?,
+              data: { gear_picker_target: "field" } do %>
+    <%= form.label :gear_id, class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
+    <%= form.select :gear_id,
+          options_for_select(gear_choices.map { |gear| [ gear[:name], gear[:id] ] }, preselected_gear),
+          { include_blank: "Aucun" },
+          { class: class_names("w-full select", { "select-error": activity.errors.include?(:gear) }),
+            disabled: gear_choices.empty?,
+            data: { gear_picker_target: "select" } } %>
+
+    <% if activity.errors.include?(:gear) %>
+      <p class="mt-2 text-sm text-red-600 dark:text-red-500">
+        <span class="font-medium">Oups !</span> <%= activity.errors.full_messages_for(:gear).to_sentence %>
+      </p>
+    <% end %>
+  <% end %>
 
   <div class="mb-5">
     <%= form.label :visibility, t("activity.visibility.legend"), class: "block mb-2 text-sm font-medium text-gray-900 dark:text-white" %>
