@@ -45,13 +45,13 @@ class GearsControllerTest < ActionDispatch::IntegrationTest
 
   test "show displays totals and component progress" do
     activities(:this_week_ride).update!(gear: @gear)
-    @gear.components.create!(kind: "chain", installed_on: 1.year.ago.to_date, service_interval_km: 3000)
+    chain = @gear.components.create!(kind: "chain", installed_on: 1.year.ago.to_date, service_interval_km: 3000)
 
     get gear_url(@gear)
 
     assert_response :success
     assert_select "#gear_totals", text: /30 km/
-    assert_select "#gear_components", text: "Chaîne — 30 / #{ActiveSupport::NumberHelper.number_to_delimited(3000)} km"
+    assert_select "#gear_component_#{chain.id} span.font-semibold", text: "Chaîne — 30 / #{ActiveSupport::NumberHelper.number_to_delimited(3000)} km"
   end
 
   test "updates defaults" do
