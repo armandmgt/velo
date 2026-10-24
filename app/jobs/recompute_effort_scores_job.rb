@@ -1,4 +1,4 @@
-# Every heart-rate effort score depends on the rider's max HR, so changing it
+# Every effort score depends on the rider's max HR or FTP, so changing either
 # (or the initial backfill) rescores all of their activities.
 class RecomputeEffortScoresJob < ApplicationJob
   queue_as :default

@@ -30,4 +30,24 @@ class RecordsControllerTest < ActionDispatch::IntegrationTest
     get records_url(category: "cycling", year: activities(:this_week_ride).start_time.year)
     assert_select "#records_10k", text: /Aucun effort/
   end
+  test "cycling records show the power curve and power podiums for riders with power" do
+    activities(:one).update_columns(power_curve: { "5" => 900, "1200" => 280 })
+    activities(:one).best_efforts.create!(distance: "power_20m", elapsed_seconds: 1_200, average_power: 280)
+
+    get records_url(category: "cycling", curve_period: "this_year")
+
+    assert_select "#power_curve[data-power-curve-chart-data-value*='\"x\":1200']"
+    assert_select "#power_curve select[name=curve_period] option[selected][value=this_year]"
+    assert_select "#records_power_20m", text: /280 W/
+    assert_select "#records_power_20m .badge", text: "PR"
+  end
+
+  test "no power section without power data, nor on the running tab" do
+    get records_url(category: "cycling")
+    assert_select "#power_records", count: 0
+
+    activities(:one).update_columns(power_curve: { "5" => 900 })
+    get records_url(category: "running")
+    assert_select "#power_records", count: 0
+  end
 end

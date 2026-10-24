@@ -1,5 +1,6 @@
 <%# locals: (activity:) %>
-<% efforts = activity.best_efforts.sort_by(&:meters) %>
+<% power_efforts, distance_efforts = activity.best_efforts.partition(&:power?) %>
+<% efforts = distance_efforts.sort_by(&:meters) + power_efforts.sort_by(&:elapsed_seconds) %>
 <% if efforts.any? %>
   <section
     id="<%= dom_id(activity, :best_efforts) %>"
@@ -20,10 +21,14 @@
             data-best-efforts-start-param="<%= effort.start_index %>"
             data-best-efforts-end-param="<%= effort.end_index %>"
           >
-            <span class="w-28 font-semibold"><%= best_effort_label(effort) %></span>
-            <span class="font-mono tabular-nums"><%= best_effort_time(effort) %></span>
-            <span class="text-sm opacity-60"><%= best_effort_rate(effort, activity.sport_category) %></span>
-            <%= best_effort_badge(effort.rank) unless effort.removed? %>
+            <span class="min-w-28 font-semibold">
+              <%= effort.power? ? t("best_effort.power_label", duration: best_effort_label(effort)) : best_effort_label(effort) %>
+            </span>
+            <span class="font-mono tabular-nums"><%= best_effort_value(effort) %></span>
+            <% if (rate = best_effort_rate(effort, activity.sport_category)) %>
+              <span class="text-sm opacity-60"><%= rate %></span>
+            <% end %>
+            <%= best_effort_badge(effort.rank, power: effort.power?) unless effort.removed? %>
             <% if effort.removed? %>
               <span class="text-xs italic">Retiré</span>
             <% end %>

@@ -142,3 +142,13 @@ body:has(main.no-overscroll) {
 .hr-zone-3 { background-color: #10B981; }
 .hr-zone-4 { background-color: #F59E0B; }
 .hr-zone-5 { background-color: #EF4444; }
+
+/* Coggan power-zone colors. Keep in sync with POWER_ZONES in
+   app/models/concerns/activity_power.rb. */
+.power-zone-1 { background-color: #9CA3AF; }
+.power-zone-2 { background-color: #3B82F6; }
+.power-zone-3 { background-color: #10B981; }
+.power-zone-4 { background-color: #FACC15; }
+.power-zone-5 { background-color: #F59E0B; }
+.power-zone-6 { background-color: #EF4444; }
+.power-zone-7 { background-color: #8B5CF6; }

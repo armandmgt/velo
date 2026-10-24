@@ -57,4 +57,15 @@ class PersonalRecordsTest < ActiveSupport::TestCase
     assert_equal climb.id, records.biggest_climb.id
     assert_nil PersonalRecords.new(@user, category: :running).longest_ride
   end
+  test "power podiums rank the highest average power first, for cycling only" do
+    [ 280, 320, 300, 250 ].each_with_index do |watts, i|
+      activity(sport: :bike, on: Time.utc(2026, 1, i + 1)).best_efforts
+        .create!(distance: "power_5m", elapsed_seconds: 300, average_power: watts)
+    end
+
+    cycling = PersonalRecords.new(@user, category: :cycling)
+    assert_equal [ 320, 300, 280 ], cycling.podiums.fetch("power_5m").map(&:average_power)
+    assert_includes cycling.power_durations.keys, "power_20m"
+    assert_empty PersonalRecords.new(@user, category: :running).power_durations
+  end
 end

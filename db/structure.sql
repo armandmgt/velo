@@ -158,7 +158,9 @@ CREATE TABLE public.activities (
     tile_path_z9 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (152.9)::double precision)) STORED,
     tile_path_z11 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (38.2)::double precision)) STORED,
     tile_path_z13 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (9.6)::double precision)) STORED,
-    tile_path_z14 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (0.6)::double precision)) STORED
+    tile_path_z14 public.geometry(LineString,3857) GENERATED ALWAYS AS (public.st_simplify(public.st_transform(public.st_setsrid(path, 4326), 3857), (0.6)::double precision)) STORED,
+    normalized_power double precision,
+    power_curve jsonb
 );
 
 
@@ -240,12 +242,13 @@ CREATE TABLE public.best_efforts (
     activity_id bigint NOT NULL,
     distance character varying NOT NULL,
     elapsed_seconds double precision NOT NULL,
-    start_index integer NOT NULL,
-    end_index integer NOT NULL,
+    start_index integer,
+    end_index integer,
     rank integer,
     removed_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    average_power double precision
 );
 
 
@@ -630,7 +633,8 @@ CREATE TABLE public.users (
     max_heart_rate integer,
     email_verified_at timestamp(6) without time zone,
     name character varying,
-    map_hide_start_end_distance integer DEFAULT 200 NOT NULL
+    map_hide_start_end_distance integer DEFAULT 200 NOT NULL,
+    ftp integer
 );
 
 
@@ -1292,6 +1296,7 @@ SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20261024150000'),
+('20261024140000'),
 ('20261024130000'),
 ('20261024120103'),
 ('20261024120024'),

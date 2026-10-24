@@ -176,6 +176,9 @@ module ApplicationHelper
     if (power = activity.avg_power)
       metrics << { label: t.("avg_power"), icon: "zap", value: "#{power} W" }
     end
+    if (power = activity.normalized_power)
+      metrics << { label: t.("normalized_power"), icon: "zap", value: "#{power.round} W" }
+    end
     if (power = activity.max_power)
       metrics << { label: t.("max_power"), icon: "zap", value: "#{power} W" }
     end

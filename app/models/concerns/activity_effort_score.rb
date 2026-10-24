@@ -1,7 +1,8 @@
 # The Activity's effort score (see CONTEXT.md). The heart-rate score is
 # zone-weighted TRIMP: minutes in each max-HR zone times the zone's number, so
-# an hour in Z4 weighs four times an hour in Z1. `effort_score_source` exists so
-# a power-based score can take precedence later without reshaping the data.
+# an hour in Z4 weighs four times an hour in Z1. A ride with power, from a rider
+# with an FTP, is scored by TSS instead (see ActivityPower), which takes
+# precedence because power measures the work itself.
 module ActivityEffortScore
   extend ActiveSupport::Concern
 
@@ -18,7 +19,7 @@ module ActivityEffortScore
   EFFORT_BAND_MIN_HISTORY = 3
 
   included do
-    enum :effort_score_source, %i[heart_rate].index_by(&:itself), prefix: true
+    enum :effort_score_source, %i[heart_rate power].index_by(&:itself), prefix: true
 
     scope :scored, -> { where.not(effort_score: nil) }
   end
@@ -38,13 +39,18 @@ module ActivityEffortScore
   end
 
   def assign_effort_score
-    score = heart_rate_effort_score(user&.max_heart_rate)
-    self.effort_score = score
-    self.effort_score_source = score && :heart_rate
+    if (tss = power_effort_score(user&.ftp))
+      self.effort_score = tss
+      self.effort_score_source = :power
+    else
+      score = heart_rate_effort_score(user&.max_heart_rate)
+      self.effort_score = score
+      self.effort_score_source = score && :heart_rate
+    end
   end
 
-  # Skips callbacks: a max-HR change rescores every activity at once, and each
-  # save would otherwise broadcast a page refresh.
+  # Skips callbacks: a max-HR or FTP change rescores every activity at once, and
+  # each save would otherwise broadcast a page refresh.
   def recompute_effort_score!
     assign_effort_score
     return unless will_save_change_to_effort_score? || will_save_change_to_effort_score_source?

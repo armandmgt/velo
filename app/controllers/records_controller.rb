@@ -5,5 +5,6 @@ class RecordsController < ApplicationController
     @years   = @records.years
     year     = params[:year].to_i
     @records = PersonalRecords.new(Current.user, category:, year:) if @years.include?(year)
+    @power_curve = PowerCurveEnvelope.new(Current.user, period: params[:curve_period]) if category == :cycling
   end
 end

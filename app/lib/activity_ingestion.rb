@@ -51,11 +51,12 @@ class ActivityIngestion
     apply_default_gear
     apply_summary(track.summary)
     build_data_points(track)
+    power = apply_power
     activity.assign_effort_score
     apply_path(track)
     apply_location(track)
     apply_fallbacks
-    apply_best_efforts(track)
+    apply_best_efforts(track, power)
     apply_segment_efforts(track)
     track.problems.each { |problem| activity.errors.add(:source_file, problem) }
   end
@@ -113,11 +114,16 @@ class ActivityIngestion
     activity.location ||= "Unknown"
   end
 
+  def apply_power
+    activity.power_series.tap { |series| activity.assign_power_analysis(series) }
+  end
+
   # Re-ingesting replaces the efforts rather than adding to them. Located points
   # only, so effort offsets index the path's vertices.
-  def apply_best_efforts(track)
+  def apply_best_efforts(track, power)
     activity.best_efforts.each(&:mark_for_destruction)
     BestEffort.build_for(activity, track.located_points)
+    BestEffort.build_power_for(activity, power, track.located_points)
   end
 
   def apply_segment_efforts(track)

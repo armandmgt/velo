@@ -1,0 +1,23 @@
+<%# locals: (key:, podium:, category:, label: best_effort_label(key)) %>
+<div id="records_<%= key %>" class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4">
+  <div class="font-bold text-sm mb-1"><%= label %></div>
+  <% if podium.empty? %>
+    <p class="text-sm opacity-50 py-2 border-t border-base-200">Aucun effort</p>
+  <% end %>
+  <% podium.each do |effort| %>
+    <%= link_to activity_path(effort.activity_id),
+                class: "grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-3 py-2 border-t border-base-200 hover:opacity-70 transition-opacity" do %>
+      <span><%= best_effort_badge(effort.podium_position, power: effort.power?) %></span>
+      <span class="min-w-0">
+        <span class="block truncate text-sm"><%= effort.activity_name %></span>
+        <span class="block text-xs opacity-60"><%= l effort.activity_start_time.in_time_zone(PersonalRecords::ZONE).to_date, format: :long %></span>
+      </span>
+      <span class="text-right">
+        <span class="block font-bold text-primary font-mono tabular-nums"><%= best_effort_value(effort) %></span>
+        <% if (rate = best_effort_rate(effort, category)) %>
+          <span class="block text-xs opacity-60"><%= rate %></span>
+        <% end %>
+      </span>
+    <% end %>
+  <% end %>
+</div>

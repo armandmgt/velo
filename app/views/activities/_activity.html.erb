@@ -9,6 +9,7 @@
 <% map_visibility = MapVisibility.new(activity, viewer: local_assigns.fetch(:viewer) { Current.user }) %>
 <% chart_data = map_visibility.chart_data(max_heart_rate: max_hr) %>
 <% hr_zones = activity.heart_rate_zone_distribution(max_hr) %>
+<% ftp = activity.user.ftp %>
 <% map_id = dom_id(activity, :map) %>
 
 <article id="<%= dom_id activity %>" class="w-full">
@@ -69,6 +70,13 @@
     <% elsif max_hr.nil? && activity.avg_heart_rate %>
       <p class="mt-4 text-sm opacity-60">
         <%= t("activity.heart_rate_zone.set_max_hr_hint_html", link: link_to(t("activity.heart_rate_zone.set_max_hr_link"), user_path)) %>
+      </p>
+    <% end %>
+    <% if (power_zones = activity.power_zone_distribution(ftp)) %>
+      <%= render "activities/power_zones", zones: power_zones %>
+    <% elsif ftp.nil? && activity.power_data? %>
+      <p class="mt-4 text-sm opacity-60">
+        <%= t("activity.power_zone.set_ftp_hint_html", link: link_to(t("activity.power_zone.set_ftp_link"), user_path)) %>
       </p>
     <% end %>
   <% end %>

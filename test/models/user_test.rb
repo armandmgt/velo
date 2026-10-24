@@ -78,4 +78,39 @@ class UserTest < ActiveSupport::TestCase
       user.update!(name: "Armand")
     end
   end
+  test "changing FTP enqueues a recompute of every effort score" do
+    user = users(:one)
+
+    assert_enqueued_with(job: RecomputeEffortScoresJob, args: [ user ]) do
+      user.update!(ftp: 250)
+    end
+  end
+
+  test "ftp accepts nil or a positive whole number of watts" do
+    user = users(:one)
+
+    assert user.update(ftp: nil)
+    assert user.update(ftp: 280)
+    assert_not user.update(ftp: 0)
+    assert_not user.update(ftp: 250.5)
+  end
+
+  test "suggested FTP is 95 % of the best 20-min power of the last 6 months, never applied" do
+    user = users(:one)
+    twenty_min = ->(watts, on:) do
+      activity = user.activities.create!(name: "Sortie", sport: :bike, start_time: on, end_time: on + 1.hour,
+                                         location: "Paris", active_time: "PT3600S")
+      activity.best_efforts.create!(distance: "power_20m", elapsed_seconds: 1_200, average_power: watts)
+    end
+
+    assert_nil user.suggested_ftp
+
+    twenty_min.(260, on: 2.months.ago)
+    twenty_min.(280, on: 5.months.ago)
+    twenty_min.(400, on: 7.months.ago)
+    twenty_min.(500, on: 1.month.ago).remove!
+
+    assert_equal 266, user.suggested_ftp
+    assert_nil user.reload.ftp
+  end
 end

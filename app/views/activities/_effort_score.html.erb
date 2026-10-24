@@ -1,7 +1,7 @@
 <%# locals: (activity:) %>
 
 <div class="my-4 flex flex-wrap items-center gap-x-3 gap-y-1" id="<%= dom_id(activity, :effort_score) %>">
-  <h3 class="m-0 text-sm font-semibold uppercase opacity-60" title="<%= t("activity.effort_score.help") %>">
+  <h3 class="m-0 text-sm font-semibold uppercase opacity-60" title="<%= t(activity.effort_score_source_power? ? "activity.effort_score.help_power" : "activity.effort_score.help") %>">
     <%= t("activity.effort_score.title") %>
   </h3>
   <span class="text-2xl font-extrabold tabular-nums"><%= activity.effort_score.round %></span>

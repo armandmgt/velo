@@ -3,6 +3,7 @@ class Activity < ApplicationRecord
   include ActivityMetrics
   include ActivityHeartRateZones
   include ActivityEffortScore
+  include ActivityPower
 
   # Heatmap tile paths are only read in SQL and together outweigh `path`, so
   # loading an activity leaves them behind.

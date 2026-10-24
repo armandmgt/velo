@@ -21,10 +21,15 @@ class User < ApplicationRecord
             numericality: { only_integer: true, greater_than: 100, less_than_or_equal_to: 240 },
             allow_nil: true
 
+  validates :ftp, numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: 1_000 }, allow_nil: true
+
   validates :name, length: { maximum: 50 }, allow_nil: true
 
   validates :map_hide_start_end_distance, inclusion: { in: MAP_HIDE_DISTANCE_OPTIONS }
-  after_update_commit :recompute_effort_scores_later, if: :saved_change_to_max_heart_rate?
+  after_update_commit :recompute_effort_scores_later, if: -> { saved_change_to_max_heart_rate? || saved_change_to_ftp? }
+
+  FTP_SUGGESTION_WINDOW = 6.months
+  FTP_SUGGESTION_RATIO = 0.95
 
   after_update_commit -> { RefreshSegmentEffortPrivacyJob.perform_later(self) },
                       if: :saved_change_to_map_hide_start_end_distance?
@@ -35,6 +40,16 @@ class User < ApplicationRecord
 
   def verify_email!
     update!(email_verified_at: Time.current)
+  end
+
+  # Coggan's estimate from the best 20-minute power of recent rides. Only ever
+  # offered: Strava's own estimate is opaque and often optimistic, so the rider
+  # decides whether to adopt it.
+  def suggested_ftp
+    best = BestEffort.kept.where(distance: "power_20m").joins(:activity)
+      .where(activities: { user_id: id, start_time: FTP_SUGGESTION_WINDOW.ago.. })
+      .maximum(:average_power)
+    (best * FTP_SUGGESTION_RATIO).round if best
   end
 
   # Name to greet/display the user with. Falls back to a cleaned,
