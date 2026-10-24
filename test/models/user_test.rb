@@ -1,6 +1,8 @@
 require "test_helper"
 
 class UserTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   test "downcases and strips email_address" do
     user = User.new(email_address: " DOWNCASED@EXAMPLE.COM ")
     assert_equal("downcased@example.com", user.email_address)
@@ -58,6 +60,22 @@ class UserTest < ActiveSupport::TestCase
     token = user.generate_token_for(:email_verification)
     travel 2.days do
       assert_nil User.find_by_token_for(:email_verification, token)
+    end
+  end
+
+  test "changing max HR enqueues a recompute of every effort score" do
+    user = users(:one)
+
+    assert_enqueued_with(job: RecomputeEffortScoresJob, args: [ user ]) do
+      user.update!(max_heart_rate: 190)
+    end
+  end
+
+  test "saving without changing max HR enqueues nothing" do
+    user = users(:one)
+
+    assert_no_enqueued_jobs(only: RecomputeEffortScoresJob) do
+      user.update!(name: "Armand")
     end
   end
 end

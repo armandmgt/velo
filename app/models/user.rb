@@ -24,6 +24,7 @@ class User < ApplicationRecord
   validates :name, length: { maximum: 50 }, allow_nil: true
 
   validates :map_hide_start_end_distance, inclusion: { in: MAP_HIDE_DISTANCE_OPTIONS }
+  after_update_commit :recompute_effort_scores_later, if: :saved_change_to_max_heart_rate?
 
   def email_verified?
     email_verified_at.present?
@@ -48,6 +49,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def recompute_effort_scores_later
+    RecomputeEffortScoresJob.perform_later(self)
+  end
 
   def default_display_name
     local = email_address.to_s.split("@").first.to_s

@@ -51,6 +51,7 @@ class ActivityIngestion
     apply_default_gear
     apply_summary(track.summary)
     build_data_points(track)
+    activity.assign_effort_score
     apply_path(track)
     apply_location(track)
     apply_fallbacks

@@ -181,6 +181,29 @@ class ActivitiesControllerTest < ActionDispatch::IntegrationTest
     assert_select "td", text: I18n.t("activity.heart_rate_zone.z1")
   end
 
+  test "shows the effort score with a band relative to recent scores" do
+    @activity.update_columns(effort_score: 130, effort_score_source: "heart_rate")
+    [ 1, 2, 3 ].each do |n|
+      start = @activity.start_time - n.weeks
+      users(:one).activities.create!(name: "x", sport: :bike, start_time: start, end_time: start + 1.hour,
+                                     location: "Paris", active_time: "PT3600S", effort_score: 100, effort_score_source: :heart_rate)
+    end
+
+    get activity_url(@activity)
+
+    assert_select "##{ActionView::RecordIdentifier.dom_id(@activity, :effort_score)}" do
+      assert_select "h3", text: /Score d'effort/
+      assert_select "span", text: "130"
+      assert_select ".badge", text: "Plus dur que d'habitude"
+    end
+  end
+
+  test "shows no effort score for an unscored activity" do
+    get activity_url(@activity)
+
+    assert_select "##{ActionView::RecordIdentifier.dom_id(@activity, :effort_score)}", count: 0
+  end
+
   test "should get edit" do
     get edit_activity_url(@activity)
     assert_response :success

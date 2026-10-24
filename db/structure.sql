@@ -151,7 +151,9 @@ CREATE TABLE public.activities (
     visibility character varying DEFAULT 'private'::character varying NOT NULL,
     recording_uuid uuid,
     gear_id bigint,
-    map_hidden boolean DEFAULT false NOT NULL
+    map_hidden boolean DEFAULT false NOT NULL,
+    effort_score numeric(7,1),
+    effort_score_source character varying
 );
 
 
@@ -1064,6 +1066,7 @@ SET search_path TO "$user", public;
 INSERT INTO "schema_migrations" (version) VALUES
 ('20261024130000'),
 ('20261024120103'),
+('20261024120020'),
 ('20261024100100'),
 ('20261024100000'),
 ('20260908120000'),

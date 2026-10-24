@@ -1,0 +1,49 @@
+<% content_for :title, t("forme.title") %>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <div class="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
+    <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0"><%= t("forme.title") %></h1>
+    <nav class="flex w-full sm:w-[340px]" aria-label="<%= t("forme.window_label") %>">
+      <% Forme::WINDOWS.each_key.with_index do |window, i| %>
+        <% active = window == @forme.window %>
+        <%= link_to t("forme.window.#{window}"), forme_path(window: window),
+                    aria: { current: (active ? "page" : nil) },
+                    class: class_names("flex-1 px-1.5 py-2.5 text-[13px] font-semibold text-center border border-base-300 transition-colors",
+                                       "-ml-px": !i.zero?,
+                                       "bg-neutral text-neutral-content": active,
+                                       "bg-base-100 text-base-content": !active) %>
+      <% end %>
+    </nav>
+  </div>
+
+  <% current = @forme.current %>
+  <div class="grid grid-cols-3 gap-3 mb-5">
+    <% %i[fitness fatigue form].each do |metric| %>
+      <div class="rounded-box border border-base-300 p-3 sm:p-4">
+        <div class="text-xs uppercase tracking-wide font-semibold opacity-55"><%= t("forme.metric.#{metric}") %></div>
+        <div class="mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums" style="color: <%= Forme::COLORS.fetch(metric) %>"><%= current.public_send(metric).round %></div>
+      </div>
+    <% end %>
+  </div>
+
+  <div data-controller="forme-chart"
+       data-forme-chart-data-value="<%= @forme.chart_data.to_json %>"
+       data-forme-chart-labels-value="<%= t("forme.chart").to_json %>"
+       data-forme-chart-colors-value="<%= Forme::COLORS.to_json %>"
+       class="relative h-80 sm:h-96">
+    <canvas data-forme-chart-target="canvas" role="img" aria-label="<%= t("forme.chart.aria") %>"></canvas>
+  </div>
+
+  <div class="mt-4 space-y-2 text-sm opacity-70">
+    <p><%= t("forme.explanation") %></p>
+    <p>
+      <%= t("forme.unscored_note") %>
+      <% if (count = @forme.unscored_activities_count).positive? %>
+        <%= t("forme.unscored_count", count: count) %>
+      <% end %>
+    </p>
+    <% if Current.user.max_heart_rate.nil? %>
+      <p><%= t("forme.set_max_hr_hint_html", link: link_to(t("activity.heart_rate_zone.set_max_hr_link"), user_path, class: "link")) %></p>
+    <% end %>
+  </div>
+</main>

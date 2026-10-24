@@ -61,6 +61,9 @@
   <%= render "activities/activity_charts", activity: activity, chart_data: chart_data, map_target: "##{map_id}" %>
 
   <% if local_assigns.fetch(:show_personal_data, true) %>
+    <% if activity.effort_score %>
+      <%= render "activities/effort_score", activity: activity %>
+    <% end %>
     <% if hr_zones %>
       <%= render "activities/heart_rate_zones", zones: hr_zones %>
     <% elsif max_hr.nil? && activity.avg_heart_rate %>

@@ -18,6 +18,23 @@ module ActivityHeartRateZones
   # don't inflate time-in-zone. Mirrors GpxExtractor::PAUSE_GAP_SECONDS.
   MAX_SAMPLE_GAP = 10
 
+  # Seconds spent in each zone, ordered Z1..Z5, from `[recorded_at, heart_rate]`
+  # pairs sorted by time. Each interval is credited to its leading sample's zone.
+  def self.zone_seconds(samples, max_hr)
+    seconds = Array.new(HR_ZONES.size, 0)
+    samples.each_cons(2) do |(t_cur, hr_cur), (t_next, _)|
+      dt = [ (t_next - t_cur).to_i, MAX_SAMPLE_GAP ].min
+      seconds[zone_index(hr_cur, max_hr)] += dt
+    end
+    seconds
+  end
+
+  # Index of the first zone whose exclusive upper bound the HR falls under,
+  # defaulting to the last zone (Z5).
+  def self.zone_index(heart_rate, max_hr)
+    HR_ZONES.index { |zone| zone[:upper_ratio] && heart_rate < zone[:upper_ratio] * max_hr } || HR_ZONES.size - 1
+  end
+
   included do
     # Returns nil unless a max HR reference is set and the activity has HR data.
     # Otherwise an ordered array of zone breakdowns:
@@ -25,18 +42,10 @@ module ActivityHeartRateZones
     def heart_rate_zone_distribution(max_hr)
       return nil unless max_hr
 
-      samples = activity_data_points
-                  .where.not(heart_rate: nil)
-                  .order(:recorded_at)
-                  .pluck(:recorded_at, :heart_rate)
+      samples = heart_rate_samples
       return nil if samples.empty?
 
-      seconds = Array.new(HR_ZONES.size, 0)
-      samples.each_cons(2) do |(t_cur, hr_cur), (t_next, _)|
-        dt = [ (t_next - t_cur).to_i, MAX_SAMPLE_GAP ].min
-        seconds[hr_zone_index(hr_cur, max_hr)] += dt
-      end
-
+      seconds = ActivityHeartRateZones.zone_seconds(samples, max_hr)
       total = seconds.sum
       return nil if total.zero?
 
@@ -54,13 +63,18 @@ module ActivityHeartRateZones
       end
     end
 
-    private
-
-    # Index of the first zone whose exclusive upper bound the HR falls under,
-    # defaulting to the last zone (Z5).
-    def hr_zone_index(heart_rate, max_hr)
-      HR_ZONES.index { |zone| zone[:upper_ratio] && heart_rate < zone[:upper_ratio] * max_hr } || HR_ZONES.size - 1
+    # `[recorded_at, heart_rate]` pairs in time order. Reads data points still
+    # in memory when the activity hasn't been saved yet (i.e. during ingestion).
+    def heart_rate_samples
+      if new_record?
+        activity_data_points.filter_map { |point| [ point.recorded_at, point.heart_rate ] if point.heart_rate && point.recorded_at }
+                            .sort_by(&:first)
+      else
+        activity_data_points.where.not(heart_rate: nil).order(:recorded_at).pluck(:recorded_at, :heart_rate)
+      end
     end
+
+    private
 
     # Upper bpm bound per zone; the last zone has no upper bound (nil).
     def zone_boundaries_bpm(max_hr)
