@@ -1,0 +1,90 @@
+appId: fr.armandmgt.velo
+name: Kill recovery (record → kill → restored paused → Reprendre → Arrêter)
+tags:
+  - regression
+---
+# A ride the app is killed during comes back paused, with its distance, temps
+# écoulé, Tours and trace, and Reprendre carries on into the same recording.
+#
+# Not driven here, covered by RecordingRestoreTests instead: a recording killed
+# while auto-paused (the simulator's static fix never builds a still run, so pause
+# automatique can't be triggered), and the sport and splits read back from the
+# store.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+    permissions:
+      location: inuse
+- runFlow: subflows/sign_in_if_needed.yaml
+
+# Two fixes ~1.1 km apart, with a Tour between them.
+- tapOn: "Enregistrer"
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "GPS (bon|correct|moyen|faible)"
+- tapOn: "Tour"
+- setLocation:
+    latitude: 48.8666
+    longitude: 2.3522
+- assertVisible: "1.1"
+
+# Read the clock from the collapsed dock, where it is one label, then kill.
+- tapOn:
+    id: "dockGrabber"
+- copyTextFrom:
+    id: "elapsedTime"
+- evalScript: ${output.elapsedAtKill = maestro.copiedText}
+- stopApp
+
+# The relaunch alone takes tens of seconds, none of which may reach the clock.
+# The check allows 3 s because the clock runs on between the copy and the kill.
+- runFlow: subflows/relaunch.yaml
+- assertVisible: "Enregistrement en cours"
+- assertNotVisible:
+    id: "unsentBadge"
+- tapOn: "Enregistrement en cours"
+- assertVisible: "EN PAUSE"
+- assertVisible: "Reprendre"
+- assertNotVisible: "Démarrer"
+- assertVisible: "1.1"
+- takeScreenshot: restore-paused
+- tapOn:
+    id: "dockGrabber"
+- copyTextFrom:
+    id: "elapsedTime"
+- evalScript: ${output.elapsedRestored = maestro.copiedText}
+- assertTrue:
+    condition: ${(function (a, b) { var s = function (t) { var p = t.split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10) }; var d = s(b) - s(a); return d >= 0 && d <= 3 })(output.elapsedAtKill, output.elapsedRestored)}
+    label: "temps écoulé restored to what it read at the kill"
+- tapOn:
+    id: "dockGrabber"
+
+# Reprendre records into the same ride. The first fix only anchors the new
+# segment, so the kilometre since the last stored fix adds nothing; the next one counts.
+- tapOn: "Reprendre"
+- assertVisible: "Pause"
+- setLocation:
+    latitude: 48.8766
+    longitude: 2.3522
+- assertVisible: "GPS (bon|correct|moyen|faible)"
+- assertVisible: "1.1"
+- setLocation:
+    latitude: 48.8866
+    longitude: 2.3522
+- assertVisible: "2.2"
+
+# Arrêter hands the whole ride to the review: both Tours, and the distance from
+# before and after the kill.
+- tapOn: "Arrêter"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: "2[.,]2[0-9]"
+- assertVisible: ".*2 tours.*"
+- takeScreenshot: restore-review
+- tapOn: "Enregistrer"
+- assertVisible: "Sortie enregistrée sur le téléphone"

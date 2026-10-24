@@ -52,6 +52,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -100,7 +102,8 @@ fun RecordingScreen(
     onLap: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    Scaffold { innerPadding ->
+    // Exposes test tags to Maestro as resource ids, like the iOS accessibility identifiers.
+    Scaffold(modifier = Modifier.semantics { testTagsAsResourceId = true }) { innerPadding ->
         // Streaming is the map-centric surface; the other states keep the simple
         // stacked column layout.
         if (state is RecordingScreenState.Streaming) {
@@ -387,6 +390,7 @@ private fun CollapsedStats(ui: RecordingUiState, usesPace: Boolean) {
             text = dockElapsed(ui.elapsedSeconds).full,
             color = Rec.ink,
             style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+            modifier = Modifier.testTag("elapsedTime"),
         )
         Spacer(Modifier.weight(1f))
         // The number in accent, the unit smaller and muted (design's collapsed speed).

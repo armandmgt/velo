@@ -74,6 +74,8 @@ data class RecordingUiState(
     val routePoints: List<RoutePoint> = emptyList(),
     /** Closed laps, oldest first — what the split sheet differences into splits. */
     val lapBoundaries: List<LapBoundary> = emptyList(),
+    /** The open session's sport, which a restored recording brings back; null while armed. */
+    val sport: Sport? = null,
 )
 
 /**
@@ -89,17 +91,17 @@ data class RecordingUiState(
  * (`ACCESS_FINE_LOCATION`) permission. The recording screen binds purely to read
  * live state and drive the [LocalBinder] controls (pause/resume/lap/stop).
  *
- * Exactly one session is active (state != STOPPED) at a time: a fresh start
- * finalizes any orphan left by a previous process kill before opening a new one,
- * so a killed ride's points stay in the store (mirroring iOS — recovery/resume is
- * later work).
+ * Exactly one session is active (state != STOPPED) at a time. One a process kill
+ * left behind is restored when the service is created, as a manual pause, so
+ * Démarrer never has one to set aside (mirroring iOS's launch-time restore).
  */
 class RecordingService : Service() {
     private val _uiState = MutableStateFlow(RecordingUiState())
 
     private val binder = LocalBinder()
 
-    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    // One writer, so the store applies the running snapshots in the order they were taken.
+    private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1))
     private val mainScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val dao: RecordingDao by lazy { RecordingDatabase.get(this).recordingDao() }
@@ -112,6 +114,7 @@ class RecordingService : Service() {
     // callback, ticker, and binder controls all run there), so no locking needed.
     private var armed = false
     private var session: RecordingSessionEntity? = null
+    private var sport: Sport? = null
     private var recordingState = RecordingState.RECORDING
     private var accumulator = RecordingStatsAccumulator()
     private var pointCount = 0
@@ -124,6 +127,9 @@ class RecordingService : Service() {
 
     /** The latest point write, so Arrêter's totals land after it. */
     private var lastPointWrite: Job? = null
+
+    /** The kill-recovery read, which Démarrer waits for so it can't race a restore. */
+    private var restoreJob: Job? = null
 
     /**
      * Watches the fix stream for pause automatique. Inert until [startRecording]
@@ -169,6 +175,11 @@ class RecordingService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    override fun onCreate() {
+        super.onCreate()
+        restoreJob = ioScope.launch { restoreInterrupted() }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Defensive: the Activity only starts us once fine-location is granted, but
         // a `location` foreground service throws SecurityException from
@@ -196,8 +207,8 @@ class RecordingService : Service() {
         }
 
         // Not sticky: a recording is an explicit user session. We don't want the
-        // system to silently resume GPS after a kill with no user present (kill
-        // recovery is later work, mirroring iOS's no-auto-resume).
+        // system to silently resume GPS after a kill with no user present; the
+        // interrupted ride waits, paused, for the rider to reopen the screen.
         return START_NOT_STICKY
     }
 
@@ -210,21 +221,71 @@ class RecordingService : Service() {
     }
 
     /**
-     * Begin a fresh recording on Démarrer: finalize any orphan from a
-     * previous kill (keeping its points), insert the new row, reset the live
+     * Kill recovery: pick an interrupted recording back up as a manual pause, so
+     * only the rider's own Reprendre carries on recording into it. The clock and
+     * totals resume from the session's snapshots, which stopped moving when the
+     * process died, so the dead span counts as paused.
+     */
+    private suspend fun restoreInterrupted() {
+        val orphan = dao.activeSession() ?: return
+        val points = dao.pointsFor(orphan.id)
+        val laps = dao.lapsFor(orphan.id)
+        val restoredAccumulator = orphan.restoredAccumulator(points)
+        val elapsedSeconds = if (orphan.elapsed > 0) {
+            orphan.elapsed
+        } else {
+            // An orphan from a build that kept no running snapshot.
+            ((points.lastOrNull()?.timestamp ?: 0L) - (points.firstOrNull()?.timestamp ?: 0L)) / 1000.0
+        }
+        val restoredSport = RecordingHandoff.sportOf(orphan, Sport.lastUsed(this))
+        val autoPauseEnabled = AutoPauseSetting.isEnabled(this)
+        dao.updateState(
+            orphan.id,
+            RecordingState.PAUSED.ordinal,
+            elapsedSeconds,
+            restoredAccumulator.distance,
+            restoredAccumulator.movingSeconds,
+            restoredAccumulator.averageSpeed(),
+        )
+        Log.i(TAG, "restored session ${orphan.id} with ${points.size} points, paused")
+
+        withContext(Dispatchers.Main) {
+            session = orphan
+            sport = restoredSport
+            recordingState = RecordingState.PAUSED
+            accumulator = restoredAccumulator
+            pointCount = points.size
+            lap = orphan.lapCount
+            lastFixSpeed = 0.0
+            lastPersistedSecond = points.lastOrNull()?.let { it.timestamp / 1000 }
+            routePoints.clear()
+            points.mapTo(routePoints) { RoutePoint(it.latitude, it.longitude) }
+            routeSnapshot = routePoints.toList()
+            lapBoundaries.clear()
+            laps.mapTo(lapBoundaries) { LapBoundary(it.ordinal, it.cumulativeDistance, it.cumulativeElapsed) }
+            lapBoundarySnapshot = lapBoundaries.toList()
+            accumulatedElapsedMs = (elapsedSeconds * 1000).toLong()
+            stretchStartMs = null
+            // A fresh detector is inactive until Reprendre, like after a manual pause.
+            autoPause = AutoPauseDetector(autoPauseEnabled)
+            if (armed) updateNotification()
+            emitState()
+        }
+    }
+
+    /**
+     * Begin a fresh recording on Démarrer: insert the new row, reset the live
      * stats, and start the elapsed ticker. GPS is already streaming from arming,
      * and the row exists before the next fix so points always have a session to
-     * attach to. A no-op once a session is open (guards against a double tap).
+     * attach to. A no-op once a session is open, restored ones included (only one
+     * may be active), and against a double tap.
      */
     private fun startRecording(sport: Sport) {
         if (session != null) return
         val autoPauseEnabled = AutoPauseSetting.isEnabled(this)
         ioScope.launch {
-            dao.activeSession()?.let { orphan ->
-                val recovered = dao.pointCountFor(orphan.id)
-                Log.i(TAG, "recovered active session ${orphan.id} with $recovered points")
-            }
-            dao.finalizeOrphans()
+            restoreJob?.join()
+            if (dao.activeSession() != null) return@launch
 
             val newSession = RecordingSessionEntity(
                 id = UUID.randomUUID().toString(),
@@ -237,6 +298,7 @@ class RecordingService : Service() {
 
             withContext(Dispatchers.Main) {
                 session = newSession
+                this@RecordingService.sport = sport
                 recordingState = RecordingState.RECORDING
                 accumulator = RecordingStatsAccumulator()
                 pointCount = 0
@@ -303,11 +365,8 @@ class RecordingService : Service() {
             horizontalAccuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else 0.0,
             lap = lap,
         )
-        val elapsed = elapsedMs() / 1000.0
-        lastPointWrite = ioScope.launch {
-            dao.insertPoint(point)
-            dao.updateElapsed(current.id, elapsed)
-        }
+        lastPointWrite = ioScope.launch { dao.insertPoint(point) }
+        persistProgress(current)
 
         emitState()
     }
@@ -354,8 +413,7 @@ class RecordingService : Service() {
         accumulator.breakSegment()
         recordingState = target
         stopTicker()
-        val elapsed = accumulatedElapsedMs / 1000.0
-        ioScope.launch { dao.updateState(current.id, target.ordinal, elapsed) }
+        persistState(current, target)
         updateNotification()
         emitState()
     }
@@ -365,10 +423,25 @@ class RecordingService : Service() {
         stretchStartMs = SystemClock.elapsedRealtime()
         recordingState = RecordingState.RECORDING
         startTicker()
-        val elapsed = accumulatedElapsedMs / 1000.0
-        ioScope.launch { dao.updateState(current.id, RecordingState.RECORDING.ordinal, elapsed) }
+        persistState(current, RecordingState.RECORDING)
         updateNotification()
         emitState()
+    }
+
+    private fun persistProgress(current: RecordingSessionEntity) {
+        val elapsed = elapsedMs() / 1000.0
+        val distance = accumulator.distance
+        val movingTime = accumulator.movingSeconds
+        val averageSpeed = accumulator.averageSpeed()
+        ioScope.launch { dao.updateProgress(current.id, elapsed, distance, movingTime, averageSpeed) }
+    }
+
+    private fun persistState(current: RecordingSessionEntity, target: RecordingState) {
+        val elapsed = accumulatedElapsedMs / 1000.0
+        val distance = accumulator.distance
+        val movingTime = accumulator.movingSeconds
+        val averageSpeed = accumulator.averageSpeed()
+        ioScope.launch { dao.updateState(current.id, target.ordinal, elapsed, distance, movingTime, averageSpeed) }
     }
 
     /**
@@ -418,6 +491,7 @@ class RecordingService : Service() {
         val averageSpeed = accumulator.averageSpeed()
         val pendingPoint = lastPointWrite
         session = null
+        sport = null
         recordingState = RecordingState.STOPPED
         stopTicker()
         fusedClient.removeLocationUpdates(locationCallback)
@@ -445,6 +519,9 @@ class RecordingService : Service() {
         tickerJob = mainScope.launch {
             while (isActive) {
                 delay(1000)
+                // Not only with points: through a GPS gap the clock would otherwise
+                // restore to the last fix rather than to the kill.
+                session?.let(::persistProgress)
                 emitState()
             }
         }
@@ -476,6 +553,7 @@ class RecordingService : Service() {
             averageSpeedMps = accumulator.averageSpeed(),
             routePoints = routeSnapshot,
             lapBoundaries = lapBoundarySnapshot,
+            sport = sport,
         )
     }
 

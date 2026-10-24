@@ -11,11 +11,25 @@ interface RecordingDao {
     @Insert
     suspend fun insertSession(session: RecordingSessionEntity)
 
-    @Query("UPDATE recording_sessions SET state = :state, elapsed = :elapsed WHERE id = :id")
-    suspend fun updateState(id: String, state: Int, elapsed: Double)
+    @Query(
+        "UPDATE recording_sessions SET state = :state, elapsed = :elapsed, distance = :distance, " +
+            "movingTime = :movingTime, averageSpeed = :averageSpeed WHERE id = :id",
+    )
+    suspend fun updateState(
+        id: String,
+        state: Int,
+        elapsed: Double,
+        distance: Double,
+        movingTime: Double,
+        averageSpeed: Double,
+    )
 
-    @Query("UPDATE recording_sessions SET elapsed = :elapsed WHERE id = :id")
-    suspend fun updateElapsed(id: String, elapsed: Double)
+    /** The running totals a killed recording is restored from, kept current with every point. */
+    @Query(
+        "UPDATE recording_sessions SET elapsed = :elapsed, distance = :distance, " +
+            "movingTime = :movingTime, averageSpeed = :averageSpeed WHERE id = :id",
+    )
+    suspend fun updateProgress(id: String, elapsed: Double, distance: Double, movingTime: Double, averageSpeed: Double)
 
     /** Arrêter: store the totals the handoff carries and mark the session stopped. */
     @Query(
@@ -53,18 +67,15 @@ interface RecordingDao {
     @Query("SELECT * FROM recording_sessions WHERE state != 2 ORDER BY startedAt DESC LIMIT 1")
     suspend fun activeSession(): RecordingSessionEntity?
 
-    /** Finalize any leftover active session — preserves the single-active invariant on a fresh start. */
-    @Query("UPDATE recording_sessions SET state = 2 WHERE state != 2")
-    suspend fun finalizeOrphans()
+    /** Whether a recording is in progress, including one a kill left behind before the service restores it. */
+    @Query("SELECT EXISTS(SELECT 1 FROM recording_sessions WHERE state != 2)")
+    fun hasActiveSession(): Flow<Boolean>
 
     @Insert
     suspend fun insertPoint(point: RecordingPointEntity)
 
     @Query("SELECT * FROM recording_points WHERE sessionId = :sessionId ORDER BY timestamp ASC")
     suspend fun pointsFor(sessionId: String): List<RecordingPointEntity>
-
-    @Query("SELECT COUNT(*) FROM recording_points WHERE sessionId = :sessionId")
-    suspend fun pointCountFor(sessionId: String): Int
 
     @Insert
     suspend fun insertLap(lap: RecordingLapEntity)
