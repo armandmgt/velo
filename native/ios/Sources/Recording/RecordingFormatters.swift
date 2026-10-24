@@ -37,6 +37,11 @@ enum RecordingFormatters {
         return formatter
     }()
 
+    /// "1 enregistrement non envoyé", "3 enregistrements non envoyés".
+    static func unsentCount(_ count: Int) -> String {
+        count == 1 ? "1 enregistrement non envoyé" : "\(count) enregistrements non envoyés"
+    }
+
     /// Elapsed seconds as `H:MM:SS` / `MM:SS`, with a `00:00` fallback.
     static func elapsedString(_ interval: TimeInterval) -> String {
         elapsed.string(from: interval) ?? "00:00"

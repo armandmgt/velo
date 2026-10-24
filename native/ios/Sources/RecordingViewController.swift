@@ -42,6 +42,13 @@ final class RecordingViewController: UIViewController {
         )
 
         setupLayout()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateUnsentEntry),
+            name: .unsentRecordingsDidChange,
+            object: nil
+        )
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -49,6 +56,7 @@ final class RecordingViewController: UIViewController {
         controller.delegate = self
         autoPauseSwitch.isOn = AutoPauseDetector.isEnabledPreference
         updateSportButton()
+        updateUnsentEntry()
         render(state: controller.state)
         render(stats: controller.currentStats)
         seedMap()
@@ -112,6 +120,25 @@ final class RecordingViewController: UIViewController {
             for: .valueChanged
         )
         return toggle
+    }()
+
+    /// The way back to recordings that never reached the server. Lives on the
+    /// armed card, so it's out of the way once a ride is under way.
+    private lazy var unsentButton: UIButton = {
+        var config = UIButton.Configuration.plain()
+        config.baseForegroundColor = Palette.red
+        config.image = UIImage(systemName: "exclamationmark.icloud")
+        config.imagePadding = 6
+        config.contentInsets = .init(top: 6, leading: 8, bottom: 6, trailing: 8)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var attrs = attrs
+            attrs.font = .systemFont(ofSize: 14, weight: .semibold)
+            return attrs
+        }
+        let button = UIButton(configuration: config)
+        button.accessibilityIdentifier = "unsentRecordings"
+        button.addAction(UIAction { [weak self] _ in self?.showUnsentRecordings() }, for: .primaryActionTriggered)
+        return button
     }()
 
     private lazy var grabberButton = makeGrabber()
@@ -319,12 +346,13 @@ final class RecordingViewController: UIViewController {
         autoPauseRow.alignment = .center
         autoPauseRow.spacing = 12
 
-        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle, autoPauseRow])
+        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle, autoPauseRow, unsentButton])
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 6
         stack.setCustomSpacing(16, after: handle)
         stack.setCustomSpacing(14, after: subtitle)
+        stack.setCustomSpacing(10, after: autoPauseRow)
         stack.isLayoutMarginsRelativeArrangement = true
         stack.directionalLayoutMargins = .init(top: 16, leading: 20, bottom: 22, trailing: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -646,6 +674,27 @@ final class RecordingViewController: UIViewController {
             summary: "\(RecordingFormatters.distanceKilometers(stats.distance)) km · \(RecordingFormatters.elapsedString(stats.elapsed))"
         )
         present(sheet, animated: true)
+    }
+
+    @objc private func updateUnsentEntry() {
+        let count = controller.unsentRecordingCount
+        unsentButton.isHidden = count == 0
+        unsentButton.configuration?.title = RecordingFormatters.unsentCount(count)
+        DispatchQueue.main.async { [weak self] in self?.updateMapInset() }
+    }
+
+    private func showUnsentRecordings() {
+        let list = UnsentRecordingsViewController { [weak self] session in self?.send(session) }
+        navigationItem.backButtonTitle = "Retour"
+        navigationController?.pushViewController(list, animated: true)
+    }
+
+    /// Envoyer: the same way out as Arrêter, onto the web review, but for a
+    /// recording already in the store.
+    private func send(_ session: RecordingSession) {
+        controller.prepareReview(for: session)
+        let tabBarController = view.window?.rootViewController as? RecordTabBarController
+        dismiss(animated: true) { tabBarController?.presentRecordingReview() }
     }
 
     private func markLap() {

@@ -6,6 +6,10 @@ import Foundation
 ///
 /// Stats travel precomputed: a paused recording drops its fixes, so from the
 /// points alone nothing can tell a pause from a GPS dropout.
+///
+/// Always built from the stored session — at Arrêter just after the totals are
+/// written, and later for an unsent recording — so a resent review is the same
+/// handoff the first one was.
 struct RecordingHandoff {
     static let version = 1
 
@@ -14,10 +18,10 @@ struct RecordingHandoff {
     let sport: Sport
     let recordingUuid: UUID
 
-    init(session: RecordingSession, stats: RecordingStats, sport: Sport) {
+    init(session: RecordingSession) {
         self.session = session
-        self.stats = stats
-        self.sport = sport
+        self.stats = session.finalStats
+        self.sport = session.recordedSport
         // Survives a kill, so a replay mints the same key.
         self.recordingUuid = session.id
     }

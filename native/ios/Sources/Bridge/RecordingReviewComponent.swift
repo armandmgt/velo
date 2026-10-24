@@ -10,6 +10,11 @@ final class RecordingReviewComponent: BridgeComponent {
         delegate?.destination as? UIViewController
     }
 
+    /// The recording this page was opened for, taken when it first connects.
+    /// Committing or discarding clears this one, never whatever is pending by
+    /// then, so a resent review and a fresh one can't clear each other's.
+    private var handoff: RecordingHandoff?
+
     override func onReceive(message: Message) {
         guard let event = Event(rawValue: message.event) else { return }
         switch event {
@@ -28,7 +33,8 @@ final class RecordingReviewComponent: BridgeComponent {
     /// `nil` leaves the page reading as the plain upload form, which is also the
     /// right answer if encoding fails.
     private func encodedHandoff() -> String? {
-        guard let handoff = RecordingController.shared.pendingHandoff else { return nil }
+        handoff = handoff ?? RecordingController.shared.pendingHandoff
+        guard let handoff else { return nil }
         do {
             return try handoff.encoded()
         } catch {
@@ -39,7 +45,7 @@ final class RecordingReviewComponent: BridgeComponent {
 
     private func handleCommitted(message: Message) {
         let data: CommittedData? = message.data()
-        clearPendingRecording()
+        clearRecording()
         dismissReview { [weak self] in
             guard let url = data?.url.flatMap(URL.init(string:)) else { return }
             self?.routeToActivity(url)
@@ -53,7 +59,7 @@ final class RecordingReviewComponent: BridgeComponent {
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "Supprimer", style: .destructive) { [weak self] _ in
-            self?.clearPendingRecording()
+            self?.clearRecording()
             self?.dismissReview(completion: nil)
         })
         alert.addAction(UIAlertAction(title: "Annuler", style: .cancel))
@@ -62,10 +68,10 @@ final class RecordingReviewComponent: BridgeComponent {
 
     // MARK: - Helpers
 
-    private func clearPendingRecording() {
-        let controller = RecordingController.shared
-        guard let handoff = controller.pendingHandoff else { return }
-        controller.discard(handoff.session)
+    private func clearRecording() {
+        guard let handoff else { return }
+        RecordingController.shared.discard(handoff.session)
+        self.handoff = nil
     }
 
     private func dismissReview(completion: (() -> Void)?) {

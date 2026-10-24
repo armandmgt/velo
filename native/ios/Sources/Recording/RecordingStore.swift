@@ -41,14 +41,47 @@ final class RecordingStore {
 
     /// Start a fresh active session (`.recording`, lap 1).
     @discardableResult
-    func createSession(startedAt: Date = Date()) -> RecordingSession {
+    func createSession(startedAt: Date = Date(), sport: Sport? = nil) -> RecordingSession {
         let session = RecordingSession(context: viewContext)
         session.id = UUID()
         session.startedAt = startedAt
         session.recordingState = .recording
         session.lapCount = 1
+        session.sport = sport?.rawValue
         save()
         return session
+    }
+
+    /// Arrêter: store the totals the handoff carries, so the review can be
+    /// rebuilt from the store after the app is gone.
+    func finish(_ session: RecordingSession, stats: RecordingStats, at stoppedAt: Date = Date()) {
+        session.elapsed = stats.elapsed
+        session.distance = stats.distance
+        session.movingTime = stats.movingTime
+        session.averageSpeed = stats.averageSpeed
+        session.stoppedAt = stoppedAt
+        session.recordingState = .stopped
+        save()
+    }
+
+    /// Stopped sessions still on the device, newest first. A session is only
+    /// deleted once the review commits or the rider discards it, so these are
+    /// the recordings that never reached the server. One with no points has
+    /// nothing to send, so it isn't one.
+    func stoppedSessions() -> [RecordingSession] {
+        let request = Self.stoppedSessionsRequest()
+        request.sortDescriptors = [NSSortDescriptor(key: "startedAt", ascending: false)]
+        return (try? viewContext.fetch(request)) ?? []
+    }
+
+    func stoppedSessionCount() -> Int {
+        (try? viewContext.count(for: Self.stoppedSessionsRequest())) ?? 0
+    }
+
+    static func stoppedSessionsRequest() -> NSFetchRequest<RecordingSession> {
+        let request = NSFetchRequest<RecordingSession>(entityName: "RecordingSession")
+        request.predicate = NSPredicate(format: "state == %d AND points.@count > 0", RecordingState.stopped.rawValue)
+        return request
     }
 
     /// The single non-`.stopped` session, if one exists (e.g. orphaned by a kill).

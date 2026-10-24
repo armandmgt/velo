@@ -1,4 +1,5 @@
 import CoreData
+import CoreLocation
 import Foundation
 
 /// Core Data managed objects backing an in-progress recording.
@@ -44,6 +45,21 @@ final class RecordingSession: NSManagedObject {
     /// Closed-lap boundaries, one per Tour tap. See `RecordingLap`.
     @NSManaged var laps: NSSet?
 
+    /// The sport's wire value, chosen before Démarrer. `nil` on sessions
+    /// recorded before the store kept it.
+    @NSManaged var sport: String?
+    /// Temps écoulé. Kept current while recording (on every persisted point and
+    /// state change), and final once `stoppedAt` is set.
+    @NSManaged var elapsed: TimeInterval
+    /// Final totals, written at Arrêter alongside `stoppedAt`.
+    @NSManaged var distance: Double
+    @NSManaged var movingTime: TimeInterval
+    @NSManaged var averageSpeed: Double
+    /// Set at Arrêter. A stopped session without it was finalized some other
+    /// way (an orphan, or a recording made before the totals were stored), so
+    /// its totals have to be derived from its points.
+    @NSManaged var stoppedAt: Date?
+
     var recordingState: RecordingState {
         get { RecordingState(rawValue: state) ?? .stopped }
         set { state = newValue.rawValue }
@@ -54,6 +70,24 @@ final class RecordingSession: NSManagedObject {
     var orderedPoints: [RecordingPoint] {
         let set = points as? Set<RecordingPoint> ?? []
         return set.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    /// The totals this recording ended with: the ones stored at Arrêter, or,
+    /// for a session stopped without them, totals derived from its points. A
+    /// running temps écoulé snapshot beats the point span when one was kept.
+    var finalStats: RecordingStats {
+        if stoppedAt != nil {
+            return RecordingStats(elapsed: elapsed, movingTime: movingTime, distance: distance, averageSpeed: averageSpeed)
+        }
+        var stats = RecordingStats.derived(from: orderedPoints.map(\.location))
+        if elapsed > 0 { stats.elapsed = elapsed }
+        return stats
+    }
+
+    /// The sport this recording uploads as. Sessions from before the store kept
+    /// it fall back to the last-used sport, the picker's own default.
+    var recordedSport: Sport {
+        sport.flatMap(Sport.init(rawValue:)) ?? .lastUsed
     }
 
     /// The closed laps as plain values, ready for `LapSplits.splits(boundaries:…)`.
@@ -103,4 +137,16 @@ final class RecordingPoint: NSManagedObject {
     @NSManaged var power: Double
     @NSManaged var hasPower: Bool
     @NSManaged var session: RecordingSession?
+
+    var location: CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+            altitude: elevation,
+            horizontalAccuracy: max(horizontalAccuracy, 0),
+            verticalAccuracy: hasElevation ? 0 : -1,
+            course: -1,
+            speed: speed,
+            timestamp: timestamp
+        )
+    }
 }
