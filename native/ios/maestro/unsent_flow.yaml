@@ -1,0 +1,101 @@
+appId: fr.armandmgt.velo
+name: Unsent recordings (strand → list → send / delete)
+tags:
+  - regression
+---
+# A recording stopped but never committed — the app died on the review page, or
+# the page failed to load — must stay visible and sendable. This flow strands two
+# recordings by killing the app on the review, then checks the Record button's
+# badge, the list on the armed recording screen, Envoyer (which reopens the web
+# review on the stored recording and uploads it, leaving the other) and Supprimer
+# from the list and from the review.
+#
+# Not driven here, verified by hand instead (see #117):
+# - the review page being unreachable: the simulator's network can't be cut from
+#   Maestro, so the Fermer path was run with the dev server stopped;
+# - reopening a review for a recording that already uploaded: that needs the
+#   store from before the 201 restored after it, which Maestro can't do;
+# - upgrading over a store from an earlier model version: that needs the previous
+#   build installed first. RecordingStoreMigrationTests covers it in VeloTests.
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+    permissions:
+      location: inuse
+- runFlow: subflows/sign_in_if_needed.yaml
+# Nothing unsent on a fresh install.
+- assertNotVisible:
+    id: "unsentBadge"
+
+# Strand the first recording: Arrêter, then kill the app on the review page.
+- runFlow: subflows/strand_recording.yaml
+- runFlow: subflows/relaunch.yaml
+- assertVisible:
+    id: "unsentBadge"
+    text: "1 enregistrement non envoyé"
+
+# And a second: several may wait to be sent.
+- runFlow: subflows/strand_recording.yaml
+- runFlow: subflows/relaunch.yaml
+- assertVisible:
+    id: "unsentBadge"
+    text: "2 enregistrements non envoyés"
+
+# The armed recording screen leads to the list.
+- tapOn: "Enregistrer"
+- assertVisible: "PRÊT À ENREGISTRER"
+- assertVisible: "2 enregistrements non envoyés"
+- tapOn:
+    id: "unsentRecordings"
+- waitForAnimationToEnd
+- assertVisible: "Non envoyés"
+- assertVisible: "Vélo de route"
+- assertVisible: "TEMPS ÉCOULÉ"
+- takeScreenshot: unsent-list
+
+# Supprimer asks first, then deletes only that recording.
+- tapOn:
+    text: "Supprimer"
+    index: 0
+- assertVisible: "Supprimer cet enregistrement ?"
+- tapOn: "Supprimer"
+- waitForAnimationToEnd
+- assertVisible: "Envoyer"
+
+# Envoyer reopens the web review on the stored recording, prefilled as at Arrêter.
+- tapOn: "Envoyer"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
+- assertVisible: "Sport"
+- tapOn: "Enregistrer"
+- assertVisible: "Sortie enregistrée sur le téléphone"
+# Sending it cleared it, and nothing else was waiting.
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "unsentBadge"
+
+# Supprimer on the review clears that recording too.
+- tapOn: "Enregistrer"
+- assertNotVisible:
+    id: "unsentRecordings"
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "GPS (bon|correct|moyen|faible)"
+- tapOn: "Arrêter"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: "Supprimer"
+- assertVisible: "Supprimer cet enregistrement ?"
+- tapOn: "Supprimer"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "unsentBadge"

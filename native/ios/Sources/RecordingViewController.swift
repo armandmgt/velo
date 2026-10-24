@@ -693,7 +693,8 @@ final class RecordingViewController: UIViewController {
     /// recording already in the store.
     private func send(_ session: RecordingSession) {
         controller.prepareReview(for: session)
-        let tabBarController = view.window?.rootViewController as? RecordTabBarController
+        // Not `view.window`: the list is pushed over this screen, so its view is off-window.
+        let tabBarController = navigationController?.presentingViewController as? RecordTabBarController
         dismiss(animated: true) { tabBarController?.presentRecordingReview() }
     }
 
