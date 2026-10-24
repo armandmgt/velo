@@ -3,7 +3,7 @@ module ActivityCharts
 
   included do
     def elevation_chart_data
-      data_points = activity_data_points.order(:recorded_at).to_a
+      data_points = activity_data_points.order(:recorded_at, :id).to_a
       altitudes = data_points.pluck(:altitude)
       return nil if altitudes.all?(&:nil?)
 
@@ -18,7 +18,7 @@ module ActivityCharts
     end
 
     def chart_data(max_heart_rate: nil)
-      data_points = activity_data_points.order(:recorded_at).to_a
+      data_points = activity_data_points.order(:recorded_at, :id).to_a
       {
         labels: data_points.pluck(:recorded_at),
         # Parallel to labels/datasets: GPS coordinate per data point ([lng, lat]
