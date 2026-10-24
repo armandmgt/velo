@@ -4,6 +4,9 @@ class User < ApplicationRecord
   has_many :activities, dependent: :destroy
   has_many :planned_routes, dependent: :destroy
   has_one :igpsport_connection, dependent: :destroy
+  has_many :map_privacy_zones, dependent: :destroy
+
+  MAP_HIDE_DISTANCE_OPTIONS = (0..1600).step(200).to_a.freeze
 
   normalizes :email_address, with: ->(e) { e.strip.downcase }
   normalizes :name, with: ->(n) { n.strip.presence }
@@ -17,6 +20,8 @@ class User < ApplicationRecord
             allow_nil: true
 
   validates :name, length: { maximum: 50 }, allow_nil: true
+
+  validates :map_hide_start_end_distance, inclusion: { in: MAP_HIDE_DISTANCE_OPTIONS }
 
   def email_verified?
     email_verified_at.present?

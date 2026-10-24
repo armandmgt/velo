@@ -58,4 +58,24 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to new_session_path
   end
+
+  test "map visibility hides 200 m at each end by default and can be changed" do
+    assert_equal 200, @user.map_hide_start_end_distance
+
+    login(@user)
+    patch user_url, params: { user: { map_hide_start_end_distance: 1000 } }
+    assert_redirected_to user_path
+    assert_equal 1000, @user.reload.map_hide_start_end_distance
+
+    patch user_url, params: { user: { map_hide_start_end_distance: 0 } }
+    assert_equal 0, @user.reload.map_hide_start_end_distance
+  end
+
+  test "rejects a hidden distance beyond 1.6 km" do
+    login(@user)
+    patch user_url, params: { user: { map_hide_start_end_distance: 2000 } }
+
+    assert_response :unprocessable_content
+    assert_equal 200, @user.reload.map_hide_start_end_distance
+  end
 end
