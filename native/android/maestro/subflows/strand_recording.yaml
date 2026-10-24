@@ -1,0 +1,26 @@
+appId: fr.armandmgt.velo
+---
+# Record, Arrêter, and kill the app while the review page is up: the recording
+# is stopped but never committed. Pause automatique is switched off first, as in
+# record_flow.yaml: the emulator's still fixes would otherwise pause the ride.
+- tapOn: "Enregistrer"
+- extendedWaitUntil:
+    visible: "Démarrer"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        text: "Pause automatique"
+        checked: true
+    commands:
+      - tapOn: "Pause automatique"
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "Signal GPS : [0-9]+ m"
+- tapOn: "Arrêter"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- stopApp

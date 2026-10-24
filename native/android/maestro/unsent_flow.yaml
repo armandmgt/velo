@@ -1,0 +1,123 @@
+appId: fr.armandmgt.velo
+name: Unsent recordings (strand → list → send / delete)
+tags:
+  - regression
+---
+# Android mirror of native/ios/maestro/unsent_flow.yaml. A recording stopped but
+# never committed — the app died on the review page, or the page failed to load —
+# must stay visible and sendable. This flow strands one recording by killing the
+# app on the review and a second by losing the network under it, then checks the
+# Record FAB's badge, the list on the armed recording screen, Envoyer (which
+# reopens the web review on the stored recording and uploads it, leaving the
+# other) and Supprimer from the list and from the review.
+#
+# Unlike iOS, Android can cut the network from Maestro (setAirplaneMode), so the
+# unreachable-review path is driven here. Not driven, verified by hand (see #117):
+# reopening a review for a recording that already uploaded, which needs the store
+# from before the 201 restored after it; and upgrading over a version 2 store,
+# which needs the previous build installed first (UnsentRecordingsTest covers the
+# migration on the JVM).
+- launchApp:
+    clearState: true
+    stopApp: true
+    permissions:
+      location: allow
+      notifications: allow
+- runFlow: subflows/sign_in_if_needed.yaml
+# Nothing unsent on a fresh install.
+- assertNotVisible:
+    id: "record_fab_badge"
+
+# Strand the first recording: Arrêter, then kill the app on the review page.
+- runFlow: subflows/strand_recording.yaml
+- runFlow: subflows/relaunch.yaml
+- assertVisible:
+    id: "record_fab_badge"
+    text: "1"
+
+# Strand a second one the other way: the review page can't load. Back closes the
+# failed review, and the recording stays waiting.
+- setAirplaneMode: enabled
+- tapOn: "Enregistrer"
+- extendedWaitUntil:
+    visible: "Démarrer"
+    timeout: 30000
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "Signal GPS : [0-9]+ m"
+- tapOn: "Arrêter"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertNotVisible: "Nom"
+- back
+- waitForAnimationToEnd
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible:
+      id: "record_fab_badge"
+      text: "2"
+    timeout: 30000
+
+# The armed recording screen leads to the list.
+- tapOn: "Enregistrer"
+- extendedWaitUntil:
+    visible: "2 enregistrements non envoyés"
+    timeout: 30000
+- tapOn: "2 enregistrements non envoyés"
+- waitForAnimationToEnd
+- assertVisible: "Non envoyés"
+- assertVisible: "Vélo de route"
+- assertVisible: "TEMPS ÉCOULÉ"
+- takeScreenshot: unsent-list
+
+# Supprimer asks first, then deletes only that recording.
+- tapOn:
+    text: "Supprimer"
+    index: 0
+- assertVisible: "Supprimer cet enregistrement ?"
+- tapOn: "Supprimer"
+- waitForAnimationToEnd
+- assertVisible: "Envoyer"
+
+# Envoyer reopens the web review on the stored recording, prefilled as at Arrêter.
+- tapOn: "Envoyer"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
+- assertVisible: "TEMPS ÉCOULÉ|Temps écoulé"
+- assertVisible: "Sport"
+- tapOn: "Enregistrer"
+- extendedWaitUntil:
+    visible: "Sortie enregistrée sur le téléphone"
+    timeout: 30000
+# Sending it cleared it, and nothing else was waiting.
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "record_fab_badge"
+
+# Supprimer on the review clears that recording too.
+- tapOn: "Enregistrer"
+- extendedWaitUntil:
+    visible: "Démarrer"
+    timeout: 30000
+- assertNotVisible: ".*non envoyé.*"
+- tapOn: "Démarrer"
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- assertVisible: "Signal GPS : [0-9]+ m"
+- tapOn: "Arrêter"
+- extendedWaitUntil:
+    visible: "Nom"
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn: "Supprimer"
+- assertVisible: "Supprimer cet enregistrement ?"
+- tapOn: "Supprimer"
+- waitForAnimationToEnd
+- assertNotVisible:
+    id: "record_fab_badge"
