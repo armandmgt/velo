@@ -94,6 +94,37 @@ fr:
       shareable_hint: "Quiconque a le lien"
       public: "Publique"
       public_hint: "Visible par vos amis"
+  best_effort:
+    distance:
+      400m: "400 m"
+      half_mile: "½ mile"
+      1k: "1 km"
+      1_mile: "1 mile"
+      2_miles: "2 miles"
+      5k: "5 km"
+      10k: "10 km"
+      15k: "15 km"
+      10_miles: "10 miles"
+      20k: "20 km"
+      half_marathon: "Semi-marathon"
+      30k: "30 km"
+      marathon: "Marathon"
+      40k: "40 km"
+      50k: "50 km"
+      50_miles: "50 miles"
+      80k: "80 km"
+      90k: "90 km"
+      100k: "100 km"
+      100_miles: "100 miles"
+      180k: "180 km"
+    rank:
+      1: "PR"
+      2: "2e"
+      3: "3e"
+    rank_title:
+      1: "Record personnel"
+      2: "2e meilleur temps"
+      3: "3e meilleur temps"
   planned_route:
     nav:
       label: "Parcours"

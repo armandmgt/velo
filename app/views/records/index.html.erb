@@ -1,0 +1,79 @@
+<% content_for :title, "Records" %>
+<% category = @records.category %>
+
+<main class="max-w-5xl mx-auto px-4 sm:px-6 pt-5 sm:pt-8 pb-16 sm:pb-20">
+  <header class="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between mb-5 sm:mb-6">
+    <h1 class="text-2xl sm:text-[26px] font-extrabold tracking-tight m-0">Records</h1>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <div role="tablist" class="tabs tabs-box tabs-sm">
+        <% PersonalRecords::CATEGORIES.each do |cat| %>
+          <%= link_to t("activity.sport_group.#{cat}"), records_path(category: cat, year: @records.year),
+                      role: "tab", class: [ "tab", { "tab-active": cat == category } ],
+                      aria: { selected: cat == category } %>
+        <% end %>
+      </div>
+
+      <%= form_with url: records_path, method: :get, data: { controller: "auto-submit", turbo_action: "replace" } do |form| %>
+        <%= form.hidden_field :category, value: category %>
+        <%= form.label :year, "Année", class: "sr-only" %>
+        <%= form.select :year, options_for_select(@years, @records.year),
+                        { include_blank: "Toutes les années" },
+                        class: "select select-sm w-44", data: { action: "change->auto-submit#submit" } %>
+      <% end %>
+    </div>
+  </header>
+
+  <% if category == :cycling %>
+    <% ride_records = [
+         [ "Plus longue sortie", "ruler", @records.longest_ride, ->(a) { "#{(a.distance / 1000.0).round(1)} km" } ],
+         [ "Plus gros dénivelé", "mountain", @records.biggest_climb, ->(a) { "#{a.total_elevation_gain.to_i} m" } ]
+       ] %>
+    <section class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-6">
+      <% ride_records.each do |label, icon_name, activity, value| %>
+        <div class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4">
+          <div class="flex items-center gap-1.5 text-xs uppercase font-semibold opacity-60">
+            <%= icon icon_name, class: "size-3.5" %>
+            <%= label %>
+          </div>
+          <% if activity %>
+            <div class="mt-1 text-2xl font-bold text-primary"><%= value.call(activity) %></div>
+            <%= link_to activity.name, activity_path(activity), class: "link link-hover text-sm" %>
+            <span class="text-sm opacity-60">· <%= l activity.start_time.in_time_zone(PersonalRecords::ZONE).to_date, format: :long %></span>
+          <% else %>
+            <div class="mt-1 text-2xl font-bold opacity-40">—</div>
+          <% end %>
+        </div>
+      <% end %>
+    </section>
+  <% end %>
+
+  <section id="best_effort_records">
+    <h2 class="text-[13px] font-bold uppercase tracking-wide opacity-55 mb-3">Meilleurs efforts</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+      <% @records.distances.each_key do |distance| %>
+        <% podium = @records.podiums.fetch(distance, []) %>
+        <div id="records_<%= distance %>" class="bg-base-100 border border-base-300 rounded-box p-3.5 sm:p-4">
+          <div class="font-bold text-sm mb-1"><%= best_effort_label(distance) %></div>
+          <% if podium.empty? %>
+            <p class="text-sm opacity-50 py-2 border-t border-base-200">Aucun effort</p>
+          <% end %>
+          <% podium.each do |effort| %>
+            <%= link_to activity_path(effort.activity_id),
+                        class: "grid grid-cols-[2.5rem_1fr_auto] items-center gap-x-3 py-2 border-t border-base-200 hover:opacity-70 transition-opacity" do %>
+              <span><%= best_effort_badge(effort.podium_position) %></span>
+              <span class="min-w-0">
+                <span class="block truncate text-sm"><%= effort.activity_name %></span>
+                <span class="block text-xs opacity-60"><%= l effort.activity_start_time.in_time_zone(PersonalRecords::ZONE).to_date, format: :long %></span>
+              </span>
+              <span class="text-right">
+                <span class="block font-bold text-primary font-mono tabular-nums"><%= best_effort_time(effort) %></span>
+                <span class="block text-xs opacity-60"><%= best_effort_rate(effort, category) %></span>
+              </span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+</main>
