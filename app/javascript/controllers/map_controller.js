@@ -23,7 +23,11 @@ export default class extends Controller {
       }
 
       if (route && route.geometry && route.geometry.coordinates?.length) {
-        const coords = route.geometry.coordinates
+        // A non-owner's track arrives as a MultiLineString once its hidden
+        // portion is cut out.
+        const coords = route.geometry.type === "MultiLineString"
+          ? route.geometry.coordinates.flat()
+          : route.geometry.coordinates
         initialGeojson = { type: "FeatureCollection", features: [route] }
         initialBounds = coords.reduce(
           (b, c) => b.extend(c),
@@ -95,7 +99,8 @@ export default class extends Controller {
   // Outlet API: move a marker to the given [lng, lat] (used by the charts to
   // highlight the route position under the hovered data point).
   showPoint(coordinate) {
-    if (!this.map || !coordinate) return
+    if (!this.map) return
+    if (!coordinate) return this.hidePoint()
 
     if (!this._marker) {
       const el = document.createElement("div")

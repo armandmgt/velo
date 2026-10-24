@@ -61,16 +61,14 @@ class MapVisibility
     { type: "Feature", properties: {}, geometry: }.to_json
   end
 
-  # [lng, lat] the map opens on before it fits the route — for a non-owner the
-  # middle of the visible geometry, never the track's first point.
+  # [lng, lat] the map opens on before it fits the route. For a non-owner it is
+  # a visible point: even the middle of the visible geometry can fall inside an
+  # address zone.
   def center
-    if owner?
-      first = activity.path.points.first
-      return [ first.x, first.y ]
-    end
+    return visible_lines.first.first unless owner?
 
-    lngs, lats = visible_lines.flatten(1).transpose
-    [ (lngs.min + lngs.max) / 2, (lats.min + lats.max) / 2 ]
+    first = activity.path.points.first
+    [ first.x, first.y ]
   end
 
   def chart_data(**)

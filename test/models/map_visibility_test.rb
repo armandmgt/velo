@@ -91,10 +91,7 @@ class MapVisibilityTest < ActiveSupport::TestCase
   end
 
   test "the map opens on the visible geometry, not the first point" do
-    lng, lat = MapVisibility.new(@activity, viewer: nil).center
-
-    assert_equal MapTrackHelper::LNG, lng
-    assert_in_delta (track_lat(5) + track_lat(55)) / 2, lat, 1e-9
+    assert_equal [ MapTrackHelper::LNG, track_lat(5) ], MapVisibility.new(@activity, viewer: nil).center
   end
 
   test "chart coordinates stay index-aligned with the chart series" do
