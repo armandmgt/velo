@@ -234,25 +234,39 @@ final class RecordTabBarController: HotwireTabBarController {
         recordButton.layer.opacity = 1
     }
 
+    private var recordButtonBottom: NSLayoutConstraint?
+    private var isRecordButtonPinnedToTabBar = false
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        pinRecordButtonBottom()
+    }
+
+    /// Float the button just above the bottom tab bar on iPhone. `viewDidLoad`
+    /// runs before the tab bar joins our view, so the pin is re-resolved on every
+    /// layout. On iPad with iOS 18+ the tab bar is the floating *top* pill and
+    /// never a descendant of our view — pinning to it there throws a "no common
+    /// ancestor" exception — so the safe-area bottom stands in.
+    private func pinRecordButtonBottom() {
+        let pinsToTabBar = tabBar.isDescendant(of: view)
+        guard recordButtonBottom?.isActive != true || pinsToTabBar != isRecordButtonPinnedToTabBar else { return }
+
+        recordButtonBottom?.isActive = false
+        let anchor = pinsToTabBar ? tabBar.topAnchor : view.safeAreaLayoutGuide.bottomAnchor
+        recordButtonBottom = recordButton.bottomAnchor.constraint(equalTo: anchor, constant: -12)
+        recordButtonBottom?.isActive = true
+        isRecordButtonPinnedToTabBar = pinsToTabBar
+    }
+
     private func addRecordButton() {
         view.addSubview(recordButton)
         view.addSubview(unsentBadge)
-
-        // Float the button just above the bottom tab bar on iPhone. On iPad with
-        // iOS 18+/26 the tab bar is the floating *top* pill and is NOT a
-        // descendant of our view, so pinning to `tabBar.topAnchor` there throws
-        // an Auto Layout "no common ancestor" exception — a crash on sign-in.
-        // Fall back to the safe-area bottom whenever the tab bar isn't in our
-        // hierarchy (no bottom bar to clear there anyway).
-        let bottomAnchor = tabBar.isDescendant(of: view)
-            ? tabBar.topAnchor
-            : view.safeAreaLayoutGuide.bottomAnchor
+        pinRecordButtonBottom()
 
         NSLayoutConstraint.activate([
             recordButton.widthAnchor.constraint(equalToConstant: Self.buttonSize),
             recordButton.heightAnchor.constraint(equalToConstant: Self.buttonSize),
             recordButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -16),
-            recordButton.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
             unsentBadge.heightAnchor.constraint(equalToConstant: 20),
             unsentBadge.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
             unsentBadge.centerXAnchor.constraint(equalTo: recordButton.trailingAnchor, constant: -6),

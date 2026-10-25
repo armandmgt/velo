@@ -31,6 +31,11 @@ tags:
 
 # Dashboard (tab 0): the FAB is the Record entry point.
 - assertVisible: "Enregistrer"
+# It floats clear of the tab bar, not over it.
+- assertVisible:
+    text: "Enregistrer"
+    above:
+      text: "^Activités$"
 - takeScreenshot: android-fab-dashboard-record
 
 # Activités tab: the FAB swaps to the `+` → "Nouvelle activité", and the record
