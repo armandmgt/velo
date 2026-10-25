@@ -17,7 +17,7 @@
           · <%= [ @gear.brand, @gear.model ].compact_blank.join(" ") %>
         <% end %>
         <% if @gear.retired? %>
-          · <span class="badge badge-ghost badge-sm">Retiré le <%= l @gear.retired_at.to_date, format: :long %></span>
+          · <span class="badge badge-ghost badge-sm">Retiré le <%= l @gear.retired_at.in_time_zone(GearComponent::ZONE).to_date, format: :long %></span>
         <% end %>
       </p>
     </div>
@@ -71,7 +71,7 @@
               <li id="<%= dom_id(component) %>" class="py-2 flex justify-between gap-3">
                 <span><%= component.name %></span>
                 <span class="opacity-70">
-                  <%= l component.installed_on, format: :long %> → <%= l component.retired_at.to_date, format: :long %>
+                  <%= l component.installed_on, format: :long %> → <%= l component.retired_at.in_time_zone(GearComponent::ZONE).to_date, format: :long %>
                   · <%= gear_km(component.distance) %> km
                 </span>
               </li>

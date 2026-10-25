@@ -3,7 +3,7 @@ class GearComponentsController < ApplicationController
   before_action :set_component, only: %i[ edit update destroy replace ]
 
   def new
-    @component = @gear.components.new(installed_on: Date.current, kind: "chain")
+    @component = @gear.components.new(installed_on: GearComponent.today, kind: "chain")
   end
 
   def create

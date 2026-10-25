@@ -59,6 +59,15 @@ class GearComponentTest < ActiveSupport::TestCase
     assert_equal 20_000.0, fresh.distance
   end
 
+  test "a replacement just after midnight in Paris installs on the rider's day" do
+    ride 30, at: Time.utc(2026, 10, 24, 19) # Saturday evening in Paris
+
+    fresh = travel_to(Time.utc(2026, 10, 24, 22, 30)) { @chain.replace! } # 00:30 Sunday in Paris
+
+    assert_equal Date.new(2026, 10, 25), fresh.installed_on
+    assert_equal 0.0, fresh.distance, "the evening before belongs to the old chain"
+  end
+
   test "only a bike has components" do
     component = gears(:trail_shoes).components.new(kind: "chain", installed_on: Date.current, service_interval_km: 100)
 

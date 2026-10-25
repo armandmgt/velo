@@ -5,6 +5,10 @@ class GearComponent < ApplicationRecord
   # Install dates are the rider's calendar days, not UTC ones.
   ZONE = "Europe/Paris".freeze
 
+  def self.today
+    Time.current.in_time_zone(ZONE).to_date
+  end
+
   belongs_to :gear
 
   enum :kind, %i[chain cassette tires brake_pads drivetrain custom].index_by(&:itself), scopes: false
@@ -64,7 +68,7 @@ class GearComponent < ApplicationRecord
 
   # The old component keeps its history; the new one starts counting from its
   # own install date.
-  def replace!(installed_on: Date.current)
+  def replace!(installed_on: GearComponent.today)
     transaction do
       update!(retired_at: Time.current, final_distance: distance)
       gear.components.create!(kind: kind, nickname: nickname,
