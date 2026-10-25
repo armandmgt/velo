@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Pre-check for the "Address feedback on agent PRs" Orca automation.
+# Exit 0 starts the run; any other exit records a skipped run, which costs nothing.
+#
+# Looks at open PRs on claude/issue-* branches (opened by the "Implement a ready-for-agent issue"
+# automation). The agent signs every PR comment it posts with MARKER; a PR needs attention when,
+# since the latest signed comment (or since the PR was opened, if there is none yet):
+#   - anyone else commented or submitted a review,
+#   - a CI check finished failing, or
+#   - main moved and the branch now conflicts with it.
+# Pending CI is left for a later run. Signing a comment after giving up on a failure silences it.
+# Skips while a previous run still holds the lock (taken first, released last; stale after 3 h).
+# The agent itself runs it with IGNORE_LOCK=1 to list the PRs.
+set -uo pipefail
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+LOCK="$HOME/.cache/velo-agents/pr-feedback.lock"
+if [ -z "${IGNORE_LOCK:-}" ] && [ -f "$LOCK" ] && [ -n "$(find "$LOCK" -mmin -180)" ]; then
+  echo "skip: a previous run still holds $LOCK"
+  exit 1
+fi
+
+MARKER="<!-- velo-agent -->"
+
+main_date=$(gh api repos/armandmgt/velo/commits/main --jq .commit.committer.date 2>/dev/null) || {
+  echo "skip: could not read main"
+  exit 1
+}
+prs=$(gh pr list --repo armandmgt/velo --state open --limit 20 \
+  --json number,headRefName,createdAt,mergeable,statusCheckRollup,commits,comments,reviews 2>/dev/null) || {
+  echo "skip: gh pr list failed"
+  exit 1
+}
+
+needing=$(jq -r --arg marker "$MARKER" --arg main_date "$main_date" '
+  [.[] | select(.headRefName | startswith("claude/issue-"))
+   | . as $pr
+   | ([.comments[] | select(.body | contains($marker)) | .createdAt] | max // $pr.createdAt) as $since
+   | ([.comments[] | select((.body | contains($marker) | not) and .createdAt > $since)]
+      + [.reviews[] | select(.state != "APPROVED" and .submittedAt > $since)] | length) as $feedback
+   | ([.statusCheckRollup[]
+       | select(((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED"))
+                and ((.completedAt // .createdAt // "") > $since))] | length) as $failing
+   | (.mergeable == "CONFLICTING" and $main_date > $since) as $conflict
+   | select($feedback > 0 or $failing > 0 or $conflict)
+   | "#\(.number)"] | join(" ")' <<<"$prs")
+
+if [ -n "$needing" ]; then
+  echo "run: agent PR(s) needing attention: $needing"
+  exit 0
+fi
+
+echo "skip: no agent PR has new feedback, failing CI or conflicts"
+exit 1
