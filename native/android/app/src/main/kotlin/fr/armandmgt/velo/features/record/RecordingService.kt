@@ -344,10 +344,11 @@ class RecordingService : Service() {
         }
 
         // Keep at most one fix per wall-clock second (the ~1 Hz contract): the
-        // provider can burst sub-second, and the eventual GPX emits whole-second
-        // timestamps that would collide on the server's unique recorded_at.
+        // provider can burst sub-second or hand back a stale fix, and the eventual
+        // GPX emits whole-second timestamps that would collide on the server's
+        // unique recorded_at.
         val second = location.time / 1000
-        if (second == lastPersistedSecond) {
+        if (lastPersistedSecond?.let { second <= it } == true) {
             emitState()
             return
         }

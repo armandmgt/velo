@@ -143,6 +143,23 @@ struct RecordingRestoreTests {
         #expect(controller.pendingHandoff?.session === orphan)
     }
 
+    @Test("a stale fix repeating an earlier second is not stored")
+    func staleFixIsDropped() throws {
+        let store = RecordingStore(inMemory: true)
+        let orphan = killedRecording(in: store, state: .recording)
+        let controller = RecordingController(store: store)
+        let recorder = LocationRecorder()
+        controller.resume()
+
+        for seconds: TimeInterval in [3_600, 3_601, 3_600.5, 3_602] {
+            controller.locationRecorder(recorder, didUpdate: fix(latitude: 48.87, seconds: seconds))
+        }
+
+        let times = orphan.orderedPoints.suffix(3).map { $0.timestamp.timeIntervalSince(startedAt) }
+        #expect(times == [3_600, 3_601, 3_602])
+        #expect(orphan.orderedPoints.count == 7)
+    }
+
     @Test("with nothing interrupted the controller starts idle")
     func startsIdleWithoutOrphan() {
         let store = RecordingStore(inMemory: true)

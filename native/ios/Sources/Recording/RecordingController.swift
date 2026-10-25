@@ -393,12 +393,12 @@ extension RecordingController: LocationRecorderDelegate {
 
         // Keep at most one fix per wall-clock second — the sampling rate the
         // GPX ingestion expects.
-        // `distanceFilter = kCLDistanceFilterNone` can deliver sub-second bursts;
-        // since the GPX emits whole-second `<time>`s, two points in the same second
-        // would carry identical timestamps and collide on the server's unique
-        // `recorded_at`. Surface the fix in the readout but don't persist it.
+        // `distanceFilter = kCLDistanceFilterNone` can deliver sub-second bursts and
+        // stale fixes; since the GPX emits whole-second `<time>`s, two points in the
+        // same second would carry identical timestamps and collide on the server's
+        // unique `recorded_at`. Surface the fix in the readout but don't persist it.
         let second = location.timestamp.timeIntervalSince1970.rounded(.down)
-        guard second != lastPersistedSecond else {
+        guard lastPersistedSecond.map({ second > $0 }) ?? true else {
             delegate?.recordingController(self, didReceiveFix: location, pointCount: pointCount)
             return
         }
