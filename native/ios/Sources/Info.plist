@@ -27,9 +27,15 @@
 	     recording (blue status-bar pill), which is all the recorder needs. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Velo utilise votre position pour enregistrer le tracé GPS de vos sorties, y compris lorsque l'écran est verrouillé pendant un enregistrement.</string>
+	<!-- Heart-rate strap (#59). Asked only when a rider pairs a strap; the
+	     `bluetooth-central` mode keeps its readings (and its reconnection)
+	     flowing with the screen locked during a recording. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Velo se connecte à votre ceinture cardio pour enregistrer votre fréquence cardiaque pendant vos sorties, y compris lorsque l'écran est verrouillé.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<string>bluetooth-central</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

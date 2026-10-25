@@ -53,7 +53,12 @@ class RecordingActivity : ComponentActivity() {
     /** The unsent-recordings list is showing in place of the recording screen. */
     private var showingUnsent by mutableStateOf(false)
 
+    /** The strap picker is showing over the armed screen. */
+    private var showingPairing by mutableStateOf(false)
+
     private val dao by lazy { RecordingDatabase.get(this).recordingDao() }
+
+    private val heartRateMonitor by lazy { HeartRateMonitor.get(this) }
 
     private var isBound = false
     private var binder: RecordingService.LocalBinder? = null
@@ -78,6 +83,10 @@ class RecordingActivity : ComponentActivity() {
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* notification just won't show if denied */ }
+
+    // Opens the picker whatever the answer: it says so when Bluetooth can't be used.
+    private val requestBluetoothPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { beginPairing() }
 
     private val requestLocationPermission =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -108,6 +117,7 @@ class RecordingActivity : ComponentActivity() {
         setContent {
             VeloTheme {
                 val unsent by unsentRecordings.collectAsState(initial = emptyList())
+                val heartRate by heartRateMonitor.state.collectAsState()
                 // Nothing left to send: the armed card is the only useful place to be.
                 LaunchedEffect(unsent.isEmpty()) { if (unsent.isEmpty()) showingUnsent = false }
                 if (showingUnsent && unsent.isNotEmpty()) {
@@ -131,7 +141,20 @@ class RecordingActivity : ComponentActivity() {
                         onResume = { binder?.resume() },
                         onLap = { binder?.markLap() },
                         onOpenSettings = ::openAppSettings,
+                        heartRate = heartRate,
+                        onPairStrap = ::pairStrap,
+                        onForgetStrap = heartRateMonitor::forget,
                     )
+                    if (showingPairing) {
+                        HeartRatePairingSheet(
+                            state = heartRate,
+                            onSelect = { strap ->
+                                showingPairing = false
+                                heartRateMonitor.pair(strap)
+                            },
+                            onDismiss = ::endPairing,
+                        )
+                    }
                 }
             }
         }
@@ -147,7 +170,26 @@ class RecordingActivity : ComponentActivity() {
         AutoPauseSetting.setEnabled(this, enabled)
     }
 
+    /** Bluetooth permissions are asked for here, when the rider opts in, never at launch. */
+    private fun pairStrap() {
+        val missing = HeartRateMonitor.pairingPermissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) beginPairing() else requestBluetoothPermissions.launch(missing.toTypedArray())
+    }
+
+    private fun beginPairing() {
+        heartRateMonitor.startPairing()
+        showingPairing = true
+    }
+
+    private fun endPairing() {
+        heartRateMonitor.stopPairing()
+        showingPairing = false
+    }
+
     override fun onDestroy() {
+        heartRateMonitor.stopPairing()
         unbindIfNeeded()
         super.onDestroy()
     }

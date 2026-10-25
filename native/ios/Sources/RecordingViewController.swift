@@ -49,6 +49,12 @@ final class RecordingViewController: UIViewController {
             name: .unsentRecordingsDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(renderHeartRate),
+            name: .heartRateMonitorDidChange,
+            object: nil
+        )
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -59,6 +65,7 @@ final class RecordingViewController: UIViewController {
         updateUnsentEntry()
         render(state: controller.state)
         render(stats: controller.currentStats)
+        renderHeartRate()
         seedMap()
     }
 
@@ -77,12 +84,14 @@ final class RecordingViewController: UIViewController {
     private let mapView = RecordingMapView()
     private let gpsChip = GPSChipView()
     private let statePill = StatusPillView()
+    private let heartRateBanner = HeartRateBannerView()
 
     // Compact dock labels (one-row summary).
     private let compactDistanceLabel = UILabel()
     private let compactUnitLabel = UILabel()
     private let compactElapsedLabel = UILabel()
     private let compactSpeedLabel = UILabel()
+    private let compactHeartRateLabel = UILabel()
 
     // Expanded dock — top row (Distance | Temps).
     private let distanceValue = UILabel()
@@ -96,6 +105,9 @@ final class RecordingViewController: UIViewController {
     private let moyValue = UILabel()
     private let moyCaption = UILabel()
     private let toursValue = UILabel()
+    private let heartRateValue = UILabel()
+    private lazy var heartRateCell = statCell(value: heartRateValue, valueColor: Palette.red, caption: UILabel(), captionText: "BPM")
+    private lazy var heartRateDivider = hairline(vertical: true)
 
     private lazy var sportButton = makeSportButton()
     private lazy var startButton = makeStartButton()
@@ -139,6 +151,59 @@ final class RecordingViewController: UIViewController {
         button.accessibilityIdentifier = "unsentRecordings"
         button.addAction(UIAction { [weak self] _ in self?.showUnsentRecordings() }, for: .primaryActionTriggered)
         return button
+    }()
+
+    /// Pairing lives on the armed card, beside pause automatique: a strap is set
+    /// up before a ride, never during one.
+    private lazy var pairStrapButton: UIButton = {
+        var config = UIButton.Configuration.plain()
+        config.title = "Associer une ceinture cardio"
+        config.image = UIImage(systemName: "heart")
+        config.imagePadding = 6
+        config.baseForegroundColor = Palette.ink
+        config.contentInsets = .init(top: 6, leading: 8, bottom: 6, trailing: 8)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var attrs = attrs
+            attrs.font = .systemFont(ofSize: 14, weight: .semibold)
+            return attrs
+        }
+        let button = UIButton(configuration: config)
+        button.accessibilityIdentifier = "pairHeartRateStrap"
+        button.addAction(UIAction { [weak self] _ in self?.showHeartRatePairing() }, for: .primaryActionTriggered)
+        return button
+    }()
+
+    private let strapLabel = UILabel()
+
+    private lazy var strapRow: UIStackView = {
+        let icon = UIImageView(image: UIImage(systemName: "heart.fill"))
+        icon.tintColor = Palette.red
+        icon.contentMode = .scaleAspectFit
+        icon.widthAnchor.constraint(equalToConstant: 16).isActive = true
+
+        strapLabel.font = .systemFont(ofSize: 14)
+        strapLabel.textColor = Palette.ink
+        strapLabel.lineBreakMode = .byTruncatingMiddle
+
+        var config = UIButton.Configuration.plain()
+        config.title = "Oublier"
+        config.baseForegroundColor = Palette.muted
+        config.contentInsets = .init(top: 6, leading: 8, bottom: 6, trailing: 0)
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attrs in
+            var attrs = attrs
+            attrs.font = .systemFont(ofSize: 14, weight: .semibold)
+            return attrs
+        }
+        let forget = UIButton(configuration: config)
+        forget.accessibilityIdentifier = "forgetHeartRateStrap"
+        forget.setContentCompressionResistancePriority(.required, for: .horizontal)
+        forget.addAction(UIAction { _ in HeartRateMonitor.shared.forget() }, for: .primaryActionTriggered)
+
+        let row = UIStackView(arrangedSubviews: [icon, strapLabel, forget])
+        row.axis = .horizontal
+        row.alignment = .center
+        row.spacing = 8
+        return row
     }()
 
     private lazy var grabberButton = makeGrabber()
@@ -200,6 +265,7 @@ final class RecordingViewController: UIViewController {
         view.addSubview(mapView)
         view.addSubview(headerStack)
         view.addSubview(pillContainer)
+        view.addSubview(heartRateBanner)
         view.addSubview(bottomOverlay)
 
         NSLayoutConstraint.activate([
@@ -214,6 +280,10 @@ final class RecordingViewController: UIViewController {
 
             pillContainer.topAnchor.constraint(equalTo: headerStack.bottomAnchor, constant: 12),
             pillContainer.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+
+            heartRateBanner.topAnchor.constraint(equalTo: pillContainer.bottomAnchor, constant: 8),
+            heartRateBanner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            heartRateBanner.leadingAnchor.constraint(greaterThanOrEqualTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
 
             bottomOverlay.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 12),
             bottomOverlay.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -12),
@@ -346,13 +416,15 @@ final class RecordingViewController: UIViewController {
         autoPauseRow.alignment = .center
         autoPauseRow.spacing = 12
 
-        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle, autoPauseRow, unsentButton])
+        let stack = UIStackView(arrangedSubviews: [handle, title, subtitle, autoPauseRow, pairStrapButton, strapRow, unsentButton])
         stack.axis = .vertical
         stack.alignment = .center
         stack.spacing = 6
         stack.setCustomSpacing(16, after: handle)
         stack.setCustomSpacing(14, after: subtitle)
         stack.setCustomSpacing(10, after: autoPauseRow)
+        stack.setCustomSpacing(4, after: pairStrapButton)
+        stack.setCustomSpacing(4, after: strapRow)
         stack.isLayoutMarginsRelativeArrangement = true
         stack.directionalLayoutMargins = .init(top: 16, leading: 20, bottom: 22, trailing: 20)
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -389,7 +461,10 @@ final class RecordingViewController: UIViewController {
         let spacer = UIView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        let stack = UIStackView(arrangedSubviews: [distanceRow, divider, compactElapsedLabel, spacer, compactSpeedLabel])
+        compactHeartRateLabel.setContentHuggingPriority(.required, for: .horizontal)
+        compactHeartRateLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let stack = UIStackView(arrangedSubviews: [distanceRow, divider, compactElapsedLabel, spacer, compactHeartRateLabel, compactSpeedLabel])
         stack.axis = .horizontal
         stack.alignment = .center
         stack.spacing = 16
@@ -473,7 +548,7 @@ final class RecordingViewController: UIViewController {
 
         let d1 = hairline(vertical: true)
         let d2 = hairline(vertical: true)
-        let bottomRow = UIStackView(arrangedSubviews: [vitCell, d1, moyCell, d2, toursCell])
+        let bottomRow = UIStackView(arrangedSubviews: [vitCell, d1, moyCell, heartRateDivider, heartRateCell, d2, toursCell])
         bottomRow.axis = .horizontal
         bottomRow.alignment = .fill
         bottomRow.distribution = .fill
@@ -494,6 +569,14 @@ final class RecordingViewController: UIViewController {
             vitCell.widthAnchor.constraint(equalTo: moyCell.widthAnchor),
             moyCell.widthAnchor.constraint(equalTo: toursCell.widthAnchor),
         ])
+        // Below required, so the stack view's own zero width wins while no strap
+        // is connected and the cell is hidden.
+        let heartRateWidths = [
+            heartRateCell.widthAnchor.constraint(equalTo: toursCell.widthAnchor),
+            heartRateDivider.widthAnchor.constraint(equalToConstant: 0.5),
+        ]
+        heartRateWidths.forEach { $0.priority = .init(999) }
+        NSLayoutConstraint.activate(heartRateWidths)
         return stack
     }
 
@@ -684,6 +767,10 @@ final class RecordingViewController: UIViewController {
         DispatchQueue.main.async { [weak self] in self?.updateMapInset() }
     }
 
+    private func showHeartRatePairing() {
+        present(HeartRatePairingViewController(), animated: true)
+    }
+
     private func showUnsentRecordings() {
         let list = UnsentRecordingsViewController { [weak self] session in self?.send(session) }
         navigationItem.backButtonTitle = "Retour"
@@ -773,6 +860,58 @@ final class RecordingViewController: UIViewController {
         vitValue.text = speedNumber(stats.currentSpeed, usesPace: usesPace)
         moyValue.text = speedNumber(stats.averageSpeed, usesPace: usesPace)
         toursValue.text = "\(max(controller.currentLap, 0))"
+        // Every tick, so a strap that falls silent without disconnecting stops
+        // showing its last value once that value is stale.
+        renderHeartRate()
+    }
+
+    /// The strap's state wherever it shows: the armed card's pairing row, the
+    /// dock's BPM (only while a strap is connected, so riders without one see
+    /// the dock unchanged), and the dropout banner during a ride.
+    @objc private func renderHeartRate() {
+        let monitor = HeartRateMonitor.shared
+        let strap = monitor.rememberedStrap
+        pairStrapButton.isHidden = strap != nil
+        strapRow.isHidden = strap == nil
+        if let strap {
+            let status = Self.strapStatusText(monitor.status)
+            strapLabel.text = status.map { "\(strap.name) · \($0)" } ?? strap.name
+        }
+
+        let connected = monitor.status == .connected
+        let bpm = monitor.latestReading?.bpm(at: Date()).map(String.init) ?? "—"
+        heartRateCell.isHidden = !connected
+        heartRateDivider.isHidden = !connected
+        heartRateValue.text = bpm
+        compactHeartRateLabel.isHidden = !connected
+        compactHeartRateLabel.attributedText = compactHeartRateText(bpm)
+
+        // The armed card already reports the strap; the banner is for mid-ride dropouts.
+        heartRateBanner.set(controller.isActive ? monitor.status : .inactive)
+    }
+
+    private static func strapStatusText(_ status: HeartRateMonitor.Status) -> String? {
+        switch status {
+        case .connected: "connectée"
+        case .connecting: "recherche…"
+        case .reconnecting: "reconnexion…"
+        case .unavailable: "Bluetooth indisponible"
+        case .inactive: nil
+        }
+    }
+
+    private func compactHeartRateText(_ bpm: String) -> NSAttributedString {
+        let text = NSMutableAttributedString(
+            attachment: NSTextAttachment(image: UIImage(systemName: "heart.fill")!.withTintColor(Palette.red, renderingMode: .alwaysOriginal))
+        )
+        text.append(NSAttributedString(
+            string: " \(bpm)",
+            attributes: [
+                .font: UIFont.monospacedDigitSystemFont(ofSize: 20, weight: .bold),
+                .foregroundColor: Palette.red,
+            ]
+        ))
+        return text
     }
 
     /// The collapsed dock's speed: the number in accent, the `km/h` unit smaller and
@@ -943,6 +1082,74 @@ private final class StatusPillView: UIView {
 
     private func stopPulsing() {
         dot.layer.removeAnimation(forKey: "pulse")
+    }
+}
+
+// MARK: - HeartRateBannerView
+
+/// A small flat chip under the state pill that reports a strap that isn't
+/// delivering — the GPS chip's pattern, so it never competes with the stats.
+private final class HeartRateBannerView: UIView {
+    private let icon = UIImageView()
+    private let label = UILabel()
+
+    init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        backgroundColor = .white
+        layer.borderWidth = 1
+        layer.borderColor = Palette.border.cgColor
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.12
+        layer.shadowRadius = 3
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        accessibilityIdentifier = "heartRateBanner"
+
+        icon.contentMode = .scaleAspectFit
+        icon.translatesAutoresizingMaskIntoConstraints = false
+
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
+        label.textColor = Palette.ink
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.8
+
+        let stack = UIStackView(arrangedSubviews: [icon, label])
+        stack.axis = .horizontal
+        stack.alignment = .center
+        stack.spacing = 7
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 30),
+            icon.widthAnchor.constraint(equalToConstant: 14),
+            icon.heightAnchor.constraint(equalToConstant: 14),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            stack.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func set(_ status: HeartRateMonitor.Status) {
+        switch status {
+        case .connecting:
+            show(symbol: "heart", color: Palette.muted, text: "Recherche de la ceinture cardio…")
+        case .reconnecting:
+            show(symbol: "heart.slash", color: Palette.paused, text: "Cardio perdu — reconnexion…")
+        case .unavailable:
+            show(symbol: "heart.slash", color: Palette.paused, text: "Bluetooth indisponible — pas de cardio")
+        case .connected, .inactive:
+            isHidden = true
+        }
+    }
+
+    private func show(symbol: String, color: UIColor, text: String) {
+        icon.image = UIImage(systemName: symbol)
+        icon.tintColor = color
+        label.text = text
+        isHidden = false
     }
 }
 

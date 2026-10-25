@@ -94,8 +94,8 @@ final class RecordingStore {
 
     // MARK: - Points
 
-    /// Append one fix to a session. Sensor fields are left absent (nullable for
-    /// later); the `has*` flags stay false.
+    /// Append one fix to a session. Heart rate is set only when the strap had a
+    /// fresh reading; cadence and power stay absent.
     @discardableResult
     func appendPoint(
         to session: RecordingSession,
@@ -105,7 +105,8 @@ final class RecordingStore {
         elevation: Double?,
         speed: Double,
         horizontalAccuracy: Double,
-        lap: Int16
+        lap: Int16,
+        heartRate: Int? = nil
     ) -> RecordingPoint {
         let point = RecordingPoint(context: viewContext)
         point.timestamp = timestamp
@@ -118,6 +119,10 @@ final class RecordingStore {
         point.speed = speed
         point.horizontalAccuracy = horizontalAccuracy
         point.lap = lap
+        if let heartRate {
+            point.heartRate = Int16(clamping: heartRate)
+            point.hasHeartRate = true
+        }
         point.session = session
         save()
         return point

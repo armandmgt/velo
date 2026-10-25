@@ -77,6 +77,7 @@ final class RecordingController: NSObject {
 
     private let recorder = LocationRecorder()
     private let store: RecordingStore
+    private let heartRate: HeartRateMonitor
 
     /// Watches the fix stream for pause automatique. Inert until `start()` arms it,
     /// and configured from the preference as it stood at Démarrer, so a ride
@@ -95,8 +96,9 @@ final class RecordingController: NSObject {
     private var stretchStart: Date?
     private var ticker: Timer?
 
-    init(store: RecordingStore = RecordingStore()) {
+    init(store: RecordingStore = RecordingStore(), heartRate: HeartRateMonitor = .shared) {
         self.store = store
+        self.heartRate = heartRate
         super.init()
         recorder.delegate = self
         if let orphan = store.activeSession() {
@@ -139,6 +141,7 @@ final class RecordingController: NSObject {
     /// in progress.
     func arm() {
         recorder.start()
+        heartRate.activate()
     }
 
     /// Stop the readiness stream when the screen leaves — but only if no recording
@@ -146,6 +149,7 @@ final class RecordingController: NSObject {
     func disarmIfIdle() {
         guard !isActive else { return }
         recorder.stop()
+        heartRate.deactivate()
     }
 
     // MARK: - Recording controls
@@ -267,6 +271,7 @@ final class RecordingController: NSObject {
         store.finish(finished, stats: currentStats)
         stopTicker()
         recorder.stop()
+        heartRate.deactivate()
         // A fresh detector starts inert, so no fix can move a finished recording.
         detector = AutoPauseDetector(isEnabled: false)
         session = nil
@@ -413,7 +418,8 @@ extension RecordingController: LocationRecorderDelegate {
             elevation: elevation,
             speed: segmentSpeed,
             horizontalAccuracy: location.horizontalAccuracy,
-            lap: session.lapCount
+            lap: session.lapCount,
+            heartRate: heartRate.latestReading?.bpm(at: location.timestamp)
         )
         pointCount += 1
 

@@ -129,8 +129,9 @@ final class RecordingLap: NSManagedObject {
 }
 
 /// A single per-second fix. GPS fields are always present; sensor fields
-/// (`heartRate`/`cadence`/`power`) are nullable-for-later via a `has*` companion
-/// flag, keeping the stored attributes plain scalars.
+/// (`heartRate`/`cadence`/`power`) are nullable via a `has*` companion flag,
+/// keeping the stored attributes plain scalars. Only heart rate is ever filled,
+/// from a paired strap.
 @objc(RecordingPoint)
 final class RecordingPoint: NSManagedObject {
     @NSManaged var timestamp: Date

@@ -101,6 +101,9 @@ fun RecordingScreen(
     onResume: () -> Unit,
     onLap: () -> Unit,
     onOpenSettings: () -> Unit,
+    heartRate: HeartRateUiState,
+    onPairStrap: () -> Unit,
+    onForgetStrap: () -> Unit,
 ) {
     // Exposes test tags to Maestro as resource ids, like the iOS accessibility identifiers.
     Scaffold(modifier = Modifier.semantics { testTagsAsResourceId = true }) { innerPadding ->
@@ -120,6 +123,9 @@ fun RecordingScreen(
                 onPause = onPause,
                 onResume = onResume,
                 onLap = onLap,
+                heartRate = heartRate,
+                onPairStrap = onPairStrap,
+                onForgetStrap = onForgetStrap,
             )
             return@Scaffold
         }
@@ -168,7 +174,17 @@ private fun RecordingMapScreen(
     onPause: () -> Unit,
     onResume: () -> Unit,
     onLap: () -> Unit,
+    heartRate: HeartRateUiState,
+    onPairStrap: () -> Unit,
+    onForgetStrap: () -> Unit,
 ) {
+    // Recomputed on every tick of the stats, so a strap that falls silent without
+    // disconnecting stops showing its last value once that value is stale.
+    val liveHeartRate = if (heartRate.status == HeartRateStatus.CONNECTED) {
+        heartRate.reading?.bpmAt(System.currentTimeMillis())?.toString() ?: "—"
+    } else {
+        null
+    }
     val position = remember(ui.latitude, ui.longitude) {
         val lat = ui.latitude
         val lng = ui.longitude
@@ -198,6 +214,8 @@ private fun RecordingMapScreen(
             if (!ui.armed) {
                 Spacer(Modifier.size(12.dp))
                 PillCapsule { StatePill(ui.recordingState) }
+                // The armed card already reports the strap; this is for mid-ride dropouts.
+                HeartRateBanner(heartRate.status)
             }
         }
 
@@ -218,6 +236,10 @@ private fun RecordingMapScreen(
                 unsentCount = unsentCount,
                 onOpenUnsent = onOpenUnsent,
                 onOpenLapSplits = { showLapSplits = true },
+                heartRate = heartRate,
+                liveHeartRate = liveHeartRate,
+                onPairStrap = onPairStrap,
+                onForgetStrap = onForgetStrap,
             )
             Spacer(Modifier.size(10.dp))
             Controls(ui, onStartStop, onPause, onResume, onLap)
@@ -253,6 +275,10 @@ private fun RecordingDock(
     unsentCount: Int,
     onOpenUnsent: () -> Unit,
     onOpenLapSplits: () -> Unit,
+    heartRate: HeartRateUiState,
+    liveHeartRate: String?,
+    onPairStrap: () -> Unit,
+    onForgetStrap: () -> Unit,
 ) {
     var collapsed by remember { mutableStateOf(false) }
 
@@ -277,9 +303,17 @@ private fun RecordingDock(
         }
 
         when {
-            ui.armed -> IdleDockContent(autoPauseEnabled, onToggleAutoPause, unsentCount, onOpenUnsent)
-            collapsed -> CollapsedStats(ui, usesPace)
-            else -> ExpandedStats(ui, usesPace, onOpenLapSplits)
+            ui.armed -> IdleDockContent(
+                autoPauseEnabled,
+                onToggleAutoPause,
+                unsentCount,
+                onOpenUnsent,
+                heartRate,
+                onPairStrap,
+                onForgetStrap,
+            )
+            collapsed -> CollapsedStats(ui, usesPace, liveHeartRate)
+            else -> ExpandedStats(ui, usesPace, liveHeartRate, onOpenLapSplits)
         }
     }
 }
@@ -306,6 +340,9 @@ private fun IdleDockContent(
     onToggleAutoPause: (Boolean) -> Unit,
     unsentCount: Int,
     onOpenUnsent: () -> Unit,
+    heartRate: HeartRateUiState,
+    onPairStrap: () -> Unit,
+    onForgetStrap: () -> Unit,
 ) {
     Column(
         modifier = Modifier.padding(top = 16.dp, start = 20.dp, end = 20.dp, bottom = 22.dp),
@@ -344,6 +381,8 @@ private fun IdleDockContent(
             Spacer(Modifier.width(12.dp))
             Switch(checked = autoPauseEnabled, onCheckedChange = null)
         }
+        Spacer(Modifier.size(6.dp))
+        StrapRow(heartRate, onPairStrap, onForgetStrap)
         if (unsentCount > 0) {
             Spacer(Modifier.size(10.dp))
             Row(
@@ -367,7 +406,7 @@ private fun IdleDockContent(
 
 /** The collapsed dock: distance · | · temps · [spacer] · vitesse, one row. */
 @Composable
-private fun CollapsedStats(ui: RecordingUiState, usesPace: Boolean) {
+private fun CollapsedStats(ui: RecordingUiState, usesPace: Boolean, liveHeartRate: String?) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,6 +432,16 @@ private fun CollapsedStats(ui: RecordingUiState, usesPace: Boolean) {
             modifier = Modifier.testTag("elapsedTime"),
         )
         Spacer(Modifier.weight(1f))
+        if (liveHeartRate != null) {
+            Icon(painterResource(R.drawable.ic_favorite), contentDescription = null, tint = Rec.red, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = liveHeartRate,
+                color = Rec.red,
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Bold, fontFeatureSettings = "tnum"),
+            )
+            Spacer(Modifier.width(16.dp))
+        }
         // The number in accent, the unit smaller and muted (design's collapsed speed).
         Text(collapsedSpeed(ui.currentSpeedMps, usesPace))
     }
@@ -414,7 +463,7 @@ private fun collapsedSpeed(metersPerSecond: Double, usesPace: Boolean): Annotate
 
 /** The expanded dock: Distance | Temps (two big columns) over Vitesse · Moyenne · Tours. */
 @Composable
-private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean, onOpenLapSplits: () -> Unit) {
+private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean, liveHeartRate: String?, onOpenLapSplits: () -> Unit) {
     val time = dockElapsed(ui.elapsedSeconds)
     val vitLabel = if (usesPace) "Vit. /km" else "Vit. km/h"
     val moyLabel = if (usesPace) "Moy. /km" else "Moy. km/h"
@@ -463,6 +512,11 @@ private fun ExpandedStats(ui: RecordingUiState, usesPace: Boolean, onOpenLapSpli
             Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
             StatCell(speedNumber(ui.averageSpeedMps, usesPace), Rec.ink, moyLabel)
             Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
+            // Only while a strap is connected, so riders without one see the dock unchanged.
+            if (liveHeartRate != null) {
+                StatCell(liveHeartRate, Rec.red, stringResource(R.string.heart_rate_bpm))
+                Box(Modifier.width(0.5.dp).fillMaxHeight().background(Rec.divider))
+            }
             // The counter is the way into the splits: the dock stays the glanceable
             // summary, and the full table lives one tap away in a sheet.
             StatCell(
@@ -551,6 +605,84 @@ private fun FlatSportChip(selected: Sport, onSelect: (Sport) -> Unit, enabled: B
                 )
             }
         }
+    }
+}
+
+/**
+ * The armed card's strap row: a way to pair one, or the remembered strap with its
+ * state and a way to forget it. Pairing lives here, beside pause automatique: a
+ * strap is set up before a ride, never during one.
+ */
+@Composable
+private fun StrapRow(heartRate: HeartRateUiState, onPairStrap: () -> Unit, onForgetStrap: () -> Unit) {
+    val strap = heartRate.strap
+    if (strap == null) {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onPairStrap)
+                .testTag("pairHeartRateStrap")
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(painterResource(R.drawable.ic_favorite_border), contentDescription = null, tint = Rec.ink, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.heart_rate_pair), color = Rec.ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+        return
+    }
+    val status = when (heartRate.status) {
+        HeartRateStatus.CONNECTED -> R.string.heart_rate_status_connected
+        HeartRateStatus.CONNECTING -> R.string.heart_rate_status_connecting
+        HeartRateStatus.RECONNECTING -> R.string.heart_rate_status_reconnecting
+        HeartRateStatus.UNAVAILABLE -> R.string.heart_rate_status_unavailable
+        HeartRateStatus.INACTIVE -> null
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(painterResource(R.drawable.ic_favorite), contentDescription = null, tint = Rec.red, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = status?.let { stringResource(R.string.heart_rate_strap_status, strap.name, stringResource(it)) } ?: strap.name,
+            color = Rec.ink,
+            fontSize = 14.sp,
+            maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        Text(
+            text = stringResource(R.string.heart_rate_forget),
+            color = Rec.muted,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .clickable(onClick = onForgetStrap)
+                .testTag("forgetHeartRateStrap")
+                .padding(start = 8.dp, top = 6.dp, bottom = 6.dp),
+        )
+    }
+}
+
+/**
+ * A small flat chip under the state pill that reports a strap that isn't
+ * delivering — the GPS chip's pattern, so it never competes with the stats.
+ */
+@Composable
+private fun HeartRateBanner(status: HeartRateStatus) {
+    val (text, color) = when (status) {
+        HeartRateStatus.CONNECTING -> R.string.heart_rate_banner_connecting to Rec.muted
+        HeartRateStatus.RECONNECTING -> R.string.heart_rate_banner_reconnecting to Rec.paused
+        HeartRateStatus.UNAVAILABLE -> R.string.heart_rate_banner_unavailable to Rec.paused
+        HeartRateStatus.CONNECTED, HeartRateStatus.INACTIVE -> return
+    }
+    Spacer(Modifier.size(8.dp))
+    Row(
+        modifier = Modifier
+            .flatCard(Rec.border, 2.dp)
+            .testTag("heartRateBanner")
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(painterResource(R.drawable.ic_favorite_border), contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(7.dp))
+        Text(stringResource(text), color = Rec.ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -796,6 +928,13 @@ private fun RecordingScreenStreamingPreview() {
             onResume = {},
             onLap = {},
             onOpenSettings = {},
+            heartRate = HeartRateUiState(
+                strap = HeartRateStrap("00:11:22:33:44:55", "HRM-Pro"),
+                status = HeartRateStatus.CONNECTED,
+                reading = HeartRateReading(142, System.currentTimeMillis()),
+            ),
+            onPairStrap = {},
+            onForgetStrap = {},
         )
     }
 }
