@@ -57,6 +57,16 @@ class HeatmapsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 1, feature_count(response.body)
   end
 
+  test "every precomputed path band draws the path" do
+    create_activity(@user, path: PARIS_LINE)
+
+    Heatmap::TILE_PATH_ZOOMS.each do |z|
+      get tile_heatmap_url(**tile_at(2.345, 48.852, z))
+      assert_response :success
+      assert_equal 1, feature_count(response.body), "no path in the z#{z} tile"
+    end
+  end
+
   test "a tile never carries another user's paths, whatever the parameters" do
     create_activity(@other_user, path: PARIS_LINE, sport: "bike")
     create_activity(@other_user, path: PARIS_LINE, sport: "run")
@@ -156,6 +166,15 @@ class HeatmapsControllerTest < ActionDispatch::IntegrationTest
       get tile_heatmap_url(**PARIS_TILE, **params)
       assert_response :success
       feature_count(response.body)
+    end
+
+    def tile_at(lon, lat, z)
+      lat_rad = lat * Math::PI / 180
+      {
+        z:,
+        x: ((lon + 180) / 360 * 2**z).floor,
+        y: ((1 - Math.log(Math.tan(lat_rad) + 1 / Math.cos(lat_rad)) / Math::PI) / 2 * 2**z).floor
+      }
     end
 
     def with_cache_store
