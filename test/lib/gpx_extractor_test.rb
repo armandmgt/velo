@@ -168,6 +168,19 @@ class GpxExtractorTest < ActiveSupport::TestCase
     assert_equal Time.utc(2026, 6, 25, 8, 0, 20), result.summary.end_time
   end
 
+  test "extract keeps the first point of a repeated second" do
+    gpx = %(<?xml version="1.0"?><gpx><trk><trkseg>) +
+          %(<trkpt lat="48.8566" lon="2.3522"><time>2026-06-28T07:18:13Z</time></trkpt>) +
+          %(<trkpt lat="48.8567" lon="2.3523"><time>2026-06-28T07:18:14Z</time></trkpt>) +
+          %(<trkpt lat="48.8560" lon="2.3510"><time>2026-06-28T07:18:13Z</time></trkpt>) +
+          %(<trkpt lat="48.8568" lon="2.3524"><time>2026-06-28T07:18:15Z</time></trkpt>) +
+          %(</trkseg></trk></gpx>)
+
+    result = track(gpx)
+
+    assert_equal [ 48.8566, 48.8567, 48.8568 ], result.points.map(&:lat)
+  end
+
   # --- <rte>/<rtept> exports -------------------------------------------------
 
   test "parse_points falls back to rtept when there is no track" do

@@ -38,7 +38,9 @@ class GpxExtractor
     # A route-style GPX (Komoot, RideWithGPS, our own PlannedRoute#to_gpx) has no
     # <time> at all and degrades to an empty Track — which fails Activity's
     # start_time validation as a 422, rather than raising.
-    build(parse_points.select { |pt| pt[:time] })
+    # A point per second is the most an activity stores, and a phone can hand back
+    # a stale fix that repeats an earlier second; the first one recorded wins.
+    build(parse_points.select { |pt| pt[:time] }.uniq { |pt| pt[:time] })
   end
 
   # Nokogiri recovers from malformed input rather than raising, so an arbitrary
