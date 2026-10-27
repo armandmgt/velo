@@ -82,9 +82,11 @@ class Segment < ApplicationRecord
     SegmentEffort.from(best, :segment_efforts).includes(activity: :user).order(:elapsed_seconds, :id)
   end
 
+  # The rider's efforts, private ones included, fastest first; on a tie the
+  # earlier pass wins.
   def efforts_by(user)
     segment_efforts.joins(:activity).where(activities: { user_id: user.id })
-      .includes(:activity).order("activities.start_time DESC", :start_index)
+      .includes(:activity).order(:elapsed_seconds, "activities.start_time", :start_index)
   end
 
   private

@@ -117,7 +117,8 @@ _Avoid_: Attempt, match, lap
 
 **PR / 2nd / 3rd**:
 The rank a best effort or segment effort earns against the rider's own earlier
-ones, fixed when its Activity is ingested.
+ones, fixed when its Activity is ingested. An Activity shows that rank; a
+segment's page instead marks only the rider's current fastest effort as their PR.
 _Avoid_: KOM (a leaderboard title Velo doesn't award), personal best
 
 **Effort score** (score d'effort):

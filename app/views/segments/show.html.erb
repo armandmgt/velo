@@ -7,7 +7,6 @@
 <% end %>
 <% category = @segment.sport_category.to_sym %>
 <% map_id = dom_id(@segment, :map) %>
-<% best = @efforts.min_by(&:elapsed_seconds) %>
 
 <main class="prose dark:prose-invert md:py-16 p-4">
   <header class="not-prose flex items-center gap-3">
@@ -39,18 +38,21 @@
   <section id="<%= dom_id(@segment, :own_efforts) %>" class="not-prose mb-6">
     <h3 class="text-sm font-semibold uppercase opacity-60 mb-2">Vos efforts</h3>
     <% if @efforts.any? %>
-      <ul class="overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">
-        <% @efforts.each do |effort| %>
-          <li id="<%= dom_id(effort) %>" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 <%= "bg-warning/15" if effort == best %>">
-            <%= link_to l(effort.activity.start_time.in_time_zone("Europe/Paris").to_date, format: :long), activity_path(effort.activity), class: "w-32 font-semibold link link-hover" %>
-            <span class="font-mono tabular-nums"><%= best_effort_time(effort) %></span>
-            <span class="text-sm opacity-60"><%= best_effort_rate(effort, category) %></span>
-            <%= best_effort_badge(effort.rank) %>
-            <% if effort == best %><span class="text-xs font-semibold">Meilleur temps</span><% end %>
-            <%= segment_effort_private_tag(effort) %>
+      <ol class="grid grid-cols-[auto_minmax(0,max-content)_auto_auto_1fr] gap-x-2 sm:gap-x-3 text-sm sm:text-base overflow-hidden rounded-box border border-base-300 divide-y divide-base-300">
+        <% @efforts.each.with_index(1) do |effort, position| %>
+          <% date = l(effort.activity.start_time.in_time_zone("Europe/Paris").to_date, format: :long) %>
+          <li id="<%= dom_id(effort) %>" class="col-span-full grid grid-cols-subgrid items-center px-3 sm:px-4 py-2 whitespace-nowrap">
+            <span class="text-right tabular-nums opacity-60"><%= position %></span>
+            <%= link_to date, activity_path(effort.activity), title: date, class: "truncate font-semibold link link-hover" %>
+            <span class="text-right font-mono tabular-nums"><%= best_effort_time(effort) %></span>
+            <span class="text-right text-xs sm:text-sm opacity-60"><%= best_effort_rate(effort, category) %></span>
+            <span class="flex items-center gap-1">
+              <%= best_effort_badge(1) if position == 1 %>
+              <%= segment_effort_private_tag(effort) %>
+            </span>
           </li>
         <% end %>
-      </ul>
+      </ol>
     <% else %>
       <p class="text-sm opacity-60">Vous n'avez pas encore parcouru ce segment.</p>
     <% end %>
