@@ -1,0 +1,28 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "528c7f14ff7f20af8498ffde66070573ea6d0f435d1b1a2f15f70c9b705f3111",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/heatmap.rb",
+      "line": 90,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "activities.where(\"#{column} && #{ActiveRecord::Base.sanitize_sql_array([\"ST_TileEnvelope(?, ?, ?, margin => ?)\", z, x, y, (64.to_f / 4096)])}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Heatmap",
+        "method": "tile"
+      },
+      "user_input": "column",
+      "confidence": "Weak",
+      "cwe_id": [
+        89
+      ],
+      "note": "False positive: column is built from the TILE_PATH_ZOOMS constant and the tile envelope is sanitized with sanitize_sql_array."
+    }
+  ],
+  "brakeman_version": "8.1.0"
+}
