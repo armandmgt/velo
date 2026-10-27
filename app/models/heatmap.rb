@@ -83,12 +83,11 @@ class Heatmap
   # Each path is cut to the tile before encoding: a path crossing a deep-zoom
   # tile mostly lies outside it, and ST_AsMVTGeom would otherwise grid it whole.
   def tile(z, x, y)
-    column = "activities.tile_path_z#{TILE_PATH_ZOOMS.find { |band_zoom| z <= band_zoom }}"
-    envelope = ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?)", z, x, y ])
-    buffered = ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?, margin => ?)", z, x, y, BUFFER.to_f / EXTENT ])
-    features = activities
-      .where("#{column} && #{buffered}")
-      .select("ST_AsMVTGeom(ST_ClipByBox2D(#{column}, #{buffered}), #{envelope}, #{EXTENT}, #{BUFFER}, true) AS geom")
+    column = Activity.arel_table[:"tile_path_z#{TILE_PATH_ZOOMS.find { |band_zoom| z <= band_zoom }}"]
+    envelope = Arel.sql(ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?)", z, x, y ]))
+    buffered = Arel.sql(ActiveRecord::Base.sanitize_sql_array([ "ST_TileEnvelope(?, ?, ?, margin => ?)", z, x, y, BUFFER.to_f / EXTENT ]))
+    geom = sql_function("ST_AsMVTGeom", sql_function("ST_ClipByBox2D", column, buffered), envelope, EXTENT, BUFFER, true)
+    features = activities.where(column.overlaps(buffered)).select(geom.as("geom"))
 
     sql = ActiveRecord::Base.sanitize_sql_array([ <<~SQL.squish, LAYER, EXTENT ])
       SELECT ST_AsMVT(features, ?, ?, 'geom') FROM (#{features.to_sql}) AS features
@@ -97,6 +96,10 @@ class Heatmap
   end
 
   private
+    def sql_function(name, *args)
+      Arel::Nodes::NamedFunction.new(name, args.map { |arg| Arel::Nodes.build_quoted(arg) })
+    end
+
     def sports
       Activity::SPORT_CATEGORY.filter_map { |sport, category| sport.to_s if category.to_s == sport_category }
     end
