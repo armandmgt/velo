@@ -38,7 +38,7 @@ On a phone (the same pages power the iOS and Android apps):
 <p>
   <img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="260">
   <img src="docs/screenshots/mobile-activity.png" alt="Activity summary on a phone" width="260">
-  <img src="docs/screenshots/mobile-map.png" alt="Activity map and elevation on a phone" width="260">
+  <img src="docs/screenshots/mobile-map.jpg" alt="Activity map and elevation on a phone" width="260">
 </p>
 
 <sub>The rider, rides and numbers in these screenshots are made up.</sub>
