@@ -11,6 +11,8 @@ Gem::Specification.new do |spec|
   spec.summary = "RubyFit"
   spec.description = "RubyFit"
   spec.homepage = "https://github.com/armandmgt/velo"
+  # Our code is MIT; the vendored Garmin FIT SDK under ext/ keeps Garmin's FIT Protocol License.
+  spec.license = "MIT"
   spec.required_ruby_version = ">= 3.2.0"
 
   spec.metadata["homepage_uri"] = spec.homepage
