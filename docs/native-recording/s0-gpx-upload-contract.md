@@ -1,6 +1,6 @@
 # S0 — GPX-on-device upload contract
 
-**Status:** Decided. Foundation spike for [#41 (Record activities natively in iOS and Android)](https://github.com/armandmgt/velo/issues/41), tracked in [#48](https://github.com/armandmgt/velo/issues/48).
+**Status:** Decided. Foundation spike for recording activities natively in the iOS and Android apps.
 
 This document fixes the contract between the native recorders (iOS/Android) and
 the Rails server **before** any native code is written. It is the single source
@@ -261,7 +261,7 @@ form behavior is untouched).
   `422 {errors}`.
 - The `format.json` navigation response on `POST /activities`.
 
-**Deferred to the native upload PR(s) under #41:**
+**Deferred to the native upload work:**
 
 - The native recorders themselves (UIKit / Jetpack Compose), on-device DB,
   permissions, recording UI, GPX serialization.
@@ -270,9 +270,9 @@ form behavior is untouched).
 
 ---
 
-## 7. Superseded: the device no longer uploads (#116)
+## 7. Superseded: the device no longer uploads
 
-**Added by [#116](https://github.com/armandmgt/velo/issues/116) / [ADR 0003](../adr/0003-the-recording-review-is-a-web-page.md).
+**Added with [ADR 0003](../adr/0003-the-recording-review-is-a-web-page.md).
 §§1–3 stand unchanged. §§4–5 no longer describe the live path.**
 
 The review screen is now the web `/activities/new`, prefilled by the shell over
@@ -290,7 +290,7 @@ and the *page* builds the GPX and submits the form, so:
 - **§5 (navigation contract).** The `201 { id, url }` / `422 { errors }` JSON
   responses still exist and are still tested, but **no client calls them today**.
   They are kept deliberately: the deferred offline queue
-  ([#117](https://github.com/armandmgt/velo/issues/117)) is a native POST and
+  (uploading recordings made without a connection) is a native POST and
   will want this contract back, along with the CSRF exemption in
   `ActivitiesController`. The HTML path (302 → activity) is what the review page
   actually follows.

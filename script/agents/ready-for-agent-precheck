@@ -2,8 +2,8 @@
 # Pre-check for the "Implement a ready-for-agent issue" Orca automation.
 # Exit 0 starts the run; any other exit records a skipped run, which costs nothing.
 #
-# Runs only when an open ready-for-agent issue is free to pick: no assignee, no conflicting
-# triage label, and no open claude/issue-<n>-* PR. Skips while a previous run still holds the
+# Runs only when an open ready-for-agent issue is free to pick: an agent brief written by the owner
+# (the repo is public), no assignee, no conflicting triage label, and no open claude/issue-<n>-* PR. Skips while a previous run still holds the
 # lock (the agent takes it first thing and releases it last; a lock older than 3 h is stale).
 set -uo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
@@ -15,8 +15,9 @@ if [ -f "$LOCK" ] && [ -n "$(find "$LOCK" -mmin -180)" ]; then
 fi
 
 issues=$(gh issue list --repo armandmgt/velo --label ready-for-agent --state open --limit 50 \
-  --json number,assignees,labels --jq '
+  --json number,author,body,assignees,labels,comments --jq '
     [.[] | select((.assignees | length) == 0)
+         | select([.] + .comments | any(.author.login == "armandmgt" and (.body | contains("## Agent Brief"))))
          | select([.labels[].name] | any(IN("needs-info", "needs-triage", "ready-for-human", "wontfix")) | not)
          | .number] | .[]' 2>/dev/null) || { echo "skip: gh issue list failed"; exit 1; }
 branches=$(gh pr list --repo armandmgt/velo --state open --limit 50 --json headRefName --jq '.[].headRefName' 2>/dev/null) || {

@@ -54,7 +54,7 @@ class GpxExtractorTest < ActiveSupport::TestCase
     assert_nil track(gpx).suggested_sport
   end
 
-  # --- Native recorder contract (issue #48) ---------------------------------
+  # --- Native recorder contract --------------------------------------------
   # The iOS/Android recorders serialize an on-device recording to GPX 1.1 and
   # upload it through POST /activities. These pin the schema the apps must emit
   # (see docs/native-recording/s0-gpx-upload-contract.md).

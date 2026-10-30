@@ -45,24 +45,10 @@ password; the pre-fill expects `dev`.
 ### Pull Requests
 
 - Open PRs with `gh pr create --base main`.
-- **Capturing UI screenshots:** reuse the Capybara/Selenium system-test harness — write a throwaway test under `test/system/` that logs in (`login(users(:one))`, password `password`), opens the UI, and calls `page.save_screenshot(Rails.root.join("tmp/<name>.png").to_s)`, then delete the test after the run. **Always capture both a desktop and a mobile view** (not just one). For the mobile view, resize first: `page.driver.browser.manage.window.resize_to(390, 844)`, then re-`visit` and save a separate `<name>-mobile.png`. Upload both to S3 and embed both in the PR body.
+- **Capturing UI screenshots:** reuse the Capybara/Selenium system-test harness — write a throwaway test under `test/system/` that logs in (`login(users(:one))`, password `password`), opens the UI, and calls `page.save_screenshot(Rails.root.join("tmp/<name>.png").to_s)`, then delete the test after the run. **Always capture both a desktop and a mobile view** (not just one). For the mobile view, resize first: `page.driver.browser.manage.window.resize_to(390, 844)`, then re-`visit` and save a separate `<name>-mobile.png`. Embed both in the PR body.
   - Before running, build CSS with `bin/rails tailwindcss:build` (`bin/rails server` alone does **not** compile Tailwind, so screenshots come out unstyled).
-  - The test DB load shells out to `psql`, but the default `psql` is a mise shim with no version set. Put a real client on `PATH` and pass connection env vars: `export PATH="/opt/homebrew/Cellar/libpq/18.3/bin:$PATH" PGHOST=localhost PGUSER=velo PGPASSWORD=password`. If the test DB is stale, drop/recreate `velo_test` and load `db/structure.sql` with that same `psql`.
-- **Attaching screenshots to a PR:** the GitHub repo is **private**, so GitHub will not render images from `raw.githubusercontent.com` or repo blob URLs. Upload the PNG to the public S3 bucket and embed its https URL directly in the PR body — no drag-drop needed.
-  - **Bucket:** `your-screenshot-bucket` (region `eu-west-3`, personal account `AWS_ACCOUNT_ID`). Objects under the `screenshots/` prefix are world-readable via a public bucket policy; use an unguessable UUID filename so the URL isn't discoverable.
-  - **Credentials:** the `aws` CLI is a fish function (`docker run … amazon/aws-cli:latest`) not available in Claude's `zsh`, so invoke the container directly. Creds live in `~/.aws` under the `production` profile (account `AWS_ACCOUNT_ID` — *not* the expired `default`/Cashbee one). Mount `~/.aws` → `/root/.aws` and pass `-e AWS_PROFILE=production`.
-  - **Docker file-sharing gotcha:** Docker Desktop shares `/Users` but **not** `/tmp`. Mount the repo/worktree root (it's under `/Users`) at `/aws` and reference the screenshot by its repo-relative path, e.g. `tmp/foo.png` → `/aws/tmp/foo.png`.
-  - **Upload + URL** (run from the repo root; substitute the worktree path as `$ROOT`):
-    ```bash
-    ROOT="$(git rev-parse --show-toplevel)"
-    KEY="screenshots/$(uuidgen | tr 'A-Z' 'a-z').png"
-    docker run --rm --volume ~/.aws:/root/.aws --volume "$ROOT":/aws --net=host \
-      -e AWS_PROFILE=production amazon/aws-cli:latest \
-      s3 cp "/aws/tmp/<name>.png" "s3://your-screenshot-bucket/$KEY" --content-type image/png
-    # Public URL (embed in PR body as ![screenshot](URL)):
-    echo "https://your-screenshot-bucket.s3.eu-west-3.amazonaws.com/$KEY"
-    ```
-  - Verify the object is live with `curl -s -o /dev/null -w '%{http_code} %{content_type}\n' "$URL"` (expect `200 image/png`) before relying on the PR rendering it.
+  - The test DB load shells out to `psql`: put a real PostgreSQL client on `PATH` (not a mise shim) and pass `PGHOST=localhost PGUSER=velo PGPASSWORD=password`. If the test DB is stale, drop/recreate `velo_test` and load `db/structure.sql` with that `psql`.
+- **Maintainer-only setup** (where screenshots get uploaded, local tool paths) lives in an untracked `CLAUDE.local.md`. Read it when present; never commit its contents.
 
 ## Deployment
 

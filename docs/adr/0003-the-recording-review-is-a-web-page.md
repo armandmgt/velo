@@ -1,6 +1,6 @@
 # The recording review is a web page
 
-S13 (#66) built the review/confirm screen shown after **Arrêter** in native
+S13 built the review/confirm screen shown after **Arrêter** in native
 UIKit, on the stated grounds that "a browser / WKWebView cannot programmatically
 prefill an `<input type="file">` (hard security boundary), so the recorded GPX
 could never be attached to that form." That premise is wrong. What a webview
@@ -9,8 +9,8 @@ JS-constructed `File` via `new DataTransfer()` since Safari 14.1, and the iOS
 deployment target is 17.0 (`native/ios/project.yml`). No missing API stood in
 the way — so the review screen becomes the existing web `/activities/new`,
 prefilled by the shell, and both native implementations are deleted:
-`RecordingReviewViewController` on iOS (#66) and `ReviewBody` / `ReviewControls`
-inside `RecordingScreen.kt` on Android (#67).
+`RecordingReviewViewController` on iOS and `ReviewBody` / `ReviewControls`
+inside `RecordingScreen.kt` on Android.
 
 The shell hands the finished recording to that page as a **handoff** over a
 bridge component, and the page performs the upload as an ordinary Turbo form

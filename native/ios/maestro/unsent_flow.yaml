@@ -10,7 +10,7 @@ tags:
 # review on the stored recording and uploads it, leaving the other) and Supprimer
 # from the list and from the review.
 #
-# Not driven here, verified by hand instead (see #117):
+# Not driven here, verified by hand instead (the deferred offline upload queue):
 # - the review page being unreachable: the simulator's network can't be cut from
 #   Maestro, so the Fermer path was run with the dev server stopped;
 # - reopening a review for a recording that already uploaded: that needs the

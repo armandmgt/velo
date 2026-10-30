@@ -12,7 +12,7 @@ tags:
 # other) and Supprimer from the list and from the review.
 #
 # Unlike iOS, Android can cut the network from Maestro (setAirplaneMode), so the
-# unreachable-review path is driven here. Not driven, verified by hand (see #117):
+# unreachable-review path is driven here. Not driven, verified by hand (the deferred offline upload queue):
 # reopening a review for a recording that already uploaded, which needs the store
 # from before the 201 restored after it; and upgrading over a version 2 store,
 # which needs the previous build installed first (UnsentRecordingsTest covers the

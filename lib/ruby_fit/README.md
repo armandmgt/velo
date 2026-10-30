@@ -98,7 +98,7 @@ class FitCallbacks
   end
 end
 
-io = File.open('/Users/zombre98/project/velo/test/fixtures/files/fit/run.fit')
+io = File.open('test/fixtures/files/fit/run.fit')
 callbacks = FitCallbacks.new
 parser = RubyFit::Parser.new(callbacks)
 parser.parse(io)

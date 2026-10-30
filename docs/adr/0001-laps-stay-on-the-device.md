@@ -1,6 +1,6 @@
 # Laps stay on the device
 
-Native recording (#41) lets the rider mark laps ("Tour") while recording, and S12
+Native recording lets the rider mark laps ("Tour") while recording, and S12
 surfaces each lap's split — distance, temps écoulé, average speed — during and
 after the ride. Those laps are never uploaded: the S0 GPX contract
 (`docs/native-recording/s0-gpx-upload-contract.md` §2) stays at a single

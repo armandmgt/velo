@@ -30,8 +30,8 @@ class FitExtractorTest < ActiveSupport::TestCase
     point = track("run").points.first
 
     assert_equal Time.utc(2026, 3, 8, 17, 34, 54), point.recorded_at
-    assert_in_delta 48.89698, point.lat, 0.00001
-    assert_in_delta 2.08717, point.lon, 0.00001
+    assert_in_delta 48.8566, point.lat, 0.00001
+    assert_in_delta 2.3522, point.lon, 0.00001
     assert_in_delta 90.4, point.altitude, 0.1
     assert_equal 93, point.heart_rate
   end

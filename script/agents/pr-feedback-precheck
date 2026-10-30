@@ -5,7 +5,7 @@
 # Looks at open PRs on claude/issue-* branches (opened by the "Implement a ready-for-agent issue"
 # automation). The agent signs every PR comment it posts with MARKER; a PR needs attention when,
 # since the latest signed comment (or since the PR was opened, if there is none yet):
-#   - anyone else commented or submitted a review,
+#   - the owner commented or submitted a review (the repo is public: nobody else's comments count),
 #   - a CI check finished failing, or
 #   - main moved and the branch now conflicts with it.
 # Pending CI is left for a later run. Signing a comment after giving up on a failure silences it.
@@ -21,6 +21,7 @@ if [ -z "${IGNORE_LOCK:-}" ] && [ -f "$LOCK" ] && [ -n "$(find "$LOCK" -mmin -18
 fi
 
 MARKER="<!-- velo-agent -->"
+OWNER="armandmgt"
 
 main_date=$(gh api repos/armandmgt/velo/commits/main --jq .commit.committer.date 2>/dev/null) || {
   echo "skip: could not read main"
@@ -32,12 +33,14 @@ prs=$(gh pr list --repo armandmgt/velo --state open --limit 20 \
   exit 1
 }
 
-needing=$(jq -r --arg marker "$MARKER" --arg main_date "$main_date" '
+needing=$(jq -r --arg marker "$MARKER" --arg owner "$OWNER" --arg main_date "$main_date" '
   [.[] | select(.headRefName | startswith("claude/issue-"))
    | . as $pr
-   | ([.comments[] | select(.body | contains($marker)) | .createdAt] | max // $pr.createdAt) as $since
-   | ([.comments[] | select((.body | contains($marker) | not) and .createdAt > $since)]
-      + [.reviews[] | select(.state != "APPROVED" and .submittedAt > $since)] | length) as $feedback
+   | ([.comments[] | select(.author.login == $owner and (.body | contains($marker))) | .createdAt]
+      | max // $pr.createdAt) as $since
+   | ([.comments[] | select(.author.login == $owner and (.body | contains($marker) | not) and .createdAt > $since)]
+      + [.reviews[] | select(.author.login == $owner and .state != "APPROVED" and .submittedAt > $since)]
+      | length) as $feedback
    | ([.statusCheckRollup[]
        | select(((.conclusion // .state) | IN("FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED"))
                 and ((.completedAt // .createdAt // "") > $since))] | length) as $failing

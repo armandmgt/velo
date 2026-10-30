@@ -100,3 +100,6 @@
 
 # Maestro takeScreenshot artifacts land in whatever the CWD was.
 record-*.png
+
+# Maintainer-only Claude Code notes (personal infrastructure).
+/CLAUDE.local.md
