@@ -48,7 +48,8 @@ password; the pre-fill expects `dev`.
 - **Capturing UI screenshots:** reuse the Capybara/Selenium system-test harness — write a throwaway test under `test/system/` that logs in (`login(users(:one))`, password `password`), opens the UI, and calls `page.save_screenshot(Rails.root.join("tmp/<name>.png").to_s)`, then delete the test after the run. **Always capture both a desktop and a mobile view** (not just one). For the mobile view, resize first: `page.driver.browser.manage.window.resize_to(390, 844)`, then re-`visit` and save a separate `<name>-mobile.png`. Embed both in the PR body.
   - Before running, build CSS with `bin/rails tailwindcss:build` (`bin/rails server` alone does **not** compile Tailwind, so screenshots come out unstyled).
   - The test DB load shells out to `psql`: put a real PostgreSQL client on `PATH` (not a mise shim) and pass `PGHOST=localhost PGUSER=velo PGPASSWORD=password`. If the test DB is stale, drop/recreate `velo_test` and load `db/structure.sql` with that `psql`.
-- **Maintainer-only setup** (where screenshots get uploaded, local tool paths) lives in an untracked `CLAUDE.local.md`. Read it when present; never commit its contents.
+- **Attaching screenshots:** never commit them. Reference each file from the body (`![Desktop](./tmp/<name>.png)`) and pass it with `--attach` to `gh pr create`, `gh pr edit` or `gh pr comment`: gh uploads it and rewrites the reference to the hosted copy. Native screenshots (Maestro `takeScreenshot`) go the same way. Open the PR afterwards and check the images render.
+- **Maintainer-only setup** (local tool paths) lives in an untracked `CLAUDE.local.md`. Read it when present; never commit its contents.
 
 ## Deployment
 

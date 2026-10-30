@@ -3,6 +3,8 @@
 Velo is a self-hosted cycling and running tracker: a personal alternative to Strava that keeps
 your activities on your own server. The interface is in French.
 
+![An activity: route map and elevation profile](docs/screenshots/activity.jpg)
+
 ## Features
 
 - **Activities**: upload FIT or GPX files, or record rides and runs with the iOS and Android apps
@@ -12,11 +14,34 @@ your activities on your own server. The interface is in French.
   an iGPSport account.
 - **Records**: best efforts over standard distances, a power curve, and segments you draw on an
   activity, with every effort on them ranked.
+- **Fitness**: condition, fatigue and form from your daily effort scores, plus heart-rate and
+  power zones for each activity.
 - **Heatmap** of everywhere you've been, served as vector tiles.
 - **Planned routes**: draw or import a route, then share it as a link or a GPX file.
 - **Gear**: bikes, shoes and their components, with distance tracked per item.
 - **Privacy**: hidden map zones around places like your home, and per-activity visibility with
   share links.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Dashboard: weekly distance and recent activities](docs/screenshots/dashboard.png) | ![Heatmap of every activity](docs/screenshots/heatmap.jpg) |
+| **Dashboard** | **Heatmap** |
+| ![Best efforts per distance](docs/screenshots/records.png) | ![A segment with every effort ranked](docs/screenshots/segment.png) |
+| **Records** | **Segments** |
+| ![Condition, fatigue and form over three months](docs/screenshots/fitness.png) | ![A planned route from Paris to Fontainebleau](docs/screenshots/route.jpg) |
+| **Fitness** | **Planned routes** |
+
+On a phone (the same pages power the iOS and Android apps):
+
+<p>
+  <img src="docs/screenshots/mobile-dashboard.png" alt="Dashboard on a phone" width="260">
+  <img src="docs/screenshots/mobile-activity.png" alt="Activity summary on a phone" width="260">
+  <img src="docs/screenshots/mobile-map.png" alt="Activity map and elevation on a phone" width="260">
+</p>
+
+<sub>The rider, rides and numbers in these screenshots are made up.</sub>
 
 ## Stack
 
