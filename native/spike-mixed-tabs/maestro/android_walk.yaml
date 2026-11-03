@@ -1,0 +1,64 @@
+appId: fr.armandmgt.velo
+---
+- launchApp:
+    stopApp: true
+- runFlow: ../../android/maestro/subflows/sign_in_if_needed.yaml
+# S1/S2: native root → web detail
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeActivityRow"
+    timeout: 15000
+- assertVisible: "Native list · fetch #1"
+- tapOn:
+    id: "spikeActivityRow"
+    index: 0
+- extendedWaitUntil:
+    visible: "DISTANCE|Distance"
+    timeout: 15000
+# S3: back refetches
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Native list · fetch #2"
+# S4: "+" modal over the native root
+- tapOn: "Nouvelle activité"
+- extendedWaitUntil:
+    visible: "Description"
+    timeout: 15000
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S5: cross-tab from a dashboard card
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "SPIKE delete me"
+- extendedWaitUntil:
+    visible: "DISTANCE|Distance"
+    timeout: 15000
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S6: the web "Retour à la liste" link to /activities
+- tapOn:
+    id: "spikeActivityRow"
+    index: 0
+- extendedWaitUntil:
+    visible: "DISTANCE|Distance"
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Retour à la liste"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "Retour à la liste"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"

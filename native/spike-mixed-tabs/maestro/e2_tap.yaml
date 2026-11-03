@@ -1,0 +1,7 @@
+appId: fr.armandmgt.velo
+---
+- tapOn:
+    id: "spikeActivityRow"
+    index: 1
+- waitForAnimationToEnd:
+    timeout: 10000

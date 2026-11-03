@@ -1,0 +1,5 @@
+appId: fr.armandmgt.velo
+---
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd:
+    timeout: 5000

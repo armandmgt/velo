@@ -1,0 +1,24 @@
+appId: fr.armandmgt.velo
+---
+- launchApp:
+    stopApp: true
+- runFlow: ../../ios/maestro/subflows/sign_in_if_needed.yaml
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeActivityRow"
+    timeout: 15000
+- tapOn:
+    id: "spikeActivityRow"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "DISTANCE"
+    timeout: 15000
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd:
+    timeout: 5000

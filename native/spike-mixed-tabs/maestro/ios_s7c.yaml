@@ -1,0 +1,15 @@
+appId: fr.armandmgt.velo
+---
+- launchApp:
+    stopApp: true
+- runFlow: ../../ios/maestro/subflows/sign_in_if_needed.yaml
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "SPIKE delete me 2"
+- extendedWaitUntil:
+    visible: "Spike supprimer"
+    timeout: 15000
+- tapOn: "Spike supprimer"
+- waitForAnimationToEnd:
+    timeout: 5000

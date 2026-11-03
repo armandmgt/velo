@@ -1,0 +1,20 @@
+appId: fr.armandmgt.velo
+---
+- launchApp:
+    stopApp: true
+- runFlow: ../../android/maestro/subflows/sign_in_if_needed.yaml
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeNativeMarker"
+    timeout: 15000
+- tapOn:
+    id: "spikeActivityRow"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "DISTANCE|Distance"
+    timeout: 15000

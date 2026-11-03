@@ -1,0 +1,5 @@
+appId: fr.armandmgt.velo
+---
+- back
+- waitForAnimationToEnd:
+    timeout: 4000

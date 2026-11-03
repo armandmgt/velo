@@ -1,0 +1,50 @@
+appId: fr.armandmgt.velo
+---
+- launchApp:
+    stopApp: true
+- runFlow: ../../ios/maestro/subflows/sign_in_if_needed.yaml
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S4: the "+" opens the web upload form as a modal over the native root.
+- tapOn:
+    text: "Nouvelle activité"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "Description"
+    timeout: 15000
+- swipe:
+    start: 50%, 15%
+    end: 50%, 95%
+    duration: 300
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S9: sign out from the dashboard's web menu, sign back in, native list still loads.
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "More"
+- tapOn: "Se déconnecter"
+- assertVisible: "Connexion"
+- hideKeyboard
+- tapOn: "Se connecter"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "ACTIVITÉS RÉCENTES|Activités récentes"
+    timeout: 30000
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeActivityRow"
+    timeout: 15000
+- assertNotVisible:
+    id: "spikeError"

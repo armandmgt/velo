@@ -74,6 +74,8 @@ class ConfigurationsController < ApplicationController
           { patterns: [ "/.*" ], properties: { context: "default", pull_to_refresh_enabled: true } },
           *TAB_RULES,
           { patterns: MAP_PATTERNS, properties: { pull_to_refresh_enabled: false } },
+          # PROTOTYPE (native mixed-tabs spike, #8): the Activités list is a native screen.
+          { patterns: [ "^/activities$" ], properties: { view_controller: "activities_native" } },
           { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
           { patterns: [ "/session/new$", "/users/new$" ], properties: AUTH_OVERRIDE }
         ]
@@ -97,6 +99,8 @@ class ConfigurationsController < ApplicationController
           },
           *TAB_RULES,
           { patterns: MAP_PATTERNS, properties: { pull_to_refresh_enabled: false } },
+          # PROTOTYPE (native mixed-tabs spike, #8): the Activités list is a native screen.
+          { patterns: [ "^/activities$" ], properties: { uri: "hotwire://fragment/activities_native" } },
           { patterns: MODAL_PATTERNS, properties: { context: "modal", pull_to_refresh_enabled: false } },
           { patterns: [ "/session/new$", "/users/new$" ], properties: AUTH_OVERRIDE }
         ]

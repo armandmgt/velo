@@ -1,0 +1,10 @@
+appId: fr.armandmgt.velo
+---
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible: "Native list · fetch #2"
+- tapOn: "Tableau de bord"
+- waitForAnimationToEnd:
+    timeout: 10000

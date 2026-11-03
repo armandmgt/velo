@@ -1,0 +1,18 @@
+appId: fr.armandmgt.velo
+---
+# Cross-tab: a dashboard card lands on the Activités tab, on top of the native root.
+- launchApp:
+    stopApp: true
+- runFlow: ../../ios/maestro/subflows/sign_in_if_needed.yaml
+- tapOn: "SPIKE delete me"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "DISTANCE"
+    timeout: 15000
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd:
+    timeout: 10000
+- assertVisible:
+    id: "spikeNativeMarker"

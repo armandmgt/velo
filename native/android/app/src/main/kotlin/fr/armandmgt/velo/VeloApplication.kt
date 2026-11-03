@@ -20,6 +20,7 @@ import fr.armandmgt.velo.features.web.WebFragment
 import fr.armandmgt.velo.main.FileDownloadRouteDecisionHandler
 import fr.armandmgt.velo.main.SignOutRouteDecisionHandler
 import fr.armandmgt.velo.main.TabRouteDecisionHandler
+import fr.armandmgt.velo.spike.SpikeActivitiesFragment
 
 class VeloApplication : Application() {
     override fun onCreate() {
@@ -40,7 +41,7 @@ class VeloApplication : Application() {
 
         // Every URL routes to the web fragment unless a rule says otherwise.
         Hotwire.defaultFragmentDestination = WebFragment::class
-        Hotwire.registerFragmentDestinations(WebFragment::class)
+        Hotwire.registerFragmentDestinations(WebFragment::class, SpikeActivitiesFragment::class) // PROTOTYPE (#8)
 
         // Native counterparts to the web's bridge Stimulus controllers.
         Hotwire.registerBridgeComponents(

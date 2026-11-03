@@ -81,6 +81,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
             return .reject
         }
 
+        // PROTOTYPE (#8): native Activités list.
+        if proposal.viewController == SpikeActivitiesViewController.pathConfigurationIdentifier {
+            return .acceptCustom(SpikeActivitiesViewController(navigator: navigator))
+        }
+
         return .accept
     }
 

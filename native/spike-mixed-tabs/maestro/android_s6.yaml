@@ -1,0 +1,20 @@
+appId: fr.armandmgt.velo
+---
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "spikeActivityRow"
+    index: 1
+- extendedWaitUntil:
+    visible: "Spike retour"
+    timeout: 15000
+- tapOn: "Spike retour"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# One back press from the root should leave the tab's stack, not reveal a second list.
+- back
+- waitForAnimationToEnd:
+    timeout: 5000

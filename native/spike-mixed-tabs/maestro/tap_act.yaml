@@ -1,0 +1,5 @@
+appId: fr.armandmgt.velo
+---
+- tapOn: "Activités"
+- waitForAnimationToEnd:
+    timeout: 5000

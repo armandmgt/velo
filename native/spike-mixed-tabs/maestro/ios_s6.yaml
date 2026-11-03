@@ -1,0 +1,12 @@
+appId: fr.armandmgt.velo
+---
+- repeat:
+    times: 10
+    commands:
+      - swipe:
+          start: 50%, 92%
+          end: 50%, 20%
+          duration: 300
+- tapOn: "Retour à la liste"
+- waitForAnimationToEnd:
+    timeout: 10000
