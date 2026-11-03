@@ -13,11 +13,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import androidx.compose.ui.platform.ComposeView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import dev.hotwire.navigation.activities.HotwireActivity
 import dev.hotwire.navigation.navigator.Navigator
-import dev.hotwire.navigation.tabs.HotwireBottomNavigationController
 import dev.hotwire.navigation.tabs.navigatorConfigurations
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import fr.armandmgt.velo.BuildConfig
@@ -25,10 +24,11 @@ import fr.armandmgt.velo.R
 import fr.armandmgt.velo.features.record.RecordingActivity
 import fr.armandmgt.velo.features.record.RecordingHandoff
 import fr.armandmgt.velo.features.record.data.RecordingDatabase
+import fr.armandmgt.velo.spike.AppBottomBar
 import kotlinx.coroutines.launch
 
 class MainActivity : HotwireActivity() {
-    private lateinit var bottomNavigationController: HotwireBottomNavigationController
+    private lateinit var bottomNavigationController: AppBottomBar
     private lateinit var recordFab: FloatingActionButton
     private lateinit var unsentBadge: TextView
 
@@ -67,7 +67,7 @@ class MainActivity : HotwireActivity() {
         // The FAB is contextual to the selected tab: Record on the dashboard,
         // a "+" that opens the web "new" form on the Activités / Parcours tabs.
         updateFab(DASHBOARD_TAB_INDEX)
-        bottomNavigationController.setOnTabSelectedListener { index, _ -> updateFab(index) }
+        bottomNavigationController.setOnTabSelectedListener { index -> updateFab(index) }
 
         val dao = RecordingDatabase.get(this).recordingDao()
         lifecycleScope.launch {
@@ -115,9 +115,8 @@ class MainActivity : HotwireActivity() {
         }
 
     private fun initializeBottomTabs() {
-        val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottom_nav)
-        bottomNavigationController = HotwireBottomNavigationController(this, bottomNavigationView)
-        bottomNavigationController.load(mainTabs, selectedTabIndex = 0)
+        bottomNavigationController = AppBottomBar(this, findViewById<ComposeView>(R.id.bottom_nav), mainTabs)
+        bottomNavigationController.load(initialIndex = 0)
     }
 
     /**

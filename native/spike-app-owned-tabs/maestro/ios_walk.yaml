@@ -1,0 +1,117 @@
+appId: fr.armandmgt.velo
+---
+# PROTOTYPE (#11). Needs activities named "SPIKE delete me" (newest) and "SPIKE delete me 2".
+- launchApp:
+    stopApp: true
+- runFlow: ../../ios/maestro/subflows/sign_in_if_needed.yaml
+# S1/S2: native root in the app-owned TabView → web detail on the same stack
+- tapOn: "^Activités$"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeActivityRow"
+    timeout: 15000
+- tapOn: "SPIKE delete me"
+- extendedWaitUntil:
+    visible: "Spike retour"
+    timeout: 15000
+# S3: back → refetch
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible: "Native list · fetch #2"
+# N1: reselecting the tab pops to root (TabView doesn't do this for a hosted UINavigationController)
+- tapOn: "SPIKE delete me"
+- extendedWaitUntil:
+    visible: "Spike retour"
+    timeout: 15000
+- tapOn: "^Activités$"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+- assertNotVisible:
+    id: "BackButton"
+# S4 + N2: FAB "+" → modal over the native root; bar and FAB covered
+- tapOn: "Nouvelle activité"
+- extendedWaitUntil:
+    visible: "Description"
+    timeout: 15000
+- assertNotVisible: "^Parcours$"
+- swipe:
+    start: 50%, 8%
+    end: 50%, 92%
+    duration: 400
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S5: cross-tab from a dashboard card, back → native root
+- tapOn: "^Tableau de bord$"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "SPIKE delete me"
+- extendedWaitUntil:
+    visible: "Spike retour"
+    timeout: 15000
+- assertVisible: "Nouvelle activité"
+- tapOn:
+    id: "BackButton"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+# S6: web link to /activities pops to the native root
+- tapOn: "SPIKE delete me"
+- extendedWaitUntil:
+    visible: "Spike retour"
+    timeout: 15000
+- tapOn: "Spike retour"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    id: "spikeNativeMarker"
+- assertNotVisible:
+    id: "BackButton"
+# S7: delete → 303 to /activities → pops, row gone
+- tapOn: "SPIKE delete me 2"
+- extendedWaitUntil:
+    visible: "Spike supprimer"
+    timeout: 15000
+- tapOn: "Spike supprimer"
+- tapOn:
+    text: "OK|Confirmer"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "spikeNativeMarker"
+    timeout: 10000
+- assertNotVisible: "SPIKE delete me 2"
+# S9: sign out from the dashboard web menu → sign in → native list loads with the new cookie
+- tapOn: "^Tableau de bord$"
+- waitForAnimationToEnd:
+    timeout: 10000
+- tapOn: "More"
+- tapOn: "Se déconnecter"
+- assertVisible: "Connexion"
+- assertNotVisible: "^Parcours$"
+- hideKeyboard
+- tapOn: "Se connecter"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible: "ACTIVITÉS RÉCENTES|Activités récentes"
+    timeout: 30000
+- tapOn: "^Activités$"
+- waitForAnimationToEnd:
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "spikeActivityRow"
+    timeout: 15000
+- assertNotVisible:
+    id: "spikeError"

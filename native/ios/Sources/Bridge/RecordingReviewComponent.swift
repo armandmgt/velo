@@ -91,11 +91,9 @@ final class RecordingReviewComponent: BridgeComponent {
     private func routeToActivity(_ url: URL) {
         guard let window = viewController?.view.window ?? UIApplication.shared.connectedScenes
             .compactMap({ ($0 as? UIWindowScene)?.keyWindow }).first,
-            let tabBar = window.rootViewController as? HotwireTabBarController,
-            let index = HotwireTab.index(named: "activities") else { return }
+            let tabs = window.rootViewController as? AppTabsController else { return }
 
-        tabBar.selectedIndex = index
-        tabBar.activeNavigator.route(url)
+        tabs.route(url, inTab: "activities")
     }
 }
 

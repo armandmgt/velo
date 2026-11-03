@@ -19,7 +19,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         delegate: self
     )
 
-    private lazy var tabBarController = RecordTabBarController(navigatorDelegate: self)
+    // PROTOTYPE (#11): app-owned SwiftUI tab bar, rebuilt on every sign-in.
+    private var tabs: AppTabsController?
 
     func scene(
         _ scene: UIScene,
@@ -74,10 +75,10 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
         if fromTabBar,
            proposal.properties["context"] as? String != "modal",
            let tabName = proposal.properties["tab"] as? String,
-           let targetIndex = HotwireTab.index(named: tabName),
-           targetIndex != tabBarController.selectedIndex {
-            tabBarController.selectedIndex = targetIndex
-            tabBarController.activeNavigator.route(proposal.url)
+           let tabs,
+           let targetIndex = AppTabsModel.index(named: tabName),
+           targetIndex != tabs.model.selection {
+            tabs.route(proposal.url, inTab: tabName)
             return .reject
         }
 
@@ -114,15 +115,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
     // MARK: Auth transitions
 
     @objc private func didSignIn() {
-        guard window?.rootViewController !== tabBarController else { return }
-        window?.rootViewController = tabBarController
-        tabBarController.load(HotwireTab.all)
-        tabBarController.selectedIndex = 0
+        guard !(window?.rootViewController is AppTabsController) else { return }
+        let tabs = AppTabsController(navigatorDelegate: self)
+        self.tabs = tabs
+        window?.rootViewController = tabs
     }
 
     private func didSignOut() {
         guard window?.rootViewController !== unauthenticatedNavigator.rootViewController else { return }
         window?.rootViewController = unauthenticatedNavigator.rootViewController
+        tabs = nil
         unauthenticatedNavigator.rootViewController.popToRootViewController(animated: false)
         unauthenticatedNavigator.reload()
     }

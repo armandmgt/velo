@@ -43,13 +43,11 @@ final class NotificationCountComponent: BridgeComponent {
 
     @objc private func handleTap() {
         guard let window = viewController?.view.window,
-              let tabBar = window.rootViewController as? HotwireTabBarController else { return }
+              let tabs = window.rootViewController as? AppTabsController else { return }
 
-        tabBar.selectedIndex = 0
-        if let nav = tabBar.selectedViewController as? UINavigationController {
-            nav.popToRootViewController(animated: false)
-        }
-        tabBar.activeNavigator.session.webView.scrollView.setContentOffset(.zero, animated: true)
+        tabs.model.selection = 0
+        tabs.model.activeNavigator.rootViewController.popToRootViewController(animated: false)
+        tabs.model.activeNavigator.session.webView.scrollView.setContentOffset(.zero, animated: true)
     }
 }
 
