@@ -4,6 +4,10 @@ class PlannedRoutesController < ApplicationController
   MAX_GPX_BYTES = 5.megabytes
   MAX_SEEDED_WAYPOINTS = 20
 
+  # PROTOTYPE (native planner spike, #21): the native app rides the webview cookie
+  # and sends JSON without a CSRF token. The real design is bearer auth (#10).
+  protect_from_forgery with: :exception, unless: -> { request.format.json? }
+
   before_action :set_planned_route, only: %i[ show edit update update_visibility destroy ]
 
   def index
@@ -126,6 +130,8 @@ class PlannedRoutesController < ApplicationController
 
   def persist_with_routing(planned_route, success_flash:, render_on_error:)
     if planned_route.invalid?
+      return render json: { error: "invalid", messages: planned_route.errors.full_messages }, status: :unprocessable_content if request.format.json?
+
       flash.now[:alert] = error_sentence(planned_route)
       return render render_on_error, status: :unprocessable_content
     end
@@ -140,12 +146,16 @@ class PlannedRoutesController < ApplicationController
     )
 
     if planned_route.save
+      return render json: { id: planned_route.id, url: planned_route_url(planned_route) } if request.format.json?
+
       redirect_to planned_route, notice: success_flash
     else
       flash.now[:alert] = error_sentence(planned_route)
       render render_on_error, status: :unprocessable_content
     end
   rescue BRouterClient::NoRouteFound
+    return render json: { error: "no_route" }, status: :unprocessable_content if request.format.json?
+
     flash.now[:alert] = t("planned_route.errors.no_route")
     render render_on_error, status: :unprocessable_content
   rescue BRouterClient::Error => e

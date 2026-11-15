@@ -63,6 +63,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate, NavigatorDelegate {
             return .reject
         }
 
+        // PROTOTYPE (#21): the native route planner replaces the web planner modal.
+        if fromTabBar, proposal.url.path == "/planned_routes/new" {
+            PlannerPrototype.present(from: tabBarController) { [weak self] url in
+                self?.tabBarController.activeNavigator.route(url)
+            }
+            return .reject
+        }
+
         // Cross-tab routing. Each bottom tab owns a section of the app, but by
         // default a tapped link pushes onto whatever tab's stack it came from —
         // so an activity opened from the dashboard feed would land in the

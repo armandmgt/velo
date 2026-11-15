@@ -6,8 +6,11 @@ import Foundation
 /// Simulator shares the host's network, so `localhost:3000` resolves directly.
 /// Release builds target production.
 enum AppConfig {
-    #if DEBUG
+    #if DEBUG && targetEnvironment(simulator)
     static let baseURL = URL(string: "http://localhost:3000")!
+    #elseif DEBUG
+    // PROTOTYPE (#21): a phone reaches the dev server on the Mac over the LAN.
+    static let baseURL = URL(string: "http://armacbook-air.local:3000")!
     #else
     static let baseURL = URL(string: "https://velo.armandmgt.fr")!
     #endif

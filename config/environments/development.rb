@@ -1,6 +1,9 @@
 require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
+  # PROTOTYPE (#21): let a phone on the LAN reach the dev server by Bonjour name.
+  config.hosts << ".local"
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Make code changes take effect immediately without server restart.

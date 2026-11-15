@@ -1,0 +1,50 @@
+appId: fr.armandmgt.velo
+name: PROTOTYPE planner smoke (#21) — throwaway
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    stopApp: true
+    permissions:
+      location: inuse
+- setLocation:
+    latitude: 48.8566
+    longitude: 2.3522
+- runFlow: ../subflows/sign_in_if_needed.yaml
+- tapOn:
+    text: "^Parcours$"
+- tapOn: "Nouveau parcours"
+- extendedWaitUntil:
+    visible:
+      id: "planner-map"
+    timeout: 10000
+- waitForAnimationToEnd
+- longPressOn:
+    point: "30%, 35%"
+- longPressOn:
+    point: "70%, 45%"
+- extendedWaitUntil:
+    visible: ".*ok #1.*"
+    timeout: 20000
+- assertVisible:
+    id: "planner-waypoint-2"
+- takeScreenshot: planner-two-points
+# Drag waypoint 2 (overlay handle)
+- swipe:
+    start: "70%, 45%"
+    end: "70%, 60%"
+    duration: 800
+- extendedWaitUntil:
+    visible: ".*déplacement #2.*ok #2.*"
+    timeout: 20000
+- takeScreenshot: planner-moved
+- tapOn:
+    id: "planner-undo"
+- extendedWaitUntil:
+    visible: ".*annuler.*"
+    timeout: 5000
+- tapOn:
+    id: "planner-waypoint-1"
+- assertVisible:
+    id: "planner-delete-selected"
+- takeScreenshot: planner-selected

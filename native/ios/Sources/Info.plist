@@ -69,10 +69,14 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PROTOTYPE: reach the Velo dev server on this network.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<!-- DEBUG only: allow the local Rails dev server over plain HTTP.
 		     Production (velo.armandmgt.fr) is HTTPS and unaffected. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>localhost</key>
