@@ -16,7 +16,7 @@ name: PROTOTYPE planner smoke (#21) — throwaway
 - tapOn: "Nouveau parcours"
 - extendedWaitUntil:
     visible:
-      id: "planner-map"
+      id: "planner-prototype-switcher"
     timeout: 10000
 - waitForAnimationToEnd
 - longPressOn:
@@ -45,6 +45,23 @@ name: PROTOTYPE planner smoke (#21) — throwaway
     timeout: 5000
 - tapOn:
     id: "planner-waypoint-1"
-- assertVisible:
+- tapOn:
     id: "planner-delete-selected"
-- takeScreenshot: planner-selected
+- extendedWaitUntil:
+    visible: "1 pts.*suppression #1.*"
+    timeout: 5000
+# Save lands on the Hotwire route detail.
+- longPressOn:
+    point: "50%, 25%"
+- extendedWaitUntil:
+    visible: "2 pts.*ok #.*"
+    timeout: 20000
+# The detents sheet is invisible to Maestro's iOS hierarchy: tap Enregistrer by position.
+- tapOn:
+    point: "75%, 89%"
+- extendedWaitUntil:
+    visible: "Itinéraire"
+    timeout: 20000
+- assertNotVisible:
+    id: "planner-state"
+- takeScreenshot: planner-saved

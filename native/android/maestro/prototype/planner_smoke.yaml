@@ -1,0 +1,62 @@
+appId: fr.armandmgt.velo
+name: PROTOTYPE planner smoke (#21) — throwaway, mirrors the iOS flow
+---
+- launchApp:
+    clearState: true
+    stopApp: true
+    permissions:
+      location: allow
+- runFlow: ../subflows/sign_in_if_needed.yaml
+- tapOn:
+    text: "^Parcours$"
+- tapOn: "Nouveau parcours"
+- extendedWaitUntil:
+    visible:
+      id: "planner-state"
+    timeout: 10000
+- waitForAnimationToEnd
+- longPressOn:
+    point: "30%, 35%"
+- longPressOn:
+    point: "70%, 45%"
+- extendedWaitUntil:
+    visible: ".*ok #1.*"
+    timeout: 20000
+- assertVisible:
+    id: "planner-waypoint-2"
+- takeScreenshot: android-planner-two-points
+- swipe:
+    start: "70%, 45%"
+    end: "70%, 60%"
+    duration: 800
+- extendedWaitUntil:
+    visible: ".*déplacement #2.*ok #2.*"
+    timeout: 20000
+- takeScreenshot: android-planner-moved
+- tapOn:
+    id: "planner-undo"
+- extendedWaitUntil:
+    visible: ".*annuler.*"
+    timeout: 5000
+- tapOn:
+    id: "planner-waypoint-1"
+- tapOn:
+    id: "planner-delete-selected"
+- extendedWaitUntil:
+    visible: "1 pts.*suppression #1.*"
+    timeout: 5000
+- takeScreenshot: android-planner-deleted
+# Save lands on the Hotwire route detail.
+- longPressOn:
+    point: "50%, 25%"
+- extendedWaitUntil:
+    visible: "2 pts.*ok #.*"
+    timeout: 20000
+- tapOn:
+    id: "planner-save"
+- extendedWaitUntil:
+    visible: "Itinéraire"
+    timeout: 20000
+- assertNotVisible:
+    id: "planner-state"
+- takeScreenshot: planner-saved

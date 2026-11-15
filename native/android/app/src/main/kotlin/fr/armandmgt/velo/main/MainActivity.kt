@@ -22,6 +22,7 @@ import dev.hotwire.navigation.tabs.navigatorConfigurations
 import dev.hotwire.navigation.util.applyDefaultImeWindowInsets
 import fr.armandmgt.velo.BuildConfig
 import fr.armandmgt.velo.R
+import fr.armandmgt.velo.features.plannerprototype.PlannerPrototypeActivity
 import fr.armandmgt.velo.features.record.RecordingActivity
 import fr.armandmgt.velo.features.record.RecordingHandoff
 import fr.armandmgt.velo.features.record.data.RecordingDatabase
@@ -48,6 +49,13 @@ class MainActivity : HotwireActivity() {
                 return@registerForActivityResult
             }
             bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
+        }
+
+    // PROTOTYPE (#21): the native route planner replaces the web planner modal.
+    private val plannerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val url = result.data?.getStringExtra(PlannerPrototypeActivity.EXTRA_URL) ?: return@registerForActivityResult
+            bottomNavigationController.route(url)
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -143,7 +151,7 @@ class MainActivity : HotwireActivity() {
                 bottomNavigationController.route("${BuildConfig.BASE_URL}/activities/new")
             }
             selectedTabIndex == tabIndex("planned_routes") -> configureFab(R.drawable.ic_add, R.string.new_route) {
-                bottomNavigationController.route("${BuildConfig.BASE_URL}/planned_routes/new")
+                plannerLauncher.launch(Intent(this, PlannerPrototypeActivity::class.java))
             }
             else -> configureFab(R.drawable.ic_record, R.string.record) {
                 recordLauncher.launch(Intent(this, RecordingActivity::class.java))

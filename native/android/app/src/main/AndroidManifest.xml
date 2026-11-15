@@ -67,6 +67,13 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
             android:theme="@style/Theme.Velo" />
 
+        <!-- PROTOTYPE (#21) -->
+        <activity
+            android:name=".features.plannerprototype.PlannerPrototypeActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Velo" />
+
         <service
             android:name=".features.record.RecordingService"
             android:exported="false"
