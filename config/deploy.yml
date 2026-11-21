@@ -29,19 +29,21 @@ builder:
 env:
   secret:
     - RAILS_MASTER_KEY
+    - DB_PASSWORD
   clear:
     DB_HOST: "velo-db"
     DB_USER: "postgres"
-    DB_PASSWORD: "postgres"
 
 accessories:
   db:
     image: postgis/postgis:17-3.5
     host: minipc.armandmgt.fr
     env:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: velo_production
+      secret:
+        - POSTGRES_PASSWORD:DB_PASSWORD
+      clear:
+        POSTGRES_USER: postgres
+        POSTGRES_DB: velo_production
     volumes:
       - velo_data:/var/lib/postgresql/data:z
 
