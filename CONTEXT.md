@@ -156,8 +156,10 @@ _Avoid_: Equipment, kit, bike (as the general term)
 
 **Component**:
 A wearing part of a bike — chain, cassette, tire, brake pads — with an install
-date and a service interval in km. Replacing it retires the old one.
-_Avoid_: Part, consumable
+date and a service interval in km. Replacing it retires the old one. It is
+**overdue** once ridden past its service interval; overdue components are what
+the rider is told to service.
+_Avoid_: Part, consumable, due (use overdue)
 
 ### Map visibility
 
